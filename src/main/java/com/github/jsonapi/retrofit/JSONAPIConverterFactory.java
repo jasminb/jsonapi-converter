@@ -38,9 +38,6 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 
 	@Override
 	public Converter<?, RequestBody> toRequestBody(Type type, Annotation[] annotations) {
-		if (type instanceof Class) {
-			return new JSONAPIRequestBodyConverter<>(parser, (Class<?>) type);
-		}
-		return null;
+		return new JSONAPIRequestBodyConverter<>(parser);
 	}
 }

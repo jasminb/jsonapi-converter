@@ -1,6 +1,7 @@
 package com.github.jsonapi.retrofit;
 
 import com.github.jsonapi.ResourceConverter;
+import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.RequestBody;
 import retrofit.Converter;
 
@@ -12,11 +13,9 @@ import java.io.IOException;
  * @author jbegic
  */
 public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody> {
-	private Class<?> clazz;
 	private ResourceConverter converter;
 
-	public JSONAPIRequestBodyConverter(ResourceConverter converter, Class<?> clazz) {
-		this.clazz = clazz;
+	public JSONAPIRequestBodyConverter(ResourceConverter converter) {
 		this.converter = converter;
 	}
 
@@ -24,7 +23,8 @@ public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody>
 	@Override
 	public RequestBody convert(T t) throws IOException {
 		try {
-			return RequestBody.create(null, converter.writeObject(t));
+			MediaType mediaType = MediaType.parse("application/vnd.api+json");
+			return RequestBody.create(mediaType, converter.writeObject(t));
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
