@@ -1,15 +1,15 @@
 #### jsonapi-converter
-JSONAPI-Converter is a simple library that provides consumption of JSON API spec APIs.
+JSONAPI-Converter is a library that provides means for integrating with services using JSON API specification.
 
-For information on JSON API spec please see: http://jsonapi.org/format/
+For information on JSON API specification please see: http://jsonapi.org/format/
 
-Besides providing support for request/response parsing, library provides a simple retrofit plugin.
+Besides providing support for request/response parsing, library provides a retrofit plugin.
 
-Library is using Jackson library (https://github.com/FasterXML/jackson-databind) for actual data parsing.
+Library is using Jackson (https://github.com/FasterXML/jackson-databind) for JSON data parsing.
 
 ##### Example usage
 
-Define simple POJO, please pay attention to defined annotations:
+Define simple POJO, please pay attention to added annotations:
 
 ```
 @Type(name = "user")
@@ -35,7 +35,7 @@ ResourceConverter converter = new ResourceConverter(User.class, SomeOtherResoruc
 byte [] rawResponse = ...get data from wire
 User user = converter.readObject(rawResponse, User.class);
 
-// To convert user back to raw byte
+// To convert user back to bytes
 byte [] rawData = converter.writeObject(user);
 ```
 
