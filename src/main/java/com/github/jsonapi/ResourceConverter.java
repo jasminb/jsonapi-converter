@@ -9,8 +9,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.jsonapi.annotations.Id;
 import com.github.jsonapi.annotations.Relationship;
 import com.github.jsonapi.annotations.Type;
-import com.updowninteractive.bold.models.Status;
-import com.updowninteractive.bold.models.User;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -155,8 +153,14 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException
 	 */
 	private <T> T readObject(JsonNode source, Class<T> clazz, Map<String, Object> cache)
-			throws IOException, IllegalAccessException {
-		T result = objectMapper.treeToValue(source.get(ATTRIBUTES), clazz);
+			throws IOException, IllegalAccessException, InstantiationException {
+		T result;
+
+		if (source.has(ATTRIBUTES)) {
+			result = objectMapper.treeToValue(source.get(ATTRIBUTES), clazz);
+		} else {
+			result = clazz.newInstance();
+		}
 
 		// Set object id
 		setIdValue(result, source.get(ID));
@@ -181,7 +185,8 @@ public class ResourceConverter {
 	 * @throws IOException
 	 * @throws IllegalAccessException
 	 */
-	private Map<String, Object> parseIncluded(JsonNode parent) throws IOException, IllegalAccessException {
+	private Map<String, Object> parseIncluded(JsonNode parent)
+			throws IOException, IllegalAccessException, InstantiationException {
 		Map<String, Object> result = new HashMap<>();
 
 		if (parent.has("included")) {
@@ -203,7 +208,7 @@ public class ResourceConverter {
 	}
 
 	private void handleRelationships(JsonNode source, Object object, Map<String, Object> includedData)
-			throws IllegalAccessException, IOException {
+			throws IllegalAccessException, IOException, InstantiationException {
 		JsonNode relationships = source.get(RELATIONSHIPS);
 
 		if (relationships != null) {
@@ -333,7 +338,7 @@ public class ResourceConverter {
 
 		if (relationshipFields != null) {
 			ObjectNode relationshipsNode = objectMapper.createObjectNode();
-			result.set(RELATIONSHIPS, relationshipsNode);
+			dataNode.set(RELATIONSHIPS, relationshipsNode);
 
 			for (Field relationshipField : relationshipFields) {
 				Object relationshipObject = relationshipField.get(object);
@@ -381,26 +386,4 @@ public class ResourceConverter {
 
 		return objectMapper.writeValueAsBytes(result);
 	}
-
-	public static void main(String[] args) throws Exception {
-		ResourceConverter converter = new ResourceConverter(Status.class, User.class);
-
-		Status s = new Status();
-		s.setCommentCount(1);
-		s.setId("id");
-		s.setUser(new User());
-		s.getUser().setCity("Sarajevo");
-		s.getUser().setId("userid");
-
-		s.setUsers(new ArrayList<User>());
-		s.getUsers().add(s.getUser());
-		s.getUsers().add(s.getUser());
-		s.getUsers().add(s.getUser());
-
-
-		String converted = new String(converter.writeObject(s));
-
-		System.out.println(converted);
-	}
-
 }
