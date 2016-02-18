@@ -48,9 +48,14 @@ After defining models, define your service interfaces as you would usually do wi
 To create retrofit instance:
 
 ```
+// Create object mapper
+ObjectMapper objectMapper = new ObjectMapper();
+
+// Set serialisation/deserialisation options if needed (property naming strategy, etc...)
+
 Retrofit retrofit = new Retrofit.Builder()
 		.baseUrl("https://yourapi")
-		.addConverterFactory(new JSONAPIConverterFactory(User.class, SomeOtherResoruce.class))
+		.addConverterFactory(new JSONAPIConverterFactory(objectMapper, User.class, SomeOtherResoruce.class))
 		.build();
 		
 // Create services using service stubs and use it as usual.
