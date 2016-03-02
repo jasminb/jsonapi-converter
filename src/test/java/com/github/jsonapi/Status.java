@@ -4,7 +4,7 @@ import com.github.jsonapi.annotations.Id;
 import com.github.jsonapi.annotations.Relationship;
 import com.github.jsonapi.annotations.Type;
 
-@Type(name = "statuses")
+@Type("statuses")
 public class Status {
 	@Id
 	private String id;
@@ -12,7 +12,7 @@ public class Status {
 	private Integer commentCount;
 	private Integer likeCount;
 
-	@Relationship(name = "user")
+	@Relationship(value = "user", resolve = true)
 	private User user;
 
 	public String getId() {

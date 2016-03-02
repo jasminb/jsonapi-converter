@@ -1,0 +1,31 @@
+{
+  "data": {
+    "type": "statuses",
+    "id": "id",
+    "attributes": {
+      "content": "content",
+      "commentCount": 1,
+      "likeCount": 10
+    },
+    "relationships": {
+      "user": {
+        "links": {
+          "self": "users/userid"
+        },
+        "data": {
+          "type": "users",
+          "id": "userid"
+        }
+      }
+    }
+  },
+  "included": [
+    {
+      "type": "users",
+      "id": "userid",
+      "attributes": {
+        "name": "john"
+      }
+    }
+  ]
+}

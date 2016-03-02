@@ -32,13 +32,21 @@ public class ResourceConverter {
 	private static final String ID = "id";
 	private static final String RELATIONSHIPS = "relationships";
 	private static final String INCLUDED = "included";
+	private static final String LINKS = "links";
+	private static final String SELF = "self";
 
 	private static final Map<String, Class<?>> TYPE_TO_CLASS_MAPPING = new HashMap<>();
 	private static final Map<Class<?>, Type> TYPE_ANNOTATIONS = new HashMap<>();
 	private static final Map<Class<?>, Field> ID_MAP = new HashMap<>();
 	private static final Map<Class<?>, List<Field>> RELATIONSHIPS_MAP = new HashMap<>();
+	private static final Map<Class<?>, Map<String, Class<?>>> RELATIONSHIP_TYPE_MAP = new HashMap<>();
+	private static final Map<Class<?>, Map<String, Field>> RELATIONSHIP_FIELD_MAP = new HashMap<>();
+
 
 	private ObjectMapper objectMapper;
+
+	private RelationshipResolver globalResolver;
+	private Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
 
 	public ResourceConverter(Class<?>... classes) {
 		this(null, classes);
@@ -48,13 +56,21 @@ public class ResourceConverter {
 		for (Class<?> clazz : classes) {
 			if (clazz.isAnnotationPresent(Type.class)) {
 				Type annotation = clazz.getAnnotation(Type.class);
-				TYPE_TO_CLASS_MAPPING.put(annotation.name(), clazz);
+				TYPE_TO_CLASS_MAPPING.put(annotation.value(), clazz);
 				TYPE_ANNOTATIONS.put(clazz, annotation);
+				RELATIONSHIP_TYPE_MAP.put(clazz, new HashMap<String, Class<?>>());
+				RELATIONSHIP_FIELD_MAP.put(clazz, new HashMap<String, Field>());
 
 				List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class);
 
 				for (Field relationshipField : relationshipFields) {
 					relationshipField.setAccessible(true);
+
+					Relationship relationship = relationshipField.getAnnotation(Relationship.class);
+					Class<?> targetType = ReflectionUtils.getRelationshipType(relationshipField);
+					RELATIONSHIP_TYPE_MAP.get(clazz).put(relationship.value(), targetType);
+					RELATIONSHIP_FIELD_MAP.get(clazz).put(relationship.value(), relationshipField);
+
 				}
 
 				RELATIONSHIPS_MAP.put(clazz, relationshipFields);
@@ -84,6 +100,33 @@ public class ResourceConverter {
 		}
 
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+	}
+
+	/**
+	 * Registers global relationship resolver. This resolver will be used in case relationship is present in the
+	 * API response but not provided in the <code>included</code> section and relationship resolving is enabled
+	 * trough relationship annotation. <br/>
+	 * In case type resolver is registered it will be used instead.
+	 * @param resolver resolver instance
+	 */
+	public void setGlobalResolver(RelationshipResolver resolver) {
+		this.globalResolver = resolver;
+	}
+
+	/**
+	 * Registers relationship resolver for given type. Resolver will be used if relationship resolution is enabled
+	 * trough relationship annotation.
+	 * @param resolver resolver instance
+	 * @param type type
+	 */
+	public void setTypeResolver(RelationshipResolver resolver, Class<?> type) {
+		if (resolver != null) {
+			String typeName = ReflectionUtils.getTypeName(type);
+
+			if (typeName != null) {
+				typedResolvers.put(type, resolver);
+			}
+		}
 	}
 
 	/**
@@ -189,7 +232,7 @@ public class ResourceConverter {
 			throws IOException, IllegalAccessException, InstantiationException {
 		Map<String, Object> result = new HashMap<>();
 
-		if (parent.has("included")) {
+		if (parent.has(INCLUDED)) {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
 				String type = jsonNode.get(TYPE).asText();
 
@@ -218,39 +261,51 @@ public class ResourceConverter {
 				String field = fields.next();
 
 				JsonNode relationship = relationships.get(field);
-				Field relationshipField = ReflectionUtils.getRelationshipField(object.getClass(), field);
+				Field relationshipField = RELATIONSHIP_FIELD_MAP.get(object.getClass()).get(field);
 
 				if (relationshipField != null) {
-					// Make sure field is writeable
-					if (!relationshipField.isAccessible()) {
-						relationshipField.setAccessible(true);
+					// Get target type
+					Class<?> type = RELATIONSHIP_TYPE_MAP.get(object.getClass()).get(field);
+
+					// In case type is not defined, relationship object cannot be processed
+					if (type == null) {
+						continue;
 					}
 
+					// Get resolve flag
+					boolean resolveRelationship = relationshipField.getAnnotation(Relationship.class).resolve();
+					RelationshipResolver resolver = getResolver(type);
 
-					if (isCollection(relationship)) {
-						@SuppressWarnings("rawtypes")
-						List elements = new ArrayList<>();
+					// Use resolver if possible
+					if (resolveRelationship && resolver != null && relationship.has(LINKS)) {
+						JsonNode self = relationship.get(LINKS).get(SELF);
 
-						for (JsonNode element : relationship.get(DATA)) {
-							Class<?> type = TYPE_TO_CLASS_MAPPING.get(element.get(TYPE).asText());
+						if (self != null) {
+							String selfLink = self.asText();
 
-							if (type != null) {
+							if (isCollection(relationship)) {
+								relationshipField.set(object, readObjectCollection(resolver.resolve(selfLink), type));
+							} else {
+								relationshipField.set(object, readObject(resolver.resolve(selfLink), type));
+							}
+						}
+					} else {
+						if (isCollection(relationship)) {
+							@SuppressWarnings("rawtypes")
+							List elements = new ArrayList<>();
+
+							for (JsonNode element : relationship.get(DATA)) {
 								String identifier = createIdentifier(element);
+
 								if (includedData.containsKey(identifier)) {
 									elements.add(includedData.get(identifier));
 								} else {
-									Object relationshipObject = readObject(element, relationshipField.getType(),
-											includedData);
+									Object relationshipObject = readObject(element, type, includedData);
 									elements.add(relationshipObject);
 								}
 							}
-						}
-						relationshipField.set(object, elements);
-
-					} else {
-						Class<?> type = TYPE_TO_CLASS_MAPPING.get(relationship.get(DATA).get(TYPE).asText());
-
-						if (type != null) {
+							relationshipField.set(object, elements);
+						} else {
 							JsonNode dataObject = relationship.get(DATA);
 
 							String identifier = createIdentifier(dataObject);
@@ -258,7 +313,7 @@ public class ResourceConverter {
 							if (includedData.containsKey(identifier)) {
 								relationshipField.set(object, includedData.get(identifier));
 							} else {
-								Object relationshipObject = readObject(dataObject, relationshipField.getType(), includedData);
+								Object relationshipObject = readObject(dataObject, type, includedData);
 								relationshipField.set(object, relationshipObject);
 							}
 						}
@@ -323,7 +378,7 @@ public class ResourceConverter {
 
 		// Handle resource identifier
 		ObjectNode dataNode = objectMapper.createObjectNode();
-		dataNode.put(TYPE, TYPE_ANNOTATIONS.get(object.getClass()).name());
+		dataNode.put(TYPE, TYPE_ANNOTATIONS.get(object.getClass()).value());
 
 		String resourceId = (String) idField.get(object);
 		if (resourceId != null) {
@@ -344,7 +399,7 @@ public class ResourceConverter {
 				Object relationshipObject = relationshipField.get(object);
 
 				if (relationshipObject != null) {
-					String relationshipName = relationshipField.getAnnotation(Relationship.class).name();
+					String relationshipName = relationshipField.getAnnotation(Relationship.class).value();
 
 					attributesNode.remove(relationshipField.getName());
 
@@ -352,7 +407,7 @@ public class ResourceConverter {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
 
 						for (Object element : (List<?>) relationshipObject) {
-							String relationshipType = TYPE_ANNOTATIONS.get(element.getClass()).name();
+							String relationshipType = TYPE_ANNOTATIONS.get(element.getClass()).value();
 							String idValue = (String) ID_MAP.get(element.getClass()).get(element);
 
 							ObjectNode identifierNode = objectMapper.createObjectNode();
@@ -366,7 +421,7 @@ public class ResourceConverter {
 						relationshipsNode.set(relationshipName, relationshipDataNode);
 
 					} else {
-						String relationshipType = TYPE_ANNOTATIONS.get(relationshipObject.getClass()).name();
+						String relationshipType = TYPE_ANNOTATIONS.get(relationshipObject.getClass()).value();
 						String idValue = (String) ID_MAP.get(relationshipObject.getClass()).get(relationshipObject);
 
 						ObjectNode identifierNode = objectMapper.createObjectNode();
@@ -385,5 +440,16 @@ public class ResourceConverter {
 		}
 
 		return objectMapper.writeValueAsBytes(result);
+	}
+
+	private RelationshipResolver getResolver(Class<?> type) {
+		RelationshipResolver resolver = globalResolver;
+
+		// Check if there is a specific type resolver present
+		if (typedResolvers.containsKey(type)) {
+			resolver = typedResolvers.get(type);
+		}
+
+		return resolver;
 	}
 }

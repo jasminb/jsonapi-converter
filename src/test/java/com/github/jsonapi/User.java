@@ -6,14 +6,14 @@ import com.github.jsonapi.annotations.Type;
 
 import java.util.List;
 
-@Type(name = "users")
+@Type("users")
 public class User {
 
 	@Id
 	private String id;
 	private String name;
 
-	@Relationship(name = "statuses")
+	@Relationship("statuses")
 	private List<Status> statuses;
 
 

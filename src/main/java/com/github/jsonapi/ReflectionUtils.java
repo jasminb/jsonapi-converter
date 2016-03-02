@@ -1,9 +1,10 @@
 package com.github.jsonapi;
 
-import com.github.jsonapi.annotations.Relationship;
+import com.github.jsonapi.annotations.Type;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,29 +39,24 @@ public class ReflectionUtils {
 		return result;
 	}
 
-
 	/**
-	 * Returns a field that has annotation with its relationship name equal to provided name.
-	 * @param clazz source class
-	 * @param relationshipName name of the resource relationship
-	 * @return field or null if it was not found
+	 * Returns the type name defined using Type annotation on provided class.
+	 * @param clazz type class
+	 * @return name of the type or <code>null</code> in case Type annotation is not present
 	 */
-	public static Field getRelationshipField(Class<?> clazz, String relationshipName) {
-		List<Field> annotatedFields = getAnnotatedFields(clazz, Relationship.class);
+	public static String getTypeName(Class<?> clazz) {
+		Type typeAnnotation = clazz.getAnnotation(Type.class);
+		return typeAnnotation != null ? typeAnnotation.value() : null;
+	}
 
-		for (Field annotatedField : annotatedFields) {
-			Relationship fieldRelationship = annotatedField.getAnnotation(Relationship.class);
+	public static Class<?> getRelationshipType(Field relationshipField) {
+		Class<?> targetType = relationshipField.getType();
 
-			String annotationName = fieldRelationship.name();
-			if (annotationName.isEmpty()) {
-				annotationName = annotatedField.getName();
-			}
-
-			if (annotationName.equals(relationshipName)) {
-				return annotatedField;
-			}
+		if (targetType.equals(List.class)) {
+			ParameterizedType stringListType = (ParameterizedType) relationshipField.getGenericType();
+			targetType = (Class<?>) stringListType.getActualTypeArguments()[0];
 		}
 
-		return null;
+		return targetType;
 	}
 }

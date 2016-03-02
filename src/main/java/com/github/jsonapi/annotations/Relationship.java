@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Anotation used to configure relationship field in JSON API resources.
+ * Annotation used to configure relationship field in JSON API resources.
  *
  * @author jbegic
  */
@@ -14,5 +14,6 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Relationship {
-	String name() default "";
+	String value();
+	boolean resolve() default false;
 }
