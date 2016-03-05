@@ -393,15 +393,21 @@ public class ResourceConverter {
 
 		if (relationshipFields != null) {
 			ObjectNode relationshipsNode = objectMapper.createObjectNode();
-			dataNode.set(RELATIONSHIPS, relationshipsNode);
 
 			for (Field relationshipField : relationshipFields) {
 				Object relationshipObject = relationshipField.get(object);
 
 				if (relationshipObject != null) {
-					String relationshipName = relationshipField.getAnnotation(Relationship.class).value();
-
 					attributesNode.remove(relationshipField.getName());
+
+					Relationship relationship = relationshipField.getAnnotation(Relationship.class);
+
+					// In case serialisation is disabled for a given relationship, skipp it
+					if (!relationship.serialise()) {
+						continue;
+					}
+
+					String relationshipName = relationship.value();
 
 					if (relationshipObject instanceof List) {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
@@ -436,6 +442,10 @@ public class ResourceConverter {
 					}
 				}
 
+			}
+
+			if (relationshipsNode.size() > 0) {
+				dataNode.set(RELATIONSHIPS, relationshipsNode);
 			}
 		}
 

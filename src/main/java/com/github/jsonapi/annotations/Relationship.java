@@ -16,4 +16,5 @@ import java.lang.annotation.Target;
 public @interface Relationship {
 	String value();
 	boolean resolve() default false;
+	boolean serialise() default true;
 }

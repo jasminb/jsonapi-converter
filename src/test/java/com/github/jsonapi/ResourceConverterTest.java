@@ -29,6 +29,7 @@ public class ResourceConverterTest {
 		status.setId("id");
 		status.setUser(new User());
 		status.getUser().setId("userid");
+		status.setRelatedUser(status.getUser());
 
 		byte [] rawData = converter.writeObject(status);
 
@@ -36,6 +37,9 @@ public class ResourceConverterTest {
 		Assert.assertFalse(rawData.length == 0);
 
 		Status converted = converter.readObject(rawData, Status.class);
+
+		// Make sure relationship with disabled serialisation is not present
+		Assert.assertNull(converted.getRelatedUser());
 
 		Assert.assertEquals(status.getId(), converted.getId());
 		Assert.assertEquals(status.getLikeCount(), converted.getLikeCount());
