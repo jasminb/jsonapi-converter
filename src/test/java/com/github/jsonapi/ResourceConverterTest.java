@@ -138,4 +138,24 @@ public class ResourceConverterTest {
 
 		Assert.assertNotNull(user.getStatuses());
 	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExpectCollection() throws IOException {
+		converter.readObjectCollection(IOUtils.getResourceAsString("user-with-statuses.json").getBytes(), User.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExpectObject() throws IOException {
+		converter.readObject(IOUtils.getResourceAsString("users.json").getBytes(), User.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExpectData() {
+		converter.readObject("{}".getBytes(), User.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testDataNodeMustBeAnObject() {
+		converter.readObject("{\"data\" : \"attribute\"}".getBytes(), User.class);
+	}
 }

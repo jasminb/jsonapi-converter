@@ -15,7 +15,7 @@ public class IOUtils {
 	public static String getResourceAsString(String name) throws IOException {
 		InputStream input = IOUtils.class.getClassLoader().getResourceAsStream(name);
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(input))) {
-			String line = null;
+			String line;
 			StringBuilder resultBuilder = new StringBuilder();
 
 			while ((line = reader.readLine()) != null) {

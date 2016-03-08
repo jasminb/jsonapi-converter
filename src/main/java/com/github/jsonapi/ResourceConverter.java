@@ -18,6 +18,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import static com.github.jsonapi.JSONAPISpecConstants.*;
+
 /**
  * JSON API data converter. <br />
  *
@@ -26,15 +28,6 @@ import java.util.Map;
  * @author jbegic
  */
 public class ResourceConverter {
-	private static final String DATA = "data";
-	private static final String ATTRIBUTES = "attributes";
-	private static final String TYPE = "type";
-	private static final String ID = "id";
-	private static final String RELATIONSHIPS = "relationships";
-	private static final String INCLUDED = "included";
-	private static final String LINKS = "links";
-	private static final String SELF = "self";
-
 	private static final Map<String, Class<?>> TYPE_TO_CLASS_MAPPING = new HashMap<>();
 	private static final Map<Class<?>, Type> TYPE_ANNOTATIONS = new HashMap<>();
 	private static final Map<Class<?>, Field> ID_MAP = new HashMap<>();
@@ -141,6 +134,8 @@ public class ResourceConverter {
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
 
+			ValidationUtils.ensureObject(rootNode);
+
 			JsonNode dataNode = rootNode.get(DATA);
 
 			Map<String, Object> included = parseIncluded(rootNode);
@@ -148,6 +143,8 @@ public class ResourceConverter {
 
 			return result;
 
+		} catch (RuntimeException e) {
+			throw e;
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -166,6 +163,8 @@ public class ResourceConverter {
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
 
+			ValidationUtils.ensureCollection(rootNode);
+
 			Map<String, Object> included = parseIncluded(rootNode);
 
 			List<T> result = new ArrayList<>();
@@ -175,9 +174,9 @@ public class ResourceConverter {
 				result.add(pojo);
 			}
 
-			// Populate object tree
-
 			return result;
+		} catch (RuntimeException e) {
+			throw e;
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -462,4 +461,6 @@ public class ResourceConverter {
 
 		return resolver;
 	}
+
+
 }
