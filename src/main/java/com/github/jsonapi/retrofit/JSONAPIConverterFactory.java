@@ -18,8 +18,7 @@ import java.lang.reflect.Type;
 public class JSONAPIConverterFactory extends Converter.Factory {
 	private ResourceConverter parser;
 
-	public JSONAPIConverterFactory(ResourceConverter parser)
-	{
+	public JSONAPIConverterFactory(ResourceConverter parser) {
 		this.parser = parser;
 	}
 
