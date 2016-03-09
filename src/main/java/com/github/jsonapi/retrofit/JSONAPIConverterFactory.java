@@ -18,6 +18,10 @@ import java.lang.reflect.Type;
 public class JSONAPIConverterFactory extends Converter.Factory {
 	private ResourceConverter parser;
 
+	public JSONAPIConverterFactory(ResourceConverter parser) {
+		this.parser = parser;
+	}
+
 	public JSONAPIConverterFactory(ObjectMapper mapper, Class<?>... classes) {
 		this.parser = new ResourceConverter(mapper, classes);
 	}
