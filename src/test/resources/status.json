@@ -25,6 +25,20 @@
       "id": "userid",
       "attributes": {
         "name": "john"
+      },
+      "relationships": {
+        "statuses": {
+          "data": [
+            {
+              "type": "statuses",
+              "id": "id"
+            },
+            {
+              "type": "statuses",
+              "id": "anotherid"
+            }
+          ]
+        }
       }
     }
   ]

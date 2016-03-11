@@ -1,4 +1,4 @@
-package com.github.jsonapi;
+package com.github.jsonapi.models;
 
 import com.github.jsonapi.annotations.Id;
 import com.github.jsonapi.annotations.Relationship;

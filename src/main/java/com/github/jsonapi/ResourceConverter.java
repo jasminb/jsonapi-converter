@@ -136,13 +136,13 @@ public class ResourceConverter {
 
 			ValidationUtils.ensureObject(rootNode);
 
+			Map<String, Object> included = parseIncluded(rootNode);
+
 			JsonNode dataNode = rootNode.get(DATA);
 
-			Map<String, Object> included = parseIncluded(rootNode);
 			T result = readObject(dataNode, clazz, included);
 
 			return result;
-
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
@@ -232,6 +232,42 @@ public class ResourceConverter {
 		Map<String, Object> result = new HashMap<>();
 
 		if (parent.has(INCLUDED)) {
+			// Get resources
+			List<Resource> includedResources = getIncludedResources(parent);
+
+			if (!includedResources.isEmpty()) {
+				// Add to result
+				for (Resource includedResource : includedResources) {
+					result.put(includedResource.getIdentifier(), includedResource.getObject());
+				}
+
+				ArrayNode includedArray = (ArrayNode) parent.get(INCLUDED);
+
+				for (int i = 0; i < includedResources.size(); i++) {
+					Resource resource = includedResources.get(i);
+					JsonNode node = includedArray.get(i);
+
+					handleRelationships(node, resource.getObject(), result);
+				}
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Parses out included resources excluding relationships.
+	 * @param parent root node
+	 * @return map of identifier/resource pairs
+	 * @throws IOException
+	 * @throws IllegalAccessException
+	 * @throws InstantiationException
+	 */
+	private List<Resource> getIncludedResources(JsonNode parent)
+			throws IOException, IllegalAccessException, InstantiationException {
+		List<Resource> result = new ArrayList<>();
+
+		if (parent.has(INCLUDED)) {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
 				String type = jsonNode.get(TYPE).asText();
 
@@ -240,7 +276,7 @@ public class ResourceConverter {
 
 					if (clazz != null) {
 						Object object = readObject(jsonNode, clazz, null);
-						result.put(createIdentifier(jsonNode), object);
+						result.add(new Resource(createIdentifier(jsonNode), object));
 					}
 				}
 			}
@@ -460,6 +496,24 @@ public class ResourceConverter {
 		}
 
 		return resolver;
+	}
+
+	private class Resource {
+		private String identifier;
+		private Object object;
+
+		public Resource(String identifier, Object resource) {
+			this.identifier = identifier;
+			this.object = resource;
+		}
+
+		public String getIdentifier() {
+			return identifier;
+		}
+
+		public Object getObject() {
+			return object;
+		}
 	}
 
 
