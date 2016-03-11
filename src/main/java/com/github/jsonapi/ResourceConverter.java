@@ -72,13 +72,11 @@ public class ResourceConverter {
 
 				if (!idAnnotatedFields.isEmpty()) {
 					Field idField = idAnnotatedFields.get(0);
-
-					if (idField != null) {
-						idField.setAccessible(true);
-						ID_MAP.put(clazz, idField);
-					} else {
-						throw new IllegalArgumentException("All resource classes must have an field annotated with the @Id annotation");
-					}
+					idField.setAccessible(true);
+					ID_MAP.put(clazz, idField);
+				} else {
+					throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
+							"@Id annotation");
 				}
 			} else {
 				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
@@ -236,17 +234,16 @@ public class ResourceConverter {
 			List<Resource> includedResources = getIncludedResources(parent);
 
 			if (!includedResources.isEmpty()) {
-				// Add to result
-				for (Resource includedResource : includedResources) {
-					result.put(includedResource.getIdentifier(), includedResource.getObject());
-				}
-
 				ArrayNode includedArray = (ArrayNode) parent.get(INCLUDED);
 
 				for (int i = 0; i < includedResources.size(); i++) {
 					Resource resource = includedResources.get(i);
-					JsonNode node = includedArray.get(i);
 
+					// Add to result
+					result.put(resource.getIdentifier(), resource.getObject());
+
+					// Handle relationships
+					JsonNode node = includedArray.get(i);
 					handleRelationships(node, resource.getObject(), result);
 				}
 			}
@@ -502,15 +499,15 @@ public class ResourceConverter {
 		return objectMapper.writeValueAsBytes(result);
 	}
 
+	/**
+	 * Returns relationship resolver for given type. In case no specific type resolver is registered, global resolver
+	 * is returned.
+	 * @param type relationship object type
+	 * @return relationship resolver or <code>null</code>
+	 */
 	private RelationshipResolver getResolver(Class<?> type) {
-		RelationshipResolver resolver = globalResolver;
-
-		// Check if there is a specific type resolver present
-		if (typedResolvers.containsKey(type)) {
-			resolver = typedResolvers.get(type);
-		}
-
-		return resolver;
+		RelationshipResolver resolver = typedResolvers.get(type);
+		return resolver != null ? resolver : globalResolver;
 	}
 
 	private class Resource {

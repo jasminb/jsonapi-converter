@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jsonapi.models.Article;
 import com.github.jsonapi.models.Author;
 import com.github.jsonapi.models.Comment;
+import com.github.jsonapi.models.NoIdAnnotationModel;
 import com.github.jsonapi.models.Status;
 import com.github.jsonapi.models.User;
 import org.junit.Assert;
@@ -223,5 +224,15 @@ public class ResourceConverterTest {
 		Assert.assertFalse(user.getStatuses().isEmpty());
 
 		Assert.assertEquals("valid", user.getStatuses().get(0).getId());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testUsingNoTypeAnnotationClass() {
+		new ResourceConverter(String.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testUsingNoIdAnnotationClass() {
+		new ResourceConverter(NoIdAnnotationModel.class);
 	}
 }

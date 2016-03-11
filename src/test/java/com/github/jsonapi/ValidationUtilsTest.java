@@ -2,6 +2,8 @@ package com.github.jsonapi;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,5 +44,36 @@ public class ValidationUtilsTest {
 	public void testDataNodeMustBeAnObject() throws IOException {
 		JsonNode node = mapper.readTree("{\"data\" : \"attribute\"}");
 		ValidationUtils.ensureCollection(node);
+	}
+
+	@Test
+	public void testRelationshipValidationPositive() throws IOException {
+		Assert.assertTrue(ValidationUtils.isRelationshipParsable(mapper.readTree("{\"type\" : \"type\", \"id\" : " +
+				"\"id\"}")));
+	}
+
+	@Test
+	public void testRelationshipValidationNoId() throws IOException {
+		Assert.assertFalse(ValidationUtils.isRelationshipParsable(mapper.readTree("{\"type\" : \"type\"}")));
+	}
+
+	@Test
+	public void testRelationshipValidationNoType() throws IOException {
+		Assert.assertFalse(ValidationUtils.isRelationshipParsable(mapper.readTree("{ \"id\" : \"id\"}")));
+	}
+
+	@Test
+	public void testRelationshipValidationEmpty() throws IOException {
+		Assert.assertFalse(ValidationUtils.isRelationshipParsable(mapper.readTree("{}")));
+	}
+
+	@Test
+	public void testRelationshipValidationNull() {
+		Assert.assertFalse(ValidationUtils.isRelationshipParsable(null));
+	}
+
+	@Test
+	public void testRelationshipValidationNullNode() {
+		Assert.assertFalse(ValidationUtils.isRelationshipParsable(NullNode.getInstance()));
 	}
 }
