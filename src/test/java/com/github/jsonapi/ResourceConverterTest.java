@@ -212,4 +212,16 @@ public class ResourceConverterTest {
 		Assert.assertEquals("9", commentWithAuthor.getAuthor().getId());
 		Assert.assertEquals("dgeb", commentWithAuthor.getAuthor().getTwitter());
 	}
+
+	@Test
+	public void testReadWithCollectionInvalidRelationships() throws IOException {
+		String apiResponse = IOUtils.getResourceAsString("user-with-invalid-relationships.json");
+
+		User user = converter.readObject(apiResponse.getBytes(), User.class);
+
+		Assert.assertNotNull(user.getStatuses());
+		Assert.assertFalse(user.getStatuses().isEmpty());
+
+		Assert.assertEquals("valid", user.getStatuses().get(0).getId());
+	}
 }

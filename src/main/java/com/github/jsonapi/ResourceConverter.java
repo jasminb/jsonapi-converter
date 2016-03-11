@@ -330,25 +330,15 @@ public class ResourceConverter {
 							List elements = new ArrayList<>();
 
 							for (JsonNode element : relationship.get(DATA)) {
-								String identifier = createIdentifier(element);
-
-								if (includedData.containsKey(identifier)) {
-									elements.add(includedData.get(identifier));
-								} else {
-									Object relationshipObject = readObject(element, type, includedData);
+								Object relationshipObject = parseRelationship(element, type, includedData);
+								if (relationshipObject != null) {
 									elements.add(relationshipObject);
 								}
 							}
 							relationshipField.set(object, elements);
 						} else {
-							JsonNode dataObject = relationship.get(DATA);
-
-							String identifier = createIdentifier(dataObject);
-
-							if (includedData.containsKey(identifier)) {
-								relationshipField.set(object, includedData.get(identifier));
-							} else {
-								Object relationshipObject = readObject(dataObject, type, includedData);
+							Object relationshipObject = parseRelationship(relationship.get(DATA), type, includedData);
+							if (relationshipObject != null) {
 								relationshipField.set(object, relationshipObject);
 							}
 						}
@@ -356,6 +346,31 @@ public class ResourceConverter {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Creates relationship object by consuming provided 'data' node.
+	 * @param relationshipDataNode relationship data node
+	 * @param type object type
+	 * @param cache object cache
+	 * @return created object or <code>null</code> in case data node is not valid
+	 * @throws IOException
+	 * @throws IllegalAccessException
+	 * @throws InstantiationException
+	 */
+	private Object parseRelationship(JsonNode relationshipDataNode, Class<?> type, Map<String, Object> cache)
+			throws IOException, IllegalAccessException, InstantiationException {
+		if (ValidationUtils.isRelationshipParsable(relationshipDataNode)) {
+			String identifier = createIdentifier(relationshipDataNode);
+
+			if (cache.containsKey(identifier)) {
+				return cache.get(identifier);
+			} else {
+				return readObject(relationshipDataNode, type, cache);
+			}
+		}
+
+		return null;
 	}
 
 	/**

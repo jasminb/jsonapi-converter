@@ -35,6 +35,20 @@ public class ValidationUtils {
 		}
 	}
 
+	/**
+	 * Returns <code>true</code> in case 'DATA' note has 'ID' and 'TYPE' attributes.
+	 * @param dataNode relationship data node
+	 * @return <code>true</code> if node has required attributes, else <code>false</code>
+	 */
+	public static boolean isRelationshipParsable(JsonNode dataNode) {
+		if (dataNode != null) {
+			return dataNode != null && dataNode.hasNonNull(ID) && dataNode.hasNonNull(TYPE) &&
+					!dataNode.get(ID).isContainerNode() && !dataNode.get(TYPE).isContainerNode();
+		}
+
+		return false;
+	}
+
 	private static JsonNode ensureDataNode(JsonNode resource) {
 		JsonNode dataNode = resource.get(DATA);
 
