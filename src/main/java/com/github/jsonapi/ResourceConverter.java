@@ -234,13 +234,15 @@ public class ResourceConverter {
 			List<Resource> includedResources = getIncludedResources(parent);
 
 			if (!includedResources.isEmpty()) {
+				// Add to result
+				for (Resource includedResource : includedResources) {
+					result.put(includedResource.getIdentifier(), includedResource.getObject());
+				}
+
 				ArrayNode includedArray = (ArrayNode) parent.get(INCLUDED);
 
 				for (int i = 0; i < includedResources.size(); i++) {
 					Resource resource = includedResources.get(i);
-
-					// Add to result
-					result.put(resource.getIdentifier(), resource.getObject());
 
 					// Handle relationships
 					JsonNode node = includedArray.get(i);
