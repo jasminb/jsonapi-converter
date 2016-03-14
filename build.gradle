@@ -1,5 +1,4 @@
 apply plugin: 'java'
-apply plugin: 'maven'
 
 group = 'com.github.jsonapi'
 version = '0.2-SNAPSHOT'
