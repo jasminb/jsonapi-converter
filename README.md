@@ -154,6 +154,10 @@ Book book = converter.readObject(rawResponse, Book.class);
 byte [] rawData = converter.writeObject(book);
 ```
 
+Note that calling `readObject(...)` or `readObjectCollection(...)` using content that contains `errors` (`{"errors" : [{...}]}`) attribute will produce `ResourceParseException`.
+
+Thrown exception has a method (`getErrorResponse()`) that returns parsed `errors` content. Errors content is expected to comply to JSON API Spec.
+
 ##### Example usage with retrofit
 
 As as first step, define your model classes and annotate them using annotations described above.
@@ -173,7 +177,44 @@ Retrofit retrofit = new Retrofit.Builder()
 		.addConverterFactory(new JSONAPIConverterFactory(objectMapper, Book.class, Author.class))
 		.build();
 		
-// Create services using service stubs and use it as usual.
+// Create service using service interface
+
+MyBooksService<Book> booksService = retrofit.create(MyBooksService.class);
+
 ```
 
+###### Synchronous usage
 
+```
+Response<Book> bookResponse = booksService.find("123").execute();
+
+if (bookResponse.isSuccess()) {
+    // Consume response
+} else {
+    ErrorResponse errorResponse = ErrorUtils.parseErrorResponse(bookResponse.errorBody());
+    // Handle error
+}
+```
+
+###### Asynchronous usage
+
+```
+Call<Book> bookServiceCall = service.getExampleResource();
+
+bookServiceCall.enqueue(new Callback<Book>() {
+  @Override
+  public void onResponse(Response<Book> bookResponse, Retrofit retrofit) {
+    if (bookResponse.isSuccess()) {
+        // Consume response
+    } else {
+        ErrorResponse errorResponse = ErrorUtils.parseErrorResponse(bookResponse.errorBody());
+        // Handle error
+    }
+  }
+  
+  @Override
+  public void onFailure(Throwable throwable) {
+    // Handle network errors/unexpected errors
+  }
+});
+```
