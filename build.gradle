@@ -1,0 +1,22 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+group = 'com.github.jsonapi'
+version = '0.2-SNAPSHOT'
+
+description = """"""
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+
+
+repositories {
+        
+     maven { url "http://repo.maven.apache.org/maven2" }
+}
+dependencies {
+    compile group: 'com.squareup.retrofit', name: 'retrofit', version:'2.0.0-beta2'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version:'2.7.1'
+    testCompile group: 'junit', name: 'junit', version:'4.12'
+}
