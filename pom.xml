@@ -4,10 +4,14 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.github.jsonapi</groupId>
+	<groupId>com.github.jasminb</groupId>
 	<artifactId>jsonapi-converter</artifactId>
 	<version>0.2-SNAPSHOT</version>
 
+	<name>JSONAPI Converter</name>
+	<description>
+		JSONAPI-Converter is a library that provides means for integrating with services using JSON API specification.
+	</description>
 
 	<dependencies>
 		<dependency>
@@ -50,4 +54,27 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<licenses>
+		<license>
+			<name>The Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+		</license>
+	</licenses>
+
+	<scm>
+		<connection>scm:git:https://github.com/jasminb/jsonapi-converter</connection>
+		<developerConnection>scm:git:ssh://git@github.com:jasminb/jsonapi-converter.git</developerConnection>
+		<url>https://github.com/jasminb/jsonapi-converter</url>
+	</scm>
+
+	<developers>
+		<developer>
+			<id>jasminb</id>
+			<name>Jasmin Begic</name>
+			<roles>
+				<role>Owner</role>
+			</roles>
+		</developer>
+	</developers>
 </project>
