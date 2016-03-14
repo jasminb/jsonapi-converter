@@ -1,0 +1,17 @@
+{
+  "errors": [
+    {
+      "id": "id",
+      "status": "status",
+      "code": "code",
+      "links": {
+        "about": "about"
+      },
+      "source": {
+        "pointer": "pointer"
+      },
+      "title": "title",
+      "detail": "detail"
+    }
+  ]
+}

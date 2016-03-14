@@ -3,6 +3,7 @@ package com.github.jsonapi;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.NullNode;
+import com.github.jsonapi.exceptions.ResourceParseException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,6 +45,12 @@ public class ValidationUtilsTest {
 	public void testDataNodeMustBeAnObject() throws IOException {
 		JsonNode node = mapper.readTree("{\"data\" : \"attribute\"}");
 		ValidationUtils.ensureCollection(node);
+	}
+
+	@Test(expected = ResourceParseException.class)
+	public void testNodeIsError() throws IOException {
+		JsonNode node = mapper.readTree(IOUtils.getResourceAsString("errors.json"));
+		ValidationUtils.ensureNotError(node);
 	}
 
 	@Test

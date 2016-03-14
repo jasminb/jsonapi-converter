@@ -14,4 +14,5 @@ public interface JSONAPISpecConstants {
 	String INCLUDED = "included";
 	String LINKS = "links";
 	String SELF = "self";
+	String ERRORS = "errors";
 }

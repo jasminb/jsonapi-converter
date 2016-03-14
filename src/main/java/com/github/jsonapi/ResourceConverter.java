@@ -132,6 +132,8 @@ public class ResourceConverter {
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
 
+			// Validate
+			ValidationUtils.ensureNotError(rootNode);
 			ValidationUtils.ensureObject(rootNode);
 
 			Map<String, Object> included = parseIncluded(rootNode);
@@ -161,6 +163,8 @@ public class ResourceConverter {
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
 
+			// Validate
+			ValidationUtils.ensureNotError(rootNode);
 			ValidationUtils.ensureCollection(rootNode);
 
 			Map<String, Object> included = parseIncluded(rootNode);
@@ -512,7 +516,7 @@ public class ResourceConverter {
 		return resolver != null ? resolver : globalResolver;
 	}
 
-	private class Resource {
+	private static class Resource {
 		private String identifier;
 		private Object object;
 
