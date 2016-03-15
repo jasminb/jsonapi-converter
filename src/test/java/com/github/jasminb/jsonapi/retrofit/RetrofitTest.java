@@ -115,4 +115,15 @@ public class RetrofitTest {
 		// Shutdown server
 		server.shutdown();
 	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void getUnregisteredResourceTest() throws IOException {
+		String userResponse = IOUtils.getResourceAsString("errors.json");
+
+		server.enqueue(new MockResponse()
+				.setResponseCode(200)
+				.setBody(userResponse));
+
+		service.getNonJSONSPECResource().execute();
+	}
 }

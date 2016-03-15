@@ -506,6 +506,15 @@ public class ResourceConverter {
 	}
 
 	/**
+	 * Checks if provided type is registered with this converter instance.
+	 * @param type class to check
+	 * @return returns <code>true</code> if type is registered, else <code>false</code>
+	 */
+	public boolean isRegisteredType(Class<?> type) {
+		return TYPE_ANNOTATIONS.containsKey(type);
+	}
+
+	/**
 	 * Returns relationship resolver for given type. In case no specific type resolver is registered, global resolver
 	 * is returned.
 	 * @param type relationship object type
