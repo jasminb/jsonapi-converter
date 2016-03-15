@@ -7,6 +7,16 @@ Besides providing support for request/response parsing, library provides a retro
 
 Library is using Jackson (https://github.com/FasterXML/jackson-databind) for JSON data parsing.
 
+##### Including the library in your project
+
+```
+<dependency>
+  <groupId>com.github.jasminb</groupId>
+  <artifactId>jsonapi-converter</artifactId>
+  <version>0.2</version>
+</dependency>
+```
+
 ##### Note to early adopters
 
 Base package name was updated in order to be able to publish the library to maven central.
