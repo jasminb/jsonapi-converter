@@ -1,4 +1,4 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
 /**
  * Relationship resolver contract. <br/>

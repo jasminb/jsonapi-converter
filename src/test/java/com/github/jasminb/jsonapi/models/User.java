@@ -1,8 +1,8 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi.models;
 
-import com.github.jsonapi.annotations.Id;
-import com.github.jsonapi.annotations.Relationship;
-import com.github.jsonapi.annotations.Type;
+import com.github.jasminb.jsonapi.annotations.Id;
+import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.Type;
 
 import java.util.List;
 

@@ -1,6 +1,6 @@
-package com.github.jsonapi.retrofit;
+package com.github.jasminb.jsonapi.retrofit;
 
-import com.github.jsonapi.ResourceConverter;
+import com.github.jasminb.jsonapi.ResourceConverter;
 import com.squareup.okhttp.ResponseBody;
 import retrofit.Converter;
 

@@ -1,4 +1,4 @@
-package com.github.jsonapi.annotations;
+package com.github.jasminb.jsonapi.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -6,12 +6,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used for declaring type as a JSON API resource.
+ * Annotation used to mark resource field as an id in JSON API resource class.
  *
  * @author jbegic
  */
-@Target({ElementType.TYPE})
+
+@Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Type {
-	String value();
+public @interface Id {
 }

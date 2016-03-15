@@ -1,6 +1,6 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
-import com.github.jsonapi.annotations.Type;
+import com.github.jasminb.jsonapi.annotations.Type;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;

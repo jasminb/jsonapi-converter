@@ -1,0 +1,27 @@
+{
+  "data": {
+    "type": "users",
+    "id": "userId",
+    "attributes": {
+      "name": "user"
+    },
+    "relationships": {
+      "statuses": {
+        "data": [
+          {
+            "type": "statuses"
+          },
+          {
+            "id": "2"
+          },
+          {
+          },
+          {
+            "type": "statuses",
+            "id": "valid"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,5 +1,13 @@
-package com.github.jsonapi;
+package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.github.jasminb.jsonapi.models.Article;
+import com.github.jasminb.jsonapi.models.Author;
+import com.github.jasminb.jsonapi.models.Comment;
+import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
+import com.github.jasminb.jsonapi.models.Status;
+import com.github.jasminb.jsonapi.models.User;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,6 +67,9 @@ public class ResourceConverterTest {
 
 		Assert.assertNotNull(status.getUser());
 		Assert.assertEquals("john", status.getUser().getName());
+
+		Assert.assertNotNull(status.getUser().getStatuses());
+		Assert.assertEquals(2, status.getUser().getStatuses().size());
 	}
 
 	@Test
@@ -137,5 +148,91 @@ public class ResourceConverterTest {
 		User user = converter.readObject(apiResponse.getBytes(), User.class);
 
 		Assert.assertNotNull(user.getStatuses());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExpectCollection() throws IOException {
+		converter.readObjectCollection(IOUtils.getResourceAsString("user-with-statuses.json").getBytes(), User.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExpectObject() throws IOException {
+		converter.readObject(IOUtils.getResourceAsString("users.json").getBytes(), User.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testExpectData() {
+		converter.readObject("{}".getBytes(), User.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testDataNodeMustBeAnObject() {
+		converter.readObject("{\"data\" : \"attribute\"}".getBytes(), User.class);
+	}
+
+	@Test
+	public void testIncludedFullRelationships() throws IOException {
+		String apiResponse = IOUtils.getResourceAsString("articles.json");
+
+		ObjectMapper articlesMapper = new ObjectMapper();
+		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+
+		ResourceConverter articlesConverter = new ResourceConverter(articlesMapper, Article.class, Author.class,
+				Comment.class);
+
+		List<Article> articles = articlesConverter.readObjectCollection(apiResponse.getBytes(), Article.class);
+
+
+		Assert.assertNotNull(articles);
+		Assert.assertEquals(1, articles.size());
+
+		Article article = articles.get(0);
+
+		Assert.assertEquals("JSON API paints my bikeshed!", article.getTitle());
+		Assert.assertEquals("1", article.getId());
+
+		Assert.assertNotNull(article.getAuthor());
+
+		Author author = article.getAuthor();
+
+		Assert.assertEquals("9", author.getId());
+		Assert.assertEquals("Dan", author.getFirstName());
+
+		Assert.assertNotNull(article.getComments());
+
+		List<Comment> comments = article.getComments();
+
+		Assert.assertEquals(2, comments.size());
+
+		Comment commentWithAuthor = comments.get(1);
+
+		Assert.assertEquals("12", commentWithAuthor.getId());
+		Assert.assertEquals("I like XML better", commentWithAuthor.getBody());
+
+		Assert.assertNotNull(commentWithAuthor.getAuthor());
+		Assert.assertEquals("9", commentWithAuthor.getAuthor().getId());
+		Assert.assertEquals("dgeb", commentWithAuthor.getAuthor().getTwitter());
+	}
+
+	@Test
+	public void testReadWithCollectionInvalidRelationships() throws IOException {
+		String apiResponse = IOUtils.getResourceAsString("user-with-invalid-relationships.json");
+
+		User user = converter.readObject(apiResponse.getBytes(), User.class);
+
+		Assert.assertNotNull(user.getStatuses());
+		Assert.assertFalse(user.getStatuses().isEmpty());
+
+		Assert.assertEquals("valid", user.getStatuses().get(0).getId());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testUsingNoTypeAnnotationClass() {
+		new ResourceConverter(String.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testUsingNoIdAnnotationClass() {
+		new ResourceConverter(NoIdAnnotationModel.class);
 	}
 }
