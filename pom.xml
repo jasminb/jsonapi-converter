@@ -12,6 +12,7 @@
 	<description>
 		JSONAPI-Converter is a library that provides means for integrating with services using JSON API specification.
 	</description>
+	<url>https://github.com/jasminb/jsonapi-converter</url>
 
 	<dependencies>
 		<dependency>
