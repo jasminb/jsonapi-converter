@@ -7,13 +7,18 @@ Besides providing support for request/response parsing, library provides a retro
 
 Library is using Jackson (https://github.com/FasterXML/jackson-databind) for JSON data parsing.
 
+##### Note to early adopters
+
+Base package name was updated in order to be able to publish the library to maven central.
+Base package name was updated from `com.github.jsonapi` to `com.github.jasminb.jsonapi`.
+
 ##### Writing your model classes
 
 When writing models that will be used to represent requests and responses, one needs to pay attention to following:
 
- - Each model class must be annotated with `com.github.jsonapi.annotations.Type` annotation
- - Each class must contain an `String` attribute annotated with `com.github.jsonapi.annotations.Id` annotation
- - All relationships must be annotated with `com.github.jsonapi.annotations.Relationship` annotation
+ - Each model class must be annotated with `com.github.jasminb.jsonapi.annotations.Type` annotation
+ - Each class must contain an `String` attribute annotated with `com.github.jasminb.jsonapi.annotations.Id` annotation
+ - All relationships must be annotated with `com.github.jasminb.jsonapi.annotations.Relationship` annotation
 
 ###### Type annotation
 
