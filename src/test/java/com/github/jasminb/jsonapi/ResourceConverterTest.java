@@ -73,6 +73,16 @@ public class ResourceConverterTest {
 	}
 
 	@Test
+	public void testReadWithMetaSection() throws IOException {
+		String apiResponse = IOUtils.getResourceAsString("user-with-meta.json");
+
+		User user = converter.readObject(apiResponse.getBytes(), User.class);
+
+		Assert.assertNotNull(user.getMeta());
+		Assert.assertEquals("asdASD123", user.getMeta().getToken());
+	}
+
+	@Test
 	public void testResolverGlobal() throws IOException {
 		converter.setGlobalResolver(new RelationshipResolver() {
 			@Override
