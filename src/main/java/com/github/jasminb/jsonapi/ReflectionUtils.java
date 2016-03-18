@@ -49,11 +49,11 @@ public class ReflectionUtils {
 		return typeAnnotation != null ? typeAnnotation.value() : null;
 	}
 
-	public static Class<?> getRelationshipType(Field relationshipField) {
-		Class<?> targetType = relationshipField.getType();
+	public static Class<?> getFieldType(Field field) {
+		Class<?> targetType = field.getType();
 
 		if (targetType.equals(List.class)) {
-			ParameterizedType stringListType = (ParameterizedType) relationshipField.getGenericType();
+			ParameterizedType stringListType = (ParameterizedType) field.getGenericType();
 			targetType = (Class<?>) stringListType.getActualTypeArguments()[0];
 		}
 

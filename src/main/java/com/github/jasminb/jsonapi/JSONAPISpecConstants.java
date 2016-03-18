@@ -15,4 +15,5 @@ public interface JSONAPISpecConstants {
 	String LINKS = "links";
 	String SELF = "self";
 	String ERRORS = "errors";
+	String META = "meta";
 }
