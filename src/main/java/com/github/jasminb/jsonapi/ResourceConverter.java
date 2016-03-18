@@ -86,10 +86,10 @@ public class ResourceConverter {
 
 				// collecting Meta fields
 				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class);
-				if (metaFields.size()>1) {
+				if (metaFields.size() > 1) {
 					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'", clazz.getCanonicalName()));
 				}
-				if (metaFields.size()==1) {
+				if (metaFields.size() == 1) {
 					Field metaField = metaFields.get(0);
 					metaField.setAccessible(true);
 					Class<?> metaType = ReflectionUtils.getFieldType(metaField);
@@ -163,7 +163,7 @@ public class ResourceConverter {
 			// handling of meta node
 			if (rootNode.has(META)) {
 				Field field = META_FIELD.get(clazz);
-				if (field!=null) {
+				if (field != null) {
 					Class<?> metaType = META_TYPE_MAP.get(clazz);
 					Object metaObject = objectMapper.treeToValue(rootNode.get(META), metaType);
 					field.set(result, metaObject);
