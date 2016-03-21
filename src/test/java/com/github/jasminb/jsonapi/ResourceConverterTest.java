@@ -83,6 +83,26 @@ public class ResourceConverterTest {
 	}
 
 	@Test
+	public void testWriteWithMetaSection() throws IOException, IllegalAccessException {
+		User initialUser = new User();
+		User.UserMeta userMeta = new User.UserMeta();
+		userMeta.token = "test";
+		initialUser = new User();
+		initialUser.meta = userMeta;
+		initialUser.id = "123";
+		initialUser.name = "John Nash";
+
+		byte [] rawData = converter.writeObject(initialUser);
+
+		Assert.assertNotNull(rawData);
+		Assert.assertFalse(rawData.length == 0);
+
+		User converted = converter.readObject(rawData, User.class);
+
+		Assert.assertEquals(null, converted.getMeta());
+	}
+
+	@Test
 	public void testResolverGlobal() throws IOException {
 		converter.setGlobalResolver(new RelationshipResolver() {
 			@Override

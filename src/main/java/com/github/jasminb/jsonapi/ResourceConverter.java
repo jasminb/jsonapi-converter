@@ -453,9 +453,14 @@ public class ResourceConverter {
 		// Perform initial conversion
 		ObjectNode attributesNode = objectMapper.valueToTree(object);
 
-		// Remove id and relationship fields
+		// Remove id, meta and relationship fields
 		Field idField = ID_MAP.get(object.getClass());
 		attributesNode.remove(idField.getName());
+
+		Field metaField = META_FIELD.get(object.getClass());
+		if (metaField!=null) {
+			attributesNode.remove(metaField.getName());
+		}
 
 		// Handle resource identifier
 		ObjectNode dataNode = objectMapper.createObjectNode();

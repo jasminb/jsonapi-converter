@@ -11,7 +11,7 @@ import java.util.List;
 public class User {
 
 	public static class UserMeta {
-		private String token;
+		public String token;
 
 		public String getToken() {
 			return token;
@@ -19,14 +19,14 @@ public class User {
 	}
 
 	@Id
-	private String id;
-	private String name;
+	public String id;
+	public String name;
 
 	@Relationship("statuses")
 	private List<Status> statuses;
 
 	@Meta
-	private UserMeta meta;
+	public UserMeta meta;
 
 	public String getId() {
 		return id;
@@ -55,4 +55,5 @@ public class User {
 	public UserMeta getMeta() {
 		return meta;
 	}
+
 }
