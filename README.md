@@ -17,10 +17,30 @@ Library is using Jackson (https://github.com/FasterXML/jackson-databind) for JSO
 </dependency>
 ```
 
-##### Note to early adopters
+In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
 
-Base package name was updated in order to be able to publish the library to maven central.
-Base package name was updated from `com.github.jsonapi` to `com.github.jasminb.jsonapi`.
+```
+<repositories>
+    <repository>
+        <id>oss-sonatype</id>
+        <name>oss-sonatype</name>
+        <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+    </repository>
+</repositories>
+```
+
+Than to add dependency:
+
+```
+<dependency>
+  <groupId>com.github.jasminb</groupId>
+  <artifactId>jsonapi-converter</artifactId>
+  <version>0.3-SNAPSHOT</version>
+</dependency>
+```
 
 ##### Writing your model classes
 
