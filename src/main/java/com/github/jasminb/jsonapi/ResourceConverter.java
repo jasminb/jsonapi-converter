@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Type;
@@ -34,6 +35,8 @@ public class ResourceConverter {
 	private static final Map<Class<?>, List<Field>> RELATIONSHIPS_MAP = new HashMap<>();
 	private static final Map<Class<?>, Map<String, Class<?>>> RELATIONSHIP_TYPE_MAP = new HashMap<>();
 	private static final Map<Class<?>, Map<String, Field>> RELATIONSHIP_FIELD_MAP = new HashMap<>();
+	private static final Map<Class<?>, Class<?>> META_TYPE_MAP = new HashMap<>();
+	private static final Map<Class<?>, Field> META_FIELD = new HashMap<>();
 
 
 	private ObjectMapper objectMapper;
@@ -54,13 +57,14 @@ public class ResourceConverter {
 				RELATIONSHIP_TYPE_MAP.put(clazz, new HashMap<String, Class<?>>());
 				RELATIONSHIP_FIELD_MAP.put(clazz, new HashMap<String, Field>());
 
+				// collecting Relationship fields
 				List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class);
 
 				for (Field relationshipField : relationshipFields) {
 					relationshipField.setAccessible(true);
 
 					Relationship relationship = relationshipField.getAnnotation(Relationship.class);
-					Class<?> targetType = ReflectionUtils.getRelationshipType(relationshipField);
+					Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
 					RELATIONSHIP_TYPE_MAP.get(clazz).put(relationship.value(), targetType);
 					RELATIONSHIP_FIELD_MAP.get(clazz).put(relationship.value(), relationshipField);
 
@@ -68,6 +72,7 @@ public class ResourceConverter {
 
 				RELATIONSHIPS_MAP.put(clazz, relationshipFields);
 
+				// collecting Id fields
 				List<Field> idAnnotatedFields = ReflectionUtils.getAnnotatedFields(clazz, Id.class);
 
 				if (!idAnnotatedFields.isEmpty()) {
@@ -77,6 +82,19 @@ public class ResourceConverter {
 				} else {
 					throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
 							"@Id annotation");
+				}
+
+				// collecting Meta fields
+				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class);
+				if (metaFields.size() > 1) {
+					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'", clazz.getCanonicalName()));
+				}
+				if (metaFields.size() == 1) {
+					Field metaField = metaFields.get(0);
+					metaField.setAccessible(true);
+					Class<?> metaType = ReflectionUtils.getFieldType(metaField);
+					META_TYPE_MAP.put(clazz, metaType);
+					META_FIELD.put(clazz, metaField);
 				}
 			} else {
 				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
@@ -141,6 +159,16 @@ public class ResourceConverter {
 			JsonNode dataNode = rootNode.get(DATA);
 
 			T result = readObject(dataNode, clazz, included);
+
+			// handling of meta node
+			if (rootNode.has(META)) {
+				Field field = META_FIELD.get(clazz);
+				if (field != null) {
+					Class<?> metaType = META_TYPE_MAP.get(clazz);
+					Object metaObject = objectMapper.treeToValue(rootNode.get(META), metaType);
+					field.set(result, metaObject);
+				}
+			}
 
 			return result;
 		} catch (RuntimeException e) {
@@ -425,9 +453,14 @@ public class ResourceConverter {
 		// Perform initial conversion
 		ObjectNode attributesNode = objectMapper.valueToTree(object);
 
-		// Remove id and relationship fields
+		// Remove id, meta and relationship fields
 		Field idField = ID_MAP.get(object.getClass());
 		attributesNode.remove(idField.getName());
+
+		Field metaField = META_FIELD.get(object.getClass());
+		if (metaField!=null) {
+			attributesNode.remove(metaField.getName());
+		}
 
 		// Handle resource identifier
 		ObjectNode dataNode = objectMapper.createObjectNode();
