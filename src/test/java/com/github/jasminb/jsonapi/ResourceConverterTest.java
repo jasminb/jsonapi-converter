@@ -78,15 +78,16 @@ public class ResourceConverterTest {
 
 		List<User> users = converter.readObjectCollection(usersRequest.getBytes(), User.class);
 
-		byte[] rawData = converter.writeObjectCollection(users);
+		byte[] convertedData = converter.writeObjectCollection(users);
 
-		Assert.assertNotNull(rawData);
-		Assert.assertFalse(rawData.length == 0);
+		Assert.assertNotNull(convertedData);
+		Assert.assertFalse(convertedData.length == 0);
 
-		List<User> converted = converter.readObjectCollection(rawData, User.class);
+		List<User> converted = converter.readObjectCollection(convertedData, User.class);
 
 		Assert.assertNotNull(converted);
-		Assert.assertEquals(2, converted.size());
+		Assert.assertEquals(users.size(), converted.size());
+		Assert.assertEquals(usersRequest.replaceAll("\\s",""), new String(convertedData).replaceAll("\\s",""));
 	}
 
 	@Test
