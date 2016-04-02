@@ -73,6 +73,24 @@ public class ResourceConverterTest {
 	}
 
 	@Test
+	public void testWriteCollection() throws IOException, IllegalAccessException {
+		String usersRequest = IOUtils.getResourceAsString("users.json");
+
+		List<User> users = converter.readObjectCollection(usersRequest.getBytes(), User.class);
+
+		byte[] convertedData = converter.writeObjectCollection(users);
+
+		Assert.assertNotNull(convertedData);
+		Assert.assertFalse(convertedData.length == 0);
+
+		List<User> converted = converter.readObjectCollection(convertedData, User.class);
+
+		Assert.assertNotNull(converted);
+		Assert.assertEquals(users.size(), converted.size());
+		Assert.assertEquals(usersRequest.replaceAll("\\s",""), new String(convertedData).replaceAll("\\s",""));
+	}
+
+	@Test
 	public void testReadWithMetaSection() throws IOException {
 		String apiResponse = IOUtils.getResourceAsString("user-with-meta.json");
 

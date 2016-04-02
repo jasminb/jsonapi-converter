@@ -448,7 +448,15 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException
 	 */
 	public byte [] writeObject(Object object) throws JsonProcessingException, IllegalAccessException {
+		ObjectNode dataNode = getDataNode(object);
 		ObjectNode result = objectMapper.createObjectNode();
+
+		result.set(DATA, dataNode);
+
+		return objectMapper.writeValueAsBytes(result);
+	}
+
+	private ObjectNode getDataNode(Object object) throws IllegalAccessException {
 
 		// Perform initial conversion
 		ObjectNode attributesNode = objectMapper.valueToTree(object);
@@ -472,7 +480,6 @@ public class ResourceConverter {
 		}
 		dataNode.set(ATTRIBUTES, attributesNode);
 
-		result.set(DATA, dataNode);
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = RELATIONSHIPS_MAP.get(object.getClass());
@@ -534,9 +541,29 @@ public class ResourceConverter {
 				dataNode.set(RELATIONSHIPS, relationshipsNode);
 			}
 		}
+		return dataNode;
+	}
 
+	/**
+	 * Converts input object to byte array.
+	 *
+	 * @param objects List of input objects
+	 * @return raw bytes
+	 * @throws JsonProcessingException
+	 * @throws IllegalAccessException
+	 */
+	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JsonProcessingException, IllegalAccessException {
+		ArrayNode results = objectMapper.createArrayNode();
+
+		for(T object : objects) {
+			results.add(getDataNode(object));
+		}
+
+		ObjectNode result = objectMapper.createObjectNode();
+		result.set(DATA, results);
 		return objectMapper.writeValueAsBytes(result);
 	}
+
 
 	/**
 	 * Checks if provided type is registered with this converter instance.
