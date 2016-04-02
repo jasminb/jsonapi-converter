@@ -552,7 +552,7 @@ public class ResourceConverter {
 	 * @throws JsonProcessingException
 	 * @throws IllegalAccessException
 	 */
-	public <T> byte[] writeObjectCollection(List<T> objects) throws JsonProcessingException, IllegalAccessException {
+	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JsonProcessingException, IllegalAccessException {
 		ArrayNode results = objectMapper.createArrayNode();
 
 		for(T object : objects) {
