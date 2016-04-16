@@ -58,7 +58,7 @@ Annotation has single property `value` which is required and it should be set to
 Example:
 
 ```
-@Type(name = "book")
+@Type("book")
 public class Book {
  ...
 }
@@ -75,7 +75,7 @@ Id annotation has no attributes.
 Example:
 
 ```
-@Type(name = "book")
+@Type("book")
 public class Book {
   
   @Id
@@ -93,7 +93,7 @@ Imagine modeling a simple library application, you would end up having a `Book` 
 You can model this as two different classes where `Book` resource would have an relationship to an `Author`:
 
 ```
-@Type
+@Type("book")
 public class Book {
   @Id
   private String isbn;
@@ -149,7 +149,7 @@ I is enabled by default, if disabled relationship will not be serialised.
 Define simple POJO, please pay attention to added annotations:
 
 ```
-@Type(name = "book")
+@Type("book")
 public class Book {
   
   @Id
@@ -162,7 +162,7 @@ public class Book {
   # getters and setters
 }
 
-@Type(name = "author")
+@Type("author")
 public class Author {
   
   @Id
