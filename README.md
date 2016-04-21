@@ -99,18 +99,18 @@ public class Book {
   private String isbn;
   private String title;
   
-  @Relationship(name = "author")
+  @Relationship("author")
   private Author author;
 }
 ```
 
 Relationship annotation has following attributes:
 
- - name
+ - value
  - resolve
  - serialise
 
-Name attribute is required and each relationship must have it set.
+Value attribute is required and each relationship must have it set (value attribute represents the 'name' of the relationship).
 
 Resolve attribute is used to instruct the library on how to handle server responses where resource relationships are not provided in `included` section but are rather returned as `type` and `id` combination.
 
@@ -156,7 +156,7 @@ public class Book {
   private String isbn;
   private String title;
   
-  @Relationship(name = "author")
+  @Relationship("author")
   private Author author;
   
   # getters and setters
@@ -169,7 +169,7 @@ public class Author {
   private String id;
   private String name;
   
-  @Relationship(name = "books")
+  @Relationship("books")
   private List<Book> books;
   
   # getters and setters
