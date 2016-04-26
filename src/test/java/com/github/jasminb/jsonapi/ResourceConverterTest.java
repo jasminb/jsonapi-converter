@@ -13,7 +13,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Testing functionality of JSON API converter.
@@ -282,5 +284,73 @@ public class ResourceConverterTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void testUsingNoIdAnnotationClass() {
 		new ResourceConverter(NoIdAnnotationModel.class);
+	}
+
+	@Test
+	public void testLinksAsObjects() throws Exception {
+		ObjectMapper articlesMapper = new ObjectMapper();
+
+		String apiResponse = IOUtils.getResourceAsString("articles-with-link-objects.json");
+		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+
+		// Configure the ProbeResolver
+		Map<String, String> responseMap = new HashMap<>();
+		String authorRel = "http://example.com/articles/1/relationships/author";
+		String commentRel = "http://example.com/articles/1/relationships/comments";
+		responseMap.put(authorRel,
+				IOUtils.getResourceAsString("author-rel-response.json"));
+		responseMap.put(commentRel,
+				IOUtils.getResourceAsString("comment-rel-response.json"));
+		ProbeResolver resolver = new ProbeResolver(responseMap);
+
+		// Configure the ResourceConverter with the ProbeResolver
+		ResourceConverter underTest = new ResourceConverter(articlesMapper, Article.class, Author.class,
+				Comment.class);
+		underTest.setGlobalResolver(resolver);
+
+		List<Article> articles = underTest.readObjectCollection(apiResponse.getBytes(), Article.class);
+
+		// Sanity check
+		Assert.assertNotNull(articles);
+		Assert.assertTrue(articles.size() > 0);
+
+		// Assert relationships were resolved
+		Assert.assertEquals(1, resolver.resolved.get(authorRel).intValue());
+		Assert.assertEquals(1, resolver.resolved.get(commentRel).intValue());
+	}
+
+	/**
+	 * Simple global RelationshipResolver implementation that maintains a count of responses for each
+	 * relationship url.
+	 */
+	private class ProbeResolver implements RelationshipResolver {
+
+		/**
+		 * Map of relationship urls to the response JSON
+		 */
+		private Map<String, String> responseMap;
+
+		/**
+		 * Map of relationship to a count of the times they have been resolved
+		 */
+		private Map<String, Integer> resolved = new HashMap<>();
+
+		ProbeResolver(Map<String, String> responseMap) {
+			this.responseMap = responseMap;
+		}
+
+		@Override
+		public byte[] resolve(String relationshipURL) {
+			if (responseMap.containsKey(relationshipURL)) {
+				if (resolved.containsKey(relationshipURL)) {
+					int count = resolved.get(relationshipURL);
+					resolved.put(relationshipURL, ++count);
+				} else {
+					resolved.put(relationshipURL, 1);
+				}
+				return responseMap.get(relationshipURL).getBytes();
+			}
+			return new byte[0];
+		}
 	}
 }

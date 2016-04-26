@@ -14,10 +14,10 @@ public class Article {
 
 	private String title;
 
-	@Relationship("author")
+	@Relationship(value = "author", resolve = true)
 	private Author author;
 
-	@Relationship("comments")
+	@Relationship(value = "comments", resolve = true)
 	private List<Comment> comments;
 
 

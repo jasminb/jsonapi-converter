@@ -346,13 +346,15 @@ public class ResourceConverter {
 					if (resolveRelationship && resolver != null && relationship.has(LINKS)) {
 						JsonNode self = relationship.get(LINKS).get(SELF);
 
+						String link = null;
+
 						if (self != null) {
-							String selfLink = self.asText();
+							link = getLink(self);
 
 							if (isCollection(relationship)) {
-								relationshipField.set(object, readObjectCollection(resolver.resolve(selfLink), type));
+								relationshipField.set(object, readObjectCollection(resolver.resolve(link), type));
 							} else {
-								relationshipField.set(object, readObject(resolver.resolve(selfLink), type));
+								relationshipField.set(object, readObject(resolver.resolve(link), type));
 							}
 						}
 					} else {
@@ -377,6 +379,25 @@ public class ResourceConverter {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Accepts a JsonNode which encapsulates a link.  The link may be represented as a simple string or as
+	 * <a href="http://jsonapi.org/format/#document-links">link</a> object.  This method introspects on the
+	 * {@code linkNode}, returning the value of the {@code href} member, if it exists, or returns the string form
+	 * of the {@code linkNode} if it doesn't.
+	 *
+	 * @param linkNode a JsonNode representing a link
+	 * @return the link URL
+	 */
+	private String getLink(JsonNode linkNode) {
+		// Handle both representations of a link: as a string or as an object
+		// http://jsonapi.org/format/#document-links (v1.0)
+		if (linkNode.has(HREF)) {
+			// object form
+			return linkNode.get(HREF).asText();
+		}
+		return linkNode.asText();
 	}
 
 	/**

@@ -16,4 +16,5 @@ public interface JSONAPISpecConstants {
 	String SELF = "self";
 	String ERRORS = "errors";
 	String META = "meta";
+	String HREF = "href";
 }
