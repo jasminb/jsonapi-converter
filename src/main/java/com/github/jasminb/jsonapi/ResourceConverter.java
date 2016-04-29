@@ -6,9 +6,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
-import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Type;
 
 import java.io.IOException;
@@ -35,6 +35,7 @@ public class ResourceConverter {
 	private static final Map<Class<?>, List<Field>> RELATIONSHIPS_MAP = new HashMap<>();
 	private static final Map<Class<?>, Map<String, Class<?>>> RELATIONSHIP_TYPE_MAP = new HashMap<>();
 	private static final Map<Class<?>, Map<String, Field>> RELATIONSHIP_FIELD_MAP = new HashMap<>();
+	private static final Map<Field, Relationship> FIELD_RELATIONSHIP_MAP = new HashMap<>();
 	private static final Map<Class<?>, Class<?>> META_TYPE_MAP = new HashMap<>();
 	private static final Map<Class<?>, Field> META_FIELD = new HashMap<>();
 
@@ -58,7 +59,7 @@ public class ResourceConverter {
 				RELATIONSHIP_FIELD_MAP.put(clazz, new HashMap<String, Field>());
 
 				// collecting Relationship fields
-				List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class);
+				List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
 
 				for (Field relationshipField : relationshipFields) {
 					relationshipField.setAccessible(true);
@@ -67,27 +68,33 @@ public class ResourceConverter {
 					Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
 					RELATIONSHIP_TYPE_MAP.get(clazz).put(relationship.value(), targetType);
 					RELATIONSHIP_FIELD_MAP.get(clazz).put(relationship.value(), relationshipField);
-
+					FIELD_RELATIONSHIP_MAP.put(relationshipField, relationship);
 				}
 
 				RELATIONSHIPS_MAP.put(clazz, relationshipFields);
 
 				// collecting Id fields
-				List<Field> idAnnotatedFields = ReflectionUtils.getAnnotatedFields(clazz, Id.class);
+				List<Field> idAnnotatedFields = ReflectionUtils.getAnnotatedFields(clazz, Id.class, true);
 
-				if (!idAnnotatedFields.isEmpty()) {
+				if (!idAnnotatedFields.isEmpty() && idAnnotatedFields.size() == 1) {
 					Field idField = idAnnotatedFields.get(0);
 					idField.setAccessible(true);
 					ID_MAP.put(clazz, idField);
 				} else {
-					throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
-							"@Id annotation");
+					if (idAnnotatedFields.isEmpty()) {
+						throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
+								"@Id annotation");
+					} else {
+						throw new IllegalArgumentException("Only single @Id annotation is allowed per defined type!");
+					}
+
 				}
 
 				// collecting Meta fields
-				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class);
+				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class, true);
 				if (metaFields.size() > 1) {
-					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'", clazz.getCanonicalName()));
+					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
+							clazz.getCanonicalName()));
 				}
 				if (metaFields.size() == 1) {
 					Field metaField = metaFields.get(0);
@@ -143,7 +150,7 @@ public class ResourceConverter {
 	 * @param data raw-data
 	 * @param clazz target object
 	 * @param <T>
-	 * @return convrted object
+	 * @return converted object
 	 * @throws RuntimeException in case conversion fails
 	 */
 	public <T> T readObject(byte [] data, Class<T> clazz) {
@@ -339,7 +346,7 @@ public class ResourceConverter {
 					}
 
 					// Get resolve flag
-					boolean resolveRelationship = relationshipField.getAnnotation(Relationship.class).resolve();
+					boolean resolveRelationship = FIELD_RELATIONSHIP_MAP.get(relationshipField).resolve();
 					RelationshipResolver resolver = getResolver(type);
 
 					// Use resolver if possible
@@ -487,7 +494,7 @@ public class ResourceConverter {
 		attributesNode.remove(idField.getName());
 
 		Field metaField = META_FIELD.get(object.getClass());
-		if (metaField!=null) {
+		if (metaField != null) {
 			attributesNode.remove(metaField.getName());
 		}
 
@@ -514,7 +521,7 @@ public class ResourceConverter {
 				if (relationshipObject != null) {
 					attributesNode.remove(relationshipField.getName());
 
-					Relationship relationship = relationshipField.getAnnotation(Relationship.class);
+					Relationship relationship = FIELD_RELATIONSHIP_MAP.get(relationshipField);
 
 					// In case serialisation is disabled for a given relationship, skipp it
 					if (!relationship.serialise()) {
