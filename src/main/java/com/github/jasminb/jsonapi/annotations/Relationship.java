@@ -1,5 +1,7 @@
 package com.github.jasminb.jsonapi.annotations;
 
+import com.github.jasminb.jsonapi.RelType;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -17,4 +19,5 @@ public @interface Relationship {
 	String value();
 	boolean resolve() default false;
 	boolean serialise() default true;
+	RelType relType() default RelType.SELF;
 }

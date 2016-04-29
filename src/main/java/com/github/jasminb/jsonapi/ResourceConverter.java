@@ -69,6 +69,11 @@ public class ResourceConverter {
 					RELATIONSHIP_TYPE_MAP.get(clazz).put(relationship.value(), targetType);
 					RELATIONSHIP_FIELD_MAP.get(clazz).put(relationship.value(), relationshipField);
 					FIELD_RELATIONSHIP_MAP.put(relationshipField, relationship);
+					if (relationship.resolve() && relationship.relType() == null) {
+						throw new IllegalArgumentException("@Relationship on " + clazz.getName() + "#" +
+								relationshipField.getName() + " with 'resolve = true' must have a relType attribute " +
+								"set." );
+					}
 				}
 
 				RELATIONSHIPS_MAP.put(clazz, relationshipFields);
@@ -351,12 +356,13 @@ public class ResourceConverter {
 
 					// Use resolver if possible
 					if (resolveRelationship && resolver != null && relationship.has(LINKS)) {
-						JsonNode self = relationship.get(LINKS).get(SELF);
+						String relType = FIELD_RELATIONSHIP_MAP.get(relationshipField).relType().getRelName();
+						JsonNode linkNode = relationship.get(LINKS).get(relType);
 
 						String link = null;
 
-						if (self != null) {
-							link = getLink(self);
+						if (linkNode != null) {
+							link = getLink(linkNode);
 
 							if (isCollection(relationship)) {
 								relationshipField.set(object, readObjectCollection(resolver.resolve(link), type));
