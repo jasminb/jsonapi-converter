@@ -287,7 +287,7 @@ public class ResourceConverterTest {
 	}
 
 	@Test
-	public void testLinksAsObjects() throws Exception {
+	public void testLinkObjectsAndRelType() throws Exception {
 		ObjectMapper articlesMapper = new ObjectMapper();
 
 		String apiResponse = IOUtils.getResourceAsString("articles-with-link-objects.json");
@@ -295,12 +295,12 @@ public class ResourceConverterTest {
 
 		// Configure the ProbeResolver
 		Map<String, String> responseMap = new HashMap<>();
-		String authorRel = "http://example.com/articles/1/relationships/author";
+		String authorRel = "http://example.com/articles/1/author";
 		String commentRel = "http://example.com/articles/1/relationships/comments";
 		responseMap.put(authorRel,
-				IOUtils.getResourceAsString("author-rel-response.json"));
+				IOUtils.getResourceAsString("author-reltype-related-response.json"));
 		responseMap.put(commentRel,
-				IOUtils.getResourceAsString("comment-rel-response.json"));
+				IOUtils.getResourceAsString("comment-reltype-self-response.json"));
 		ProbeResolver resolver = new ProbeResolver(responseMap);
 
 		// Configure the ResourceConverter with the ProbeResolver
@@ -350,7 +350,8 @@ public class ResourceConverterTest {
 				}
 				return responseMap.get(relationshipURL).getBytes();
 			}
-			return new byte[0];
+			throw new IllegalArgumentException("Unable to resolve '" + relationshipURL + "', missing response map " +
+					"entry.");
 		}
 	}
 }
