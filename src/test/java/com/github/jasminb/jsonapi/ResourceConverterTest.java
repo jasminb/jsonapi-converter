@@ -8,6 +8,7 @@ import com.github.jasminb.jsonapi.models.Comment;
 import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.recursion.RecursingNode;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -319,6 +320,33 @@ public class ResourceConverterTest {
 		Assert.assertEquals(1, resolver.resolved.get(commentRel).intValue());
 	}
 
+	@Test
+	public void testRelationshipResolutionRecursionLoop() throws Exception {
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+
+		String loopUrl = "http://example.com/node/1";
+		String loopJson = org.apache.commons.io.IOUtils.toString(RecursingNode.class.getResource("loop.json"), "UTF-8");
+
+		// Configure the ProbeResolver
+		Map<String, String> responseMap = new HashMap<>();
+		responseMap.put(loopUrl, loopJson);
+		ProbeResolver resolver = new ProbeResolver(responseMap);
+
+		// Configure the ResourceConverter with the ProbeResolver
+		ResourceConverter underTest = new ResourceConverter(mapper, RecursingNode.class);
+		underTest.setGlobalResolver(resolver);
+
+		RecursingNode p = underTest.readObject(loopJson.getBytes(), RecursingNode.class);
+
+		// Sanity check
+		Assert.assertNotNull(p);
+
+		// Verify
+		Assert.assertEquals(1, resolver.resolved.get(loopUrl).intValue());
+		Assert.assertNotNull(p.getParent());
+	}
+
 	/**
 	 * Simple global RelationshipResolver implementation that maintains a count of responses for each
 	 * relationship url.
@@ -337,6 +365,9 @@ public class ResourceConverterTest {
 
 		ProbeResolver(Map<String, String> responseMap) {
 			this.responseMap = responseMap;
+			for (String url : responseMap.keySet()) {
+				resolved.put(url, 0);
+			}
 		}
 
 		@Override
@@ -345,8 +376,6 @@ public class ResourceConverterTest {
 				if (resolved.containsKey(relationshipURL)) {
 					int count = resolved.get(relationshipURL);
 					resolved.put(relationshipURL, ++count);
-				} else {
-					resolved.put(relationshipURL, 1);
 				}
 				return responseMap.get(relationshipURL).getBytes();
 			}

@@ -159,6 +159,19 @@ public class ResourceConverter {
 	 * @throws RuntimeException in case conversion fails
 	 */
 	public <T> T readObject(byte [] data, Class<T> clazz) {
+		return readObjectInternal(data, clazz, null);
+	}
+
+	/**
+	 * Converts raw data input into requested target type.
+	 * @param data raw-data
+	 * @param clazz target object
+	 * @param <T>
+	 * @param resolverState used when resolving recursive relationships;  may be {@code null}
+	 * @return converted object
+	 * @throws RuntimeException in case conversion fails
+	 */
+	private <T> T readObjectInternal(byte [] data, Class<T> clazz, ResolverState resolverState) {
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
 
@@ -166,11 +179,11 @@ public class ResourceConverter {
 			ValidationUtils.ensureNotError(rootNode);
 			ValidationUtils.ensureObject(rootNode);
 
-			Map<String, Object> included = parseIncluded(rootNode);
+			Map<String, Object> included = parseIncluded(rootNode, resolverState);
 
 			JsonNode dataNode = rootNode.get(DATA);
 
-			T result = readObject(dataNode, clazz, included);
+			T result = readObjectInternal(dataNode, clazz, included, resolverState);
 
 			// handling of meta node
 			if (rootNode.has(META)) {
@@ -199,6 +212,19 @@ public class ResourceConverter {
 	 * @throws RuntimeException in case conversion fails
 	 */
 	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
+		return readObjectCollectionInternal(data, clazz, null);
+	}
+
+	/**
+	 * Converts raw-data input into a collection of requested output objects.
+	 * @param data raw-data input
+	 * @param clazz target type
+	 * @param <T>
+	 * @param resolverState used when resolving recursive relationships;  may be {@code null}
+	 * @return collection of converted elements
+	 * @throws RuntimeException in case conversion fails
+	 */
+	private <T> List<T> readObjectCollectionInternal(byte [] data, Class<T> clazz, ResolverState resolverState) {
 
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
@@ -207,12 +233,12 @@ public class ResourceConverter {
 			ValidationUtils.ensureNotError(rootNode);
 			ValidationUtils.ensureCollection(rootNode);
 
-			Map<String, Object> included = parseIncluded(rootNode);
+			Map<String, Object> included = parseIncluded(rootNode, resolverState);
 
 			List<T> result = new ArrayList<>();
 
 			for (JsonNode element : rootNode.get(DATA)) {
-				T pojo = readObject(element, clazz, included);
+				T pojo = readObjectInternal(element, clazz, included, resolverState);
 				result.add(pojo);
 			}
 
@@ -232,11 +258,12 @@ public class ResourceConverter {
 	 * @param clazz target type
 	 * @param cache resolved objects (either from included element or already parsed objects)
 	 * @param <T>
+	 * @param resolverState used when resolving recursive relationships;  may be {@code null}
 	 * @return converted target object
 	 * @throws IOException
 	 * @throws IllegalAccessException
 	 */
-	private <T> T readObject(JsonNode source, Class<T> clazz, Map<String, Object> cache)
+	private <T> T readObjectInternal(JsonNode source, Class<T> clazz, Map<String, Object> cache, ResolverState resolverState)
 			throws IOException, IllegalAccessException, InstantiationException {
 		T result;
 
@@ -251,7 +278,7 @@ public class ResourceConverter {
 
 		if (cache != null) {
 			// Handle relationships
-			handleRelationships(source, result, cache);
+			handleRelationships(source, result, cache, resolverState);
 
 			// Add parsed object to cache
 			cache.put(createIdentifier(source), result);
@@ -265,11 +292,12 @@ public class ResourceConverter {
 	/**
 	 * Converts included data and returns it as pairs of its unique identifiers and converted types.
 	 * @param parent data source
+	 * @param resolverState used when resolving recursive relationships;  may be {@code null}
 	 * @return identifier/object pairs
 	 * @throws IOException
 	 * @throws IllegalAccessException
 	 */
-	private Map<String, Object> parseIncluded(JsonNode parent)
+	private Map<String, Object> parseIncluded(JsonNode parent, ResolverState resolverState)
 			throws IOException, IllegalAccessException, InstantiationException {
 		Map<String, Object> result = new HashMap<>();
 
@@ -290,7 +318,7 @@ public class ResourceConverter {
 
 					// Handle relationships
 					JsonNode node = includedArray.get(i);
-					handleRelationships(node, resource.getObject(), result);
+					handleRelationships(node, resource.getObject(), result, resolverState);
 				}
 			}
 		}
@@ -318,7 +346,7 @@ public class ResourceConverter {
 					Class<?> clazz = TYPE_TO_CLASS_MAPPING.get(type);
 
 					if (clazz != null) {
-						Object object = readObject(jsonNode, clazz, null);
+						Object object = readObjectInternal(jsonNode, clazz, null, null);
 						result.add(new Resource(createIdentifier(jsonNode), object));
 					}
 				}
@@ -328,7 +356,7 @@ public class ResourceConverter {
 		return result;
 	}
 
-	private void handleRelationships(JsonNode source, Object object, Map<String, Object> includedData)
+	private void handleRelationships(JsonNode source, Object object, Map<String, Object> includedData, ResolverState resolverState)
 			throws IllegalAccessException, IOException, InstantiationException {
 		JsonNode relationships = source.get(RELATIONSHIPS);
 
@@ -357,6 +385,11 @@ public class ResourceConverter {
 					// Use resolver if possible
 					if (resolveRelationship && resolver != null && relationship.has(LINKS)) {
 						String relType = FIELD_RELATIONSHIP_MAP.get(relationshipField).relType().getRelName();
+
+						if (resolverState == null) {
+							resolverState = new ResolverState(relationshipField, relType);
+						}
+
 						JsonNode linkNode = relationship.get(LINKS).get(relType);
 
 						String link = null;
@@ -364,10 +397,14 @@ public class ResourceConverter {
 						if (linkNode != null) {
 							link = getLink(linkNode);
 
+							if (resolverState.visited(link)) {
+								return;
+							}
+
 							if (isCollection(relationship)) {
-								relationshipField.set(object, readObjectCollection(resolver.resolve(link), type));
+								relationshipField.set(object, readObjectCollectionInternal(resolver.resolve(link), type, resolverState));
 							} else {
-								relationshipField.set(object, readObject(resolver.resolve(link), type));
+								relationshipField.set(object, readObjectInternal(resolver.resolve(link), type, resolverState));
 							}
 						}
 					} else {
@@ -376,14 +413,14 @@ public class ResourceConverter {
 							List elements = new ArrayList<>();
 
 							for (JsonNode element : relationship.get(DATA)) {
-								Object relationshipObject = parseRelationship(element, type, includedData);
+								Object relationshipObject = parseRelationship(element, type, includedData, resolverState);
 								if (relationshipObject != null) {
 									elements.add(relationshipObject);
 								}
 							}
 							relationshipField.set(object, elements);
 						} else {
-							Object relationshipObject = parseRelationship(relationship.get(DATA), type, includedData);
+							Object relationshipObject = parseRelationship(relationship.get(DATA), type, includedData, resolverState);
 							if (relationshipObject != null) {
 								relationshipField.set(object, relationshipObject);
 							}
@@ -418,12 +455,13 @@ public class ResourceConverter {
 	 * @param relationshipDataNode relationship data node
 	 * @param type object type
 	 * @param cache object cache
+	 * @param resolverState used when resolving recursive relationships;  may be {@code null}
 	 * @return created object or <code>null</code> in case data node is not valid
 	 * @throws IOException
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	private Object parseRelationship(JsonNode relationshipDataNode, Class<?> type, Map<String, Object> cache)
+	private Object parseRelationship(JsonNode relationshipDataNode, Class<?> type, Map<String, Object> cache, ResolverState resolverState)
 			throws IOException, IllegalAccessException, InstantiationException {
 		if (ValidationUtils.isRelationshipParsable(relationshipDataNode)) {
 			String identifier = createIdentifier(relationshipDataNode);
@@ -431,7 +469,7 @@ public class ResourceConverter {
 			if (cache.containsKey(identifier)) {
 				return cache.get(identifier);
 			} else {
-				return readObject(relationshipDataNode, type, cache);
+				return readObjectInternal(relationshipDataNode, type, cache, resolverState);
 			}
 		}
 
