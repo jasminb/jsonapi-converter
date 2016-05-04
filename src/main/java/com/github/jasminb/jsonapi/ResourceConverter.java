@@ -10,6 +10,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.Type;
+import com.github.jasminb.jsonapi.models.errors.Error;
+import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -373,11 +376,35 @@ public class ResourceConverter {
 						String link;
 
 						if (linkNode != null && ((link = getLink(linkNode)) != null)) {
-							if (isCollection(relationship)) {
-								relationshipField.set(object,
-										readDocumentCollection(resolver.resolve(link), type).get());
+							link = getLink(linkNode);
+							byte[] linkContent = resolver.resolve(link);
+
+							if (hasResourceLinkage(relationship)) {
+								// If a resource linkage is available, we can determine the cardinality, and call
+								// the appropriate method: read a collection or read an object
+								if (isCollection(relationship)) {
+                                    relationshipField.set(object, readDocumentCollection(linkContent, type).get());
+                                } else {
+                                    relationshipField.set(object, readDocument(linkContent, type).get());
+                                }
 							} else {
-								relationshipField.set(object, readDocument(resolver.resolve(link), type).get());
+								// If the resource linkage is not available, we have to inspect the content of the
+								// resolved link before making the determination.
+								JsonNode resolvedNode = objectMapper.readTree(linkContent);
+								if (ValidationUtils.isCollection(resolvedNode)) {
+									relationshipField.set(object, readDocumentCollection(linkContent, type).get());
+								} else if (ValidationUtils.isObject(resolvedNode)) {
+									relationshipField.set(object, readDocument(linkContent, type).get());
+								} else if (ErrorUtils.hasErrors(resolvedNode)){
+									ErrorResponse errors = ErrorUtils.parseError(resolvedNode);
+									throw new RuntimeException(
+											ErrorUtils.fill(errors,
+													new StringBuilder("Unable to parse the response document for " +
+														"'" + link + "':")).toString());
+								} else {
+									throw new RuntimeException("Response document for '" + link + "' does not contain" +
+											" primary data.");
+								}
 							}
 						}
 					} else {
@@ -497,6 +524,10 @@ public class ResourceConverter {
 	private boolean isCollection(JsonNode source) {
 		JsonNode data = source.get(DATA);
 		return data != null && data.isArray();
+	}
+
+	private boolean hasResourceLinkage(JsonNode relationshipObj) {
+		return relationshipObj.has(DATA);
 	}
 
 
