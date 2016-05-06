@@ -1,0 +1,16 @@
+{
+  "data": {
+    "type": "foo",
+    "id": "1",
+    "attributes": {
+      "name": "foo"
+    },
+    "relationships": {
+      "bar": {
+        "links": {
+          "self": "http://example.com/foo/rels/bar"
+        }
+      }
+    }
+  }
+}
