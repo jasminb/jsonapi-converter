@@ -18,4 +18,8 @@ public interface JSONAPISpecConstants {
 	String ERRORS = "errors";
 	String META = "meta";
 	String HREF = "href";
+	String PREV = "prev";
+	String NEXT = "next";
+	String FIRST = "first";
+	String LAST = "last";
 }
