@@ -1,5 +1,6 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.models.Article;
@@ -317,6 +318,31 @@ public class ResourceConverterTest {
 		// Assert relationships were resolved
 		Assert.assertEquals(1, resolver.resolved.get(authorRel).intValue());
 		Assert.assertEquals(1, resolver.resolved.get(commentRel).intValue());
+	}
+
+	/**
+	 * The JSON {@code null} value carries semantics, as in pagination links:
+	 * <pre>
+	 * "links": {
+	 *   "first": null,
+	 *   "last": "https://test-api.osf.io/v2/nodes/?page=9",
+	 *   "prev": null,
+	 *   "next": "https://test-api.osf.io/v2/nodes/?page=2",
+	 * }
+	 * </pre>
+	 * It is important that {@code null} values be reflected in mapped data.  This test insures that {@code null} JSON
+	 * values are mapped to Java {@code null}, and not to a string value representing {@code null} (which is the
+	 * default behavior of the Jackson {@code NullNode}).
+	 * @throws Exception
+     */
+	@Test
+	public void testGetLinkNullity() throws Exception {
+		ObjectMapper mapper = new ObjectMapper();
+		String link = "http://example.com/resource/1";
+		JsonNode linkNode = mapper.readTree("\"" + link + "\"");
+		Assert.assertEquals(link, converter.getLink(linkNode));
+		linkNode = mapper.readTree("null");
+		Assert.assertNull(converter.getLink(linkNode));
 	}
 
 	/**
