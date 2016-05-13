@@ -1,11 +1,16 @@
 package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.type.MapType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
@@ -198,7 +203,7 @@ public class ResourceConverter {
 	 * @return collection of converted elements
 	 * @throws RuntimeException in case conversion fails
 	 */
-	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
+	public <T> ResourceList<T> readObjectCollection(byte [] data, Class<T> clazz) {
 
 		try {
 			JsonNode rootNode = objectMapper.readTree(data);
@@ -216,13 +221,24 @@ public class ResourceConverter {
 				result.add(pojo);
 			}
 
-			return result;
+			ResourceList<T> wrapper = new ResourceList<>(result);
+
+			if (rootNode.has(LINKS)) {
+				Map<String, Link> links = mapLinks(rootNode.get(LINKS));
+				wrapper.setLinks(links);
+			}
+
+			if (rootNode.has(META)) {
+				Map<String, ?> meta = mapMeta(rootNode.get(META));
+				wrapper.setMeta(meta);
+			}
+
+			return wrapper;
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
-
 
 	}
 
@@ -395,6 +411,62 @@ public class ResourceConverter {
 	}
 
 	/**
+	 * Deserializes a <a href="http://jsonapi.org/format/#document-links">JSON-API links object</a> to a {@code Map}
+	 * keyed by the link name.
+	 * <p>
+	 * The {@code linksObject} may represent links in string form or object form; both are supported by this method.
+	 * </p>
+	 * <p>
+	 * E.g.
+	 * <pre>
+	 * "links": {
+	 *   "self": "http://example.com/posts"
+	 * }
+	 * </pre>
+	 * </p>
+	 * <p>
+	 * or
+	 * <pre>
+	 * "links": {
+	 *   "related": {
+	 *     "href": "http://example.com/articles/1/comments",
+	 *     "meta": {
+	 *       "count": 10
+	 *     }
+	 *   }
+	 * }
+	 * </pre>
+	 * </p>
+	 *
+	 * @param linksObject a {@code JsonNode} representing a links object
+	 * @return a {@code Map} keyed by link name
+     */
+	private Map<String, Link> mapLinks(JsonNode linksObject) {
+		Map<String, Link> result = new HashMap<>();
+
+		Iterator<Map.Entry<String, JsonNode>> linkItr = linksObject.fields();
+
+		while (linkItr.hasNext()) {
+			Map.Entry<String, JsonNode> linkNode = linkItr.next();
+			Link linkObj = new Link();
+
+			linkObj.setHref(
+						getLink(
+							linkNode.getValue()));
+
+			if (linkNode.getValue().has(META)) {
+				linkObj.setMeta(
+							mapMeta(
+								linkNode.getValue().get(META)));
+			}
+
+			result.put(linkNode.getKey(), linkObj);
+		}
+
+		return result;
+	}
+
+	/**
 	 * Accepts a JsonNode which encapsulates a link.  The link may be represented as a simple string or as
 	 * <a href="http://jsonapi.org/format/#document-links">link</a> object.  This method introspects on the
 	 * {@code linkNode}, returning the value of the {@code href} member, if it exists, or returns the string form
@@ -411,6 +483,27 @@ public class ResourceConverter {
 			return linkNode.get(HREF).asText();
 		}
 		return linkNode.asText();
+	}
+
+	/**
+	 * Deserializes a <a href="http://jsonapi.org/format/#document-meta">JSON-API meta object</a> to a {@code Map}
+	 * keyed by the member names.  Because {@code meta} objects contain arbitrary information, the values in the
+	 * map are of unknown type.
+	 *
+	 * @param metaNode a JsonNode representing a meta object
+	 * @return a Map of the meta information, keyed by member name.
+     */
+	private Map<String, ?> mapMeta(JsonNode metaNode) {
+		JsonParser p = objectMapper.treeAsTokens(metaNode);
+		MapType mapType = TypeFactory.defaultInstance()
+				.constructMapType(HashMap.class, String.class, Object.class);
+		try {
+			return objectMapper.readValue(p, mapType);
+		} catch (IOException e) {
+			// TODO: log? No recovery.
+		}
+
+		return null;
 	}
 
 	/**
