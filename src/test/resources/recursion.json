@@ -1,0 +1,19 @@
+{
+  "data": {
+    "relationships": {
+      "parent": {
+        "links": {
+          "related": {
+            "href": "http://example.com/node/1"
+          }
+        }
+      }
+    },
+    "attributes": {
+      "name": "parent",
+      "url": "http://example.com/node/1"
+    },
+    "type": "node",
+    "id": "1"
+  }
+}

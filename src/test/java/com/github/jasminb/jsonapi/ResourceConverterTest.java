@@ -6,6 +6,7 @@ import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
 import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
+import com.github.jasminb.jsonapi.models.RecursingNode;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
 import org.junit.Assert;
@@ -104,7 +105,7 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testWriteWithMetaSection() throws IOException, IllegalAccessException {
-		User initialUser = new User();
+		User initialUser;
 		User.UserMeta userMeta = new User.UserMeta();
 		userMeta.token = "test";
 		initialUser = new User();
@@ -317,6 +318,34 @@ public class ResourceConverterTest {
 		// Assert relationships were resolved
 		Assert.assertEquals(1, resolver.resolved.get(authorRel).intValue());
 		Assert.assertEquals(1, resolver.resolved.get(commentRel).intValue());
+	}
+
+
+	@Test
+	public void testRelationshipResolutionRecursionLoop() throws Exception {
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+
+		String loopUrl = "http://example.com/node/1";
+		String loopJson = IOUtils.getResourceAsString("recursion.json");
+
+		// Configure the ProbeResolver
+		Map<String, String> responseMap = new HashMap<>();
+		responseMap.put(loopUrl, loopJson);
+		ProbeResolver resolver = new ProbeResolver(responseMap);
+
+		// Configure the ResourceConverter with the ProbeResolver
+		ResourceConverter underTest = new ResourceConverter(mapper, RecursingNode.class);
+		underTest.setGlobalResolver(resolver);
+
+		RecursingNode p = underTest.readObject(loopJson.getBytes(), RecursingNode.class);
+
+		// Sanity check
+		Assert.assertNotNull(p);
+
+		// Verify
+		Assert.assertEquals(1, resolver.resolved.get(loopUrl).intValue());
+		Assert.assertNotNull(p.getParent());
 	}
 
 	/**
