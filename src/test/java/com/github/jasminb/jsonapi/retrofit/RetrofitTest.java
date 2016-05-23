@@ -13,8 +13,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import retrofit.Response;
-import retrofit.Retrofit;
+import retrofit2.Response;
+import retrofit2.Retrofit;
 
 import java.io.IOException;
 import java.util.List;
@@ -62,7 +62,7 @@ public class RetrofitTest {
 
 		Response<User> response = service.getExampleResource().execute();
 
-		Assert.assertTrue(response.isSuccess());
+		Assert.assertTrue(response.isSuccessful());
 
 		User user = response.body();
 
@@ -80,7 +80,7 @@ public class RetrofitTest {
 
 		Response<List<User>> response = service.getExampleResourceList().execute();
 
-		Assert.assertTrue(response.isSuccess());
+		Assert.assertTrue(response.isSuccessful());
 
 		List<User> users = response.body();
 		Assert.assertEquals(2, users.size());
@@ -96,7 +96,7 @@ public class RetrofitTest {
 
 		Response<User> response = service.getExampleResource().execute();
 
-		Assert.assertFalse(response.isSuccess());
+		Assert.assertFalse(response.isSuccessful());
 
 		ErrorResponse errorResponse = ErrorUtils.parseErrorResponse(response.errorBody());
 

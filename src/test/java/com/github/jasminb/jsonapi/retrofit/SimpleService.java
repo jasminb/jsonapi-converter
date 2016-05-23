@@ -2,10 +2,10 @@ package com.github.jasminb.jsonapi.retrofit;
 
 import com.github.jasminb.jsonapi.models.User;
 import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
-import retrofit.Call;
-import retrofit.http.Body;
-import retrofit.http.GET;
-import retrofit.http.POST;
+import retrofit2.Call;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.POST;
 
 import java.util.List;
 
