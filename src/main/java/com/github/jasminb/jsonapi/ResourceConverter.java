@@ -368,11 +368,9 @@ public class ResourceConverter {
 						String relType = FIELD_RELATIONSHIP_MAP.get(relationshipField).relType().getRelName();
 						JsonNode linkNode = relationship.get(LINKS).get(relType);
 
-						String link = null;
+						String link;
 
-						if (linkNode != null) {
-							link = getLink(linkNode);
-
+						if (linkNode != null && ((link = getLink(linkNode)) != null)) {
 							if (isCollection(relationship)) {
 								relationshipField.set(object, readObjectCollection(resolver.resolve(link), type));
 							} else {
@@ -408,18 +406,20 @@ public class ResourceConverter {
 	 * <a href="http://jsonapi.org/format/#document-links">link</a> object.  This method introspects on the
 	 * {@code linkNode}, returning the value of the {@code href} member, if it exists, or returns the string form
 	 * of the {@code linkNode} if it doesn't.
-	 *
-	 * @param linkNode a JsonNode representing a link
+	 * <p>
+	 * <em>Package-private for unit testing.</em>
+	 * </p>
+	 * @param linkNode a JsonNode representing a link, may return {@code null}
 	 * @return the link URL
 	 */
-	private String getLink(JsonNode linkNode) {
+	String getLink(JsonNode linkNode) {
 		// Handle both representations of a link: as a string or as an object
 		// http://jsonapi.org/format/#document-links (v1.0)
 		if (linkNode.has(HREF)) {
 			// object form
 			return linkNode.get(HREF).asText();
 		}
-		return linkNode.asText();
+		return linkNode.asText(null);
 	}
 
 	/**
