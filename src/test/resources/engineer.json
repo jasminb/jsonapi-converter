@@ -19,6 +19,9 @@
           "id": "city_id"
         }
       }
+    },
+    "meta": {
+      "note" : "Note"
     }
   },
   "included": [

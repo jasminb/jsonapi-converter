@@ -98,10 +98,13 @@ public class ResourceConverterTest {
 	public void testReadWithMetaSection() throws IOException {
 		String apiResponse = IOUtils.getResourceAsString("user-with-meta.json");
 
-		User user = converter.readObject(apiResponse.getBytes(), User.class);
+		JsonApiDocument<User> document = converter.readDocument(apiResponse.getBytes(), User.class);
 
-		Assert.assertNotNull(user.getMeta());
-		Assert.assertEquals("asdASD123", user.getMeta().getToken());
+		Assert.assertNotNull(document.getMeta());
+		Assert.assertEquals("asdASD123", document.getMeta().get("token"));
+
+		Assert.assertNotNull(document.get().getMeta());
+		Assert.assertEquals("asdASD123", document.get().getMeta().getToken());
 	}
 
 	@Test

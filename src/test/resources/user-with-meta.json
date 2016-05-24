@@ -4,6 +4,9 @@
     "id": "userId",
     "attributes": {
       "name": "liz"
+    },
+    "meta": {
+      "token" : "asdASD123"
     }
   },
   "meta": {

@@ -1,11 +1,14 @@
 package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.type.MapType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
@@ -153,15 +156,7 @@ public class ResourceConverter {
 		}
 	}
 
-	/**
-	 * Converts raw data input into requested target type.
-	 * @param data raw-data
-	 * @param clazz target object
-	 * @param <T>
-	 * @return converted object
-	 * @throws RuntimeException in case conversion fails
-	 */
-	public <T> T readObject(byte [] data, Class<T> clazz) {
+	public <T> JsonApiDocument<T> readDocument(byte [] data, Class<T> clazz) {
 		try {
 			resourceCache.init();
 
@@ -175,16 +170,61 @@ public class ResourceConverter {
 
 			JsonNode dataNode = rootNode.get(DATA);
 
-			T result = readObject(dataNode, clazz, true);
 
-			// handling of meta node
+			T resourceObject = readObject(dataNode, clazz, true);
+
+			JsonApiDocument<T> result = new JsonApiDocument<>(resourceObject);
+
+
+			// Handle top-level meta
 			if (rootNode.has(META)) {
-				Field field = META_FIELD.get(clazz);
-				if (field != null) {
-					Class<?> metaType = META_TYPE_MAP.get(clazz);
-					Object metaObject = objectMapper.treeToValue(rootNode.get(META), metaType);
-					field.set(result, metaObject);
-				}
+				result.setMeta(mapMeta(rootNode.get(META)));
+			}
+
+			// Handle top-level links
+			if (rootNode.has(LINKS)) {
+				result.setLinks(mapLinks(rootNode.get(LINKS)));
+			}
+
+			return result;
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		} finally {
+			resourceCache.clear();
+		}
+	}
+
+	public <T> JsonApiDocument<List<T>> readDocumentCollection(byte [] data, Class<T> clazz) {
+		try {
+			resourceCache.init();
+
+			JsonNode rootNode = objectMapper.readTree(data);
+
+			// Validate
+			ValidationUtils.ensureNotError(rootNode);
+			ValidationUtils.ensureCollection(rootNode);
+
+			resourceCache.cache(parseIncluded(rootNode));
+
+			List<T> resourceList = new ArrayList<>();
+
+			for (JsonNode element : rootNode.get(DATA)) {
+				T pojo = readObject(element, clazz, true);
+				resourceList.add(pojo);
+			}
+
+			JsonApiDocument<List<T>> result = new JsonApiDocument<>(resourceList);
+
+			// Handle top-level meta
+			if (rootNode.has(META)) {
+				result.setMeta(mapMeta(rootNode.get(META)));
+			}
+
+			// Handle top-level links
+			if (rootNode.has(LINKS)) {
+				result.setLinks(mapLinks(rootNode.get(LINKS)));
 			}
 
 			return result;
@@ -198,6 +238,18 @@ public class ResourceConverter {
 	}
 
 	/**
+	 * Converts raw data input into requested target type.
+	 * @param data raw-data
+	 * @param clazz target object
+	 * @param <T>
+	 * @return converted object
+	 * @throws RuntimeException in case conversion fails
+	 */
+	public <T> T readObject(byte [] data, Class<T> clazz) {
+		return readDocument(data, clazz).get();
+	}
+
+	/**
 	 * Converts raw-data input into a collection of requested output objects.
 	 * @param data raw-data input
 	 * @param clazz target type
@@ -206,32 +258,7 @@ public class ResourceConverter {
 	 * @throws RuntimeException in case conversion fails
 	 */
 	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
-		try {
-			resourceCache.init();
-
-			JsonNode rootNode = objectMapper.readTree(data);
-
-			// Validate
-			ValidationUtils.ensureNotError(rootNode);
-			ValidationUtils.ensureCollection(rootNode);
-
-			resourceCache.cache(parseIncluded(rootNode));
-
-			List<T> result = new ArrayList<>();
-
-			for (JsonNode element : rootNode.get(DATA)) {
-				T pojo = readObject(element, clazz, true);
-				result.add(pojo);
-			}
-
-			return result;
-		} catch (RuntimeException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		} finally {
-			resourceCache.clear();
-		}
+		return readDocumentCollection(data, clazz).get();
 	}
 
 	/**
@@ -254,6 +281,21 @@ public class ResourceConverter {
 				result = objectMapper.treeToValue(source.get(ATTRIBUTES), clazz);
 			} else {
 				result = clazz.newInstance();
+			}
+
+			// Handle meta
+			if (source.has(META)) {
+				Field field = META_FIELD.get(clazz);
+				if (field != null) {
+					Class<?> metaType = META_TYPE_MAP.get(clazz);
+					Object metaObject = objectMapper.treeToValue(source.get(META), metaType);
+					field.set(result, metaObject);
+				}
+			}
+
+			// Handle links
+			if (source.has(LINKS)) {
+				//TODO: figure this one out (fixed/dynamic structure etc)
 			}
 
 			// Add parsed object to cache
@@ -649,5 +691,82 @@ public class ResourceConverter {
 		public Object getObject() {
 			return object;
 		}
+	}
+
+	/**
+	 * Deserializes a <a href="http://jsonapi.org/format/#document-links">JSON-API links object</a> to a {@code Map}
+	 * keyed by the link name.
+	 * <p>
+	 * The {@code linksObject} may represent links in string form or object form; both are supported by this method.
+	 * </p>
+	 * <p>
+	 * E.g.
+	 * <pre>
+	 * "links": {
+	 *   "self": "http://example.com/posts"
+	 * }
+	 * </pre>
+	 * </p>
+	 * <p>
+	 * or
+	 * <pre>
+	 * "links": {
+	 *   "related": {
+	 *     "href": "http://example.com/articles/1/comments",
+	 *     "meta": {
+	 *       "count": 10
+	 *     }
+	 *   }
+	 * }
+	 * </pre>
+	 * </p>
+	 *
+	 * @param linksObject a {@code JsonNode} representing a links object
+	 * @return a {@code Map} keyed by link name
+	 */
+	private Map<String, Link> mapLinks(JsonNode linksObject) {
+		Map<String, Link> result = new HashMap<>();
+
+		Iterator<Map.Entry<String, JsonNode>> linkItr = linksObject.fields();
+
+		while (linkItr.hasNext()) {
+			Map.Entry<String, JsonNode> linkNode = linkItr.next();
+			Link linkObj = new Link();
+
+			linkObj.setHref(
+					getLink(
+							linkNode.getValue()));
+
+			if (linkNode.getValue().has(META)) {
+				linkObj.setMeta(
+						mapMeta(
+								linkNode.getValue().get(META)));
+			}
+
+			result.put(linkNode.getKey(), linkObj);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Deserializes a <a href="http://jsonapi.org/format/#document-meta">JSON-API meta object</a> to a {@code Map}
+	 * keyed by the member names.  Because {@code meta} objects contain arbitrary information, the values in the
+	 * map are of unknown type.
+	 *
+	 * @param metaNode a JsonNode representing a meta object
+	 * @return a Map of the meta information, keyed by member name.
+	 */
+	private Map<String, ?> mapMeta(JsonNode metaNode) {
+		JsonParser p = objectMapper.treeAsTokens(metaNode);
+		MapType mapType = TypeFactory.defaultInstance()
+				.constructMapType(HashMap.class, String.class, Object.class);
+		try {
+			return objectMapper.readValue(p, mapType);
+		} catch (IOException e) {
+			// TODO: log? No recovery.
+		}
+
+		return null;
 	}
 }

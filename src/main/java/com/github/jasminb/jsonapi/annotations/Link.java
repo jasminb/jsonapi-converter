@@ -6,12 +6,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation used to configure meta field in JSON API resources.
+ * Annotation used to configure link field in JSON API resources.
  *
  * @author jbegic
  */
 
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Meta {
+public @interface Link {
 }
