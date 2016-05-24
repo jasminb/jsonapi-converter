@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.jasminb.jsonapi.annotations.Id;
+import com.github.jasminb.jsonapi.annotations.Links;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
@@ -38,8 +39,10 @@ public class ResourceConverter {
 	private static final Map<Field, Relationship> FIELD_RELATIONSHIP_MAP = new HashMap<>();
 	private static final Map<Class<?>, Class<?>> META_TYPE_MAP = new HashMap<>();
 	private static final Map<Class<?>, Field> META_FIELD = new HashMap<>();
+	private static final Map<Class<?>, Field> LINKS_FIELD = new HashMap<>();
 
 	private ObjectMapper objectMapper;
+	private JSONAPIParser jsonapiParser;
 
 	private RelationshipResolver globalResolver;
 	private Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
@@ -109,6 +112,21 @@ public class ResourceConverter {
 					META_TYPE_MAP.put(clazz, metaType);
 					META_FIELD.put(clazz, metaField);
 				}
+
+				// collecting Links fields
+				List<Field> linksFields = ReflectionUtils.getAnnotatedFields(clazz, Links.class, true);
+				if (linksFields.size() > 1) {
+					throw new IllegalArgumentException(String.format("Only one @Links field is allowed for type '%s'",
+							clazz.getCanonicalName()));
+				}
+				if (linksFields.size() == 1) {
+					Field linksField = linksFields.get(0);
+					linksField.setAccessible(true);
+					Class<?> linksType = ReflectionUtils.getFieldType(linksField);
+					if (linksType.isAssignableFrom(LinksData.class)) {
+						LINKS_FIELD.put(clazz, linksField);
+					}
+				}
 			} else {
 				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
 			}
@@ -122,6 +140,7 @@ public class ResourceConverter {
 		}
 
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+		jsonapiParser = new JSONAPIParser(objectMapper);
 
 		resourceCache = new ResourceCache();
 	}
@@ -153,41 +172,108 @@ public class ResourceConverter {
 		}
 	}
 
-	/**
-	 * Converts raw data input into requested target type.
-	 * @param data raw-data
-	 * @param clazz target object
-	 * @param <T>
-	 * @return converted object
-	 * @throws RuntimeException in case conversion fails
-	 */
-	public <T> T readObject(byte [] data, Class<T> clazz) {
-		try {
-			resourceCache.init();
+	interface JsonApiDataParser<T> {
 
-			JsonNode rootNode = objectMapper.readTree(data);
+		T parse(JsonNode rootNode) throws IllegalAccessException, IOException, InstantiationException;
+	}
 
-			// Validate
-			ValidationUtils.ensureNotError(rootNode);
+	private void setMetaFrom(Object result, Class<?> clazz, Field field, JsonNode... containerNodes) throws
+			IllegalAccessException,
+			JsonProcessingException {
+		for (JsonNode containerNode : containerNodes) {
+			if (containerNode.has(META)) {
+				Class<?> metaType = META_TYPE_MAP.get(clazz);
+				Object metaObject = objectMapper.treeToValue(containerNode.get(META), metaType);
+				field.set(result, metaObject);
+			}
+		}
+	}
+
+	private class JsonApiResourceParser<T> implements JsonApiDataParser<T> {
+
+		private final Class<T> clazz;
+
+		private JsonApiResourceParser(Class<T> clazz) {
+			this.clazz = clazz;
+		}
+
+		@Override
+		public T parse(JsonNode rootNode) throws IllegalAccessException, IOException, InstantiationException {
+
 			ValidationUtils.ensureObject(rootNode);
-
-			resourceCache.cache(parseIncluded(rootNode));
-
 			JsonNode dataNode = rootNode.get(DATA);
 
 			T result = readObject(dataNode, clazz, true);
 
-			// handling of meta node
-			if (rootNode.has(META)) {
-				Field field = META_FIELD.get(clazz);
+			// strangeness here - unit tests expect document-level 'meta' field is placed in Resource object annotation
+			// but we could have a resource-level metadata, too, which may be the right choice for meta to place there
+			// especially because document-level 'meta' field will be present in the JsonApiDocument.
+			// resource-level will have been set in the readObject() method above, but to make unit tests pass for now,
+			// we'll set the document-level (rootNode) meta on the object, maybe overwriting the resource-level
+			// for now:
+			Field metaField = META_FIELD.get(clazz);
+			if (metaField != null) {
+				setMetaFrom(result, clazz, metaField, rootNode);
+			}
+
+			// handling of links node
+			if (dataNode.has(LINKS)) {
+				Field field = LINKS_FIELD.get(clazz);
 				if (field != null) {
-					Class<?> metaType = META_TYPE_MAP.get(clazz);
-					Object metaObject = objectMapper.treeToValue(rootNode.get(META), metaType);
-					field.set(result, metaObject);
+					field.set(result, jsonapiParser.toLinksData(dataNode.get(LINKS)));
 				}
+			}
+			return result;
+		}
+	}
+
+	private class JsonApiCollectionParser<T> implements JsonApiDataParser<List<T>> {
+
+		private final Class<T> clazz;
+
+		private JsonApiCollectionParser(Class<T> clazz) {
+			this.clazz = clazz;
+		}
+
+		@Override
+		public List<T> parse(JsonNode rootNode) throws IllegalAccessException, IOException, InstantiationException {
+
+			ValidationUtils.ensureCollection(rootNode);
+			JsonNode dataNode = rootNode.get(DATA);
+
+			List<T> result = new ArrayList<>();
+
+			for (JsonNode element : dataNode) {
+				T pojo = readObject(element, clazz, true);
+				result.add(pojo);
 			}
 
 			return result;
+		}
+	}
+
+
+	<T> JsonApiDocument<T> readDocument(byte[] bytes, JsonApiDataParser<T> dataParser) {
+		try {
+			resourceCache.init();
+
+			JsonNode rootNode = objectMapper.readTree(bytes);
+
+			// Validate
+			ValidationUtils.ensureNotError(rootNode);
+
+			resourceCache.cache(parseIncluded(rootNode));
+
+			T data = dataParser.parse(rootNode);
+
+			LinksData linksData = null;
+			// handling of links node
+			if (rootNode.has(LINKS)) {
+				linksData = jsonapiParser.toLinksData(rootNode.get(LINKS));
+			}
+
+			return new JsonApiDocument<>(data, linksData);
+
 		} catch (RuntimeException e) {
 			throw e;
 		} catch (Exception e) {
@@ -199,39 +285,28 @@ public class ResourceConverter {
 
 	/**
 	 * Converts raw-data input into a collection of requested output objects.
-	 * @param data raw-data input
+	 *
+	 * @param bytes raw-data input
 	 * @param clazz target type
-	 * @param <T>
 	 * @return collection of converted elements
 	 * @throws RuntimeException in case conversion fails
 	 */
-	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
-		try {
-			resourceCache.init();
+	public <T> JsonApiDocument<List<T>> readCollectionDocument(byte[] bytes, Class<T> clazz) {
 
-			JsonNode rootNode = objectMapper.readTree(data);
+		return readDocument(bytes, new JsonApiCollectionParser<>(clazz));
+	}
 
-			// Validate
-			ValidationUtils.ensureNotError(rootNode);
-			ValidationUtils.ensureCollection(rootNode);
+	public <T> List<T> readObjectCollection(byte[] bytes, Class<T> clazz) {
 
-			resourceCache.cache(parseIncluded(rootNode));
+		return readCollectionDocument(bytes, clazz).getData();
+	}
 
-			List<T> result = new ArrayList<>();
+	public <T> JsonApiDocument<T> readObjectDocument(byte[] bytes, Class<T> clazz) {
+		return readDocument(bytes, new JsonApiResourceParser<>(clazz));
+	}
 
-			for (JsonNode element : rootNode.get(DATA)) {
-				T pojo = readObject(element, clazz, true);
-				result.add(pojo);
-			}
-
-			return result;
-		} catch (RuntimeException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		} finally {
-			resourceCache.clear();
-		}
+	public <T> T readObject(byte[] bytes, Class<T> clazz) {
+		return readObjectDocument(bytes, clazz).getData();
 	}
 
 	/**
@@ -266,6 +341,11 @@ public class ResourceConverter {
 				// Handle relationships
 				handleRelationships(source, result);
 			}
+		}
+
+		Field metaField = META_FIELD.get(clazz);
+		if (metaField != null) {
+			setMetaFrom(result, clazz, metaField, source);
 		}
 
 		return result;
