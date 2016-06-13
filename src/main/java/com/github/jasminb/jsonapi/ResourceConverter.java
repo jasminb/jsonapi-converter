@@ -1,11 +1,14 @@
 package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.type.MapType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
@@ -37,7 +40,9 @@ public class ResourceConverter {
 	private static final Map<Class<?>, Map<String, Field>> RELATIONSHIP_FIELD_MAP = new HashMap<>();
 	private static final Map<Field, Relationship> FIELD_RELATIONSHIP_MAP = new HashMap<>();
 	private static final Map<Class<?>, Class<?>> META_TYPE_MAP = new HashMap<>();
-	private static final Map<Class<?>, Field> META_FIELD = new HashMap<>();
+	private static final Map<Class<?>, Field> META_FIELD_MAP = new HashMap<>();
+	private static final Map<Class<?>, Field> LINK_FIELD_MAP = new HashMap<>();
+
 
 	private ObjectMapper objectMapper;
 
@@ -46,10 +51,23 @@ public class ResourceConverter {
 
 	private ResourceCache resourceCache;
 
+	/**
+	 * Creates new ResourceConverter.
+	 * <p>
+	 *     All classes that should be handled by instance of {@link ResourceConverter} must be registered
+	 *     when creating a new instance of it.
+	 * </p>
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 */
 	public ResourceConverter(Class<?>... classes) {
 		this(null, classes);
 	}
 
+	/**
+	 * Creates new ResourceConverter.
+	 * @param mapper {@link ObjectMapper} custom mapper to be used for resource parsing
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 */
 	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
 		for (Class<?> clazz : classes) {
 			if (clazz.isAnnotationPresent(Type.class)) {
@@ -96,19 +114,41 @@ public class ResourceConverter {
 
 				}
 
-				// collecting Meta fields
+				// Collecting Meta fields
 				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class, true);
-				if (metaFields.size() > 1) {
-					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
-							clazz.getCanonicalName()));
-				}
 				if (metaFields.size() == 1) {
 					Field metaField = metaFields.get(0);
 					metaField.setAccessible(true);
 					Class<?> metaType = ReflectionUtils.getFieldType(metaField);
 					META_TYPE_MAP.put(clazz, metaType);
-					META_FIELD.put(clazz, metaField);
+					META_FIELD_MAP.put(clazz, metaField);
+				} else if (metaFields.size() > 1) {
+					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
+							clazz.getCanonicalName()));
 				}
+
+				// Collect and handle 'Link' field
+				List<Field> linkFields = ReflectionUtils.getAnnotatedFields(clazz,
+						com.github.jasminb.jsonapi.annotations.Links.class, true);
+
+				if (linkFields.size() == 1) {
+					Field linkField = linkFields.get(0);
+					linkField.setAccessible(true);
+
+					Class<?> metaType = ReflectionUtils.getFieldType(linkField);
+
+					if (!Links.class.isAssignableFrom(metaType)) {
+						throw new IllegalArgumentException(String.format("%s is not allowed to be used as @Links " +
+								"attribute. Only com.github.jasminb.jsonapi.Links or its derivatives" +
+								" can be annotated as @Links", metaType.getCanonicalName()));
+					} else {
+						LINK_FIELD_MAP.put(clazz, linkField);
+					}
+				} else if (linkFields.size() > 1) {
+					throw new IllegalArgumentException(String.format("Only one links field is allowed for type '%s'",
+							clazz.getCanonicalName()));
+				}
+
 			} else {
 				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
 			}
@@ -154,14 +194,13 @@ public class ResourceConverter {
 	}
 
 	/**
-	 * Converts raw data input into requested target type.
-	 * @param data raw-data
-	 * @param clazz target object
-	 * @param <T>
-	 * @return converted object
-	 * @throws RuntimeException in case conversion fails
+	 * Reads JSON API spec document and converts it into target type.
+	 * @param data {@link byte} raw data (server response)
+	 * @param clazz {@link Class} target type
+	 * @param <T> type
+	 * @return {@link JsonApiDocument}
 	 */
-	public <T> T readObject(byte [] data, Class<T> clazz) {
+	public <T> JsonApiDocument<T> readDocument(byte [] data, Class<T> clazz) {
 		try {
 			resourceCache.init();
 
@@ -175,16 +214,20 @@ public class ResourceConverter {
 
 			JsonNode dataNode = rootNode.get(DATA);
 
-			T result = readObject(dataNode, clazz, true);
 
-			// handling of meta node
+			T resourceObject = readObject(dataNode, clazz, true);
+
+			JsonApiDocument<T> result = new JsonApiDocument<>(resourceObject);
+
+
+			// Handle top-level meta
 			if (rootNode.has(META)) {
-				Field field = META_FIELD.get(clazz);
-				if (field != null) {
-					Class<?> metaType = META_TYPE_MAP.get(clazz);
-					Object metaObject = objectMapper.treeToValue(rootNode.get(META), metaType);
-					field.set(result, metaObject);
-				}
+				result.setMeta(mapMeta(rootNode.get(META)));
+			}
+
+			// Handle top-level links
+			if (rootNode.has(LINKS)) {
+				result.setLinks(new Links(mapLinks(rootNode.get(LINKS))));
 			}
 
 			return result;
@@ -198,14 +241,13 @@ public class ResourceConverter {
 	}
 
 	/**
-	 * Converts raw-data input into a collection of requested output objects.
-	 * @param data raw-data input
-	 * @param clazz target type
-	 * @param <T>
-	 * @return collection of converted elements
-	 * @throws RuntimeException in case conversion fails
+	 * Reads JSON API spec document and converts it into collection of target type objects.
+	 * @param data {@link byte} raw data (server response)
+	 * @param clazz {@link Class} target type
+	 * @param <T> type
+	 * @return {@link JsonApiDocument}
 	 */
-	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
+	public <T> JsonApiDocument<List<T>> readDocumentCollection(byte [] data, Class<T> clazz) {
 		try {
 			resourceCache.init();
 
@@ -217,11 +259,23 @@ public class ResourceConverter {
 
 			resourceCache.cache(parseIncluded(rootNode));
 
-			List<T> result = new ArrayList<>();
+			List<T> resourceList = new ArrayList<>();
 
 			for (JsonNode element : rootNode.get(DATA)) {
 				T pojo = readObject(element, clazz, true);
-				result.add(pojo);
+				resourceList.add(pojo);
+			}
+
+			JsonApiDocument<List<T>> result = new JsonApiDocument<>(resourceList);
+
+			// Handle top-level meta
+			if (rootNode.has(META)) {
+				result.setMeta(mapMeta(rootNode.get(META)));
+			}
+
+			// Handle top-level links
+			if (rootNode.has(LINKS)) {
+				result.setLinks(new Links(mapLinks(rootNode.get(LINKS))));
 			}
 
 			return result;
@@ -232,6 +286,30 @@ public class ResourceConverter {
 		} finally {
 			resourceCache.clear();
 		}
+	}
+
+	/**
+	 * Converts raw data input into requested target type.
+	 * @param data raw-data
+	 * @param clazz target object
+	 * @param <T>
+	 * @return converted object
+	 * @throws RuntimeException in case conversion fails
+	 */
+	public <T> T readObject(byte [] data, Class<T> clazz) {
+		return readDocument(data, clazz).get();
+	}
+
+	/**
+	 * Converts raw-data input into a collection of requested output objects.
+	 * @param data raw-data input
+	 * @param clazz target type
+	 * @param <T>
+	 * @return collection of converted elements
+	 * @throws RuntimeException in case conversion fails
+	 */
+	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
+		return readDocumentCollection(data, clazz).get();
 	}
 
 	/**
@@ -254,6 +332,24 @@ public class ResourceConverter {
 				result = objectMapper.treeToValue(source.get(ATTRIBUTES), clazz);
 			} else {
 				result = clazz.newInstance();
+			}
+
+			// Handle meta
+			if (source.has(META)) {
+				Field field = META_FIELD_MAP.get(clazz);
+				if (field != null) {
+					Class<?> metaType = META_TYPE_MAP.get(clazz);
+					Object metaObject = objectMapper.treeToValue(source.get(META), metaType);
+					field.set(result, metaObject);
+				}
+			}
+
+			// Handle links
+			if (source.has(LINKS)) {
+				Field linkField = LINK_FIELD_MAP.get(clazz);
+				if (linkField != null) {
+					linkField.set(result, new Links(mapLinks(source.get(LINKS))));
+				}
 			}
 
 			// Add parsed object to cache
@@ -513,7 +609,7 @@ public class ResourceConverter {
 		Field idField = ID_MAP.get(object.getClass());
 		attributesNode.remove(idField.getName());
 
-		Field metaField = META_FIELD.get(object.getClass());
+		Field metaField = META_FIELD_MAP.get(object.getClass());
 		if (metaField != null) {
 			attributesNode.remove(metaField.getName());
 		}
@@ -649,5 +745,82 @@ public class ResourceConverter {
 		public Object getObject() {
 			return object;
 		}
+	}
+
+	/**
+	 * Deserializes a <a href="http://jsonapi.org/format/#document-links">JSON-API links object</a> to a {@code Map}
+	 * keyed by the link name.
+	 * <p>
+	 * The {@code linksObject} may represent links in string form or object form; both are supported by this method.
+	 * </p>
+	 * <p>
+	 * E.g.
+	 * <pre>
+	 * "links": {
+	 *   "self": "http://example.com/posts"
+	 * }
+	 * </pre>
+	 * </p>
+	 * <p>
+	 * or
+	 * <pre>
+	 * "links": {
+	 *   "related": {
+	 *     "href": "http://example.com/articles/1/comments",
+	 *     "meta": {
+	 *       "count": 10
+	 *     }
+	 *   }
+	 * }
+	 * </pre>
+	 * </p>
+	 *
+	 * @param linksObject a {@code JsonNode} representing a links object
+	 * @return a {@code Map} keyed by link name
+	 */
+	private Map<String, Link> mapLinks(JsonNode linksObject) {
+		Map<String, Link> result = new HashMap<>();
+
+		Iterator<Map.Entry<String, JsonNode>> linkItr = linksObject.fields();
+
+		while (linkItr.hasNext()) {
+			Map.Entry<String, JsonNode> linkNode = linkItr.next();
+			Link linkObj = new Link();
+
+			linkObj.setHref(
+					getLink(
+							linkNode.getValue()));
+
+			if (linkNode.getValue().has(META)) {
+				linkObj.setMeta(
+						mapMeta(
+								linkNode.getValue().get(META)));
+			}
+
+			result.put(linkNode.getKey(), linkObj);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Deserializes a <a href="http://jsonapi.org/format/#document-meta">JSON-API meta object</a> to a {@code Map}
+	 * keyed by the member names.  Because {@code meta} objects contain arbitrary information, the values in the
+	 * map are of unknown type.
+	 *
+	 * @param metaNode a JsonNode representing a meta object
+	 * @return a Map of the meta information, keyed by member name.
+	 */
+	private Map<String, ?> mapMeta(JsonNode metaNode) {
+		JsonParser p = objectMapper.treeAsTokens(metaNode);
+		MapType mapType = TypeFactory.defaultInstance()
+				.constructMapType(HashMap.class, String.class, Object.class);
+		try {
+			return objectMapper.readValue(p, mapType);
+		} catch (IOException e) {
+			// TODO: log? No recovery.
+		}
+
+		return null;
 	}
 }
