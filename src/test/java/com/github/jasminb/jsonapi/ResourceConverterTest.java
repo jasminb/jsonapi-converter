@@ -98,7 +98,7 @@ public class ResourceConverterTest {
 	public void testReadWithMetaAndLinksSection() throws IOException {
 		String apiResponse = IOUtils.getResourceAsString("user-with-meta.json");
 
-		JsonApiDocument<User> document = converter.readDocument(apiResponse.getBytes(), User.class);
+		JSONAPIDocument<User> document = converter.readDocument(apiResponse.getBytes(), User.class);
 
 		Assert.assertNotNull(document.getMeta());
 		Assert.assertEquals("asdASD123", document.getMeta().get("token"));

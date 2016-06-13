@@ -198,9 +198,9 @@ public class ResourceConverter {
 	 * @param data {@link byte} raw data (server response)
 	 * @param clazz {@link Class} target type
 	 * @param <T> type
-	 * @return {@link JsonApiDocument}
+	 * @return {@link JSONAPIDocument}
 	 */
-	public <T> JsonApiDocument<T> readDocument(byte [] data, Class<T> clazz) {
+	public <T> JSONAPIDocument<T> readDocument(byte [] data, Class<T> clazz) {
 		try {
 			resourceCache.init();
 
@@ -217,7 +217,7 @@ public class ResourceConverter {
 
 			T resourceObject = readObject(dataNode, clazz, true);
 
-			JsonApiDocument<T> result = new JsonApiDocument<>(resourceObject);
+			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject);
 
 
 			// Handle top-level meta
@@ -245,9 +245,9 @@ public class ResourceConverter {
 	 * @param data {@link byte} raw data (server response)
 	 * @param clazz {@link Class} target type
 	 * @param <T> type
-	 * @return {@link JsonApiDocument}
+	 * @return {@link JSONAPIDocument}
 	 */
-	public <T> JsonApiDocument<List<T>> readDocumentCollection(byte [] data, Class<T> clazz) {
+	public <T> JSONAPIDocument<List<T>> readDocumentCollection(byte [] data, Class<T> clazz) {
 		try {
 			resourceCache.init();
 
@@ -266,7 +266,7 @@ public class ResourceConverter {
 				resourceList.add(pojo);
 			}
 
-			JsonApiDocument<List<T>> result = new JsonApiDocument<>(resourceList);
+			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {

@@ -10,7 +10,7 @@ import java.util.Map;
  * @param <T> the type parameter
  * @author jbegic
  */
-public class JsonApiDocument<T> {
+public class JSONAPIDocument<T> {
 	private T data;
 
 	/**
@@ -29,7 +29,10 @@ public class JsonApiDocument<T> {
 	 *
 	 * @param data {@link T} API resource type
 	 */
-	public JsonApiDocument(T data) {
+	public JSONAPIDocument(T data) {
+		if (data == null) {
+			throw new IllegalArgumentException("Data object must not be null reference");
+		}
 		this.data = data;
 	}
 
