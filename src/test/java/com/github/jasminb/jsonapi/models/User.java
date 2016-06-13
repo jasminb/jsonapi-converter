@@ -1,6 +1,7 @@
 package com.github.jasminb.jsonapi.models;
 
 import com.github.jasminb.jsonapi.annotations.Id;
+import com.github.jasminb.jsonapi.annotations.Links;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
@@ -27,6 +28,9 @@ public class User {
 
 	@Meta
 	public UserMeta meta;
+
+	@Links
+	public com.github.jasminb.jsonapi.Links links;
 
 	public String getId() {
 		return id;

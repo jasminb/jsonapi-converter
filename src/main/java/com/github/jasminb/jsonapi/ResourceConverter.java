@@ -40,7 +40,9 @@ public class ResourceConverter {
 	private static final Map<Class<?>, Map<String, Field>> RELATIONSHIP_FIELD_MAP = new HashMap<>();
 	private static final Map<Field, Relationship> FIELD_RELATIONSHIP_MAP = new HashMap<>();
 	private static final Map<Class<?>, Class<?>> META_TYPE_MAP = new HashMap<>();
-	private static final Map<Class<?>, Field> META_FIELD = new HashMap<>();
+	private static final Map<Class<?>, Field> META_FIELD_MAP = new HashMap<>();
+	private static final Map<Class<?>, Field> LINK_FIELD_MAP = new HashMap<>();
+
 
 	private ObjectMapper objectMapper;
 
@@ -49,10 +51,23 @@ public class ResourceConverter {
 
 	private ResourceCache resourceCache;
 
+	/**
+	 * Creates new ResourceConverter.
+	 * <p>
+	 *     All classes that should be handled by instance of {@link ResourceConverter} must be registered
+	 *     when creating a new instance of it.
+	 * </p>
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 */
 	public ResourceConverter(Class<?>... classes) {
 		this(null, classes);
 	}
 
+	/**
+	 * Creates new ResourceConverter.
+	 * @param mapper {@link ObjectMapper} custom mapper to be used for resource parsing
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 */
 	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
 		for (Class<?> clazz : classes) {
 			if (clazz.isAnnotationPresent(Type.class)) {
@@ -99,19 +114,41 @@ public class ResourceConverter {
 
 				}
 
-				// collecting Meta fields
+				// Collecting Meta fields
 				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class, true);
-				if (metaFields.size() > 1) {
-					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
-							clazz.getCanonicalName()));
-				}
 				if (metaFields.size() == 1) {
 					Field metaField = metaFields.get(0);
 					metaField.setAccessible(true);
 					Class<?> metaType = ReflectionUtils.getFieldType(metaField);
 					META_TYPE_MAP.put(clazz, metaType);
-					META_FIELD.put(clazz, metaField);
+					META_FIELD_MAP.put(clazz, metaField);
+				} else if (metaFields.size() > 1) {
+					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
+							clazz.getCanonicalName()));
 				}
+
+				// Collect and handle 'Link' field
+				List<Field> linkFields = ReflectionUtils.getAnnotatedFields(clazz,
+						com.github.jasminb.jsonapi.annotations.Links.class, true);
+
+				if (linkFields.size() == 1) {
+					Field linkField = linkFields.get(0);
+					linkField.setAccessible(true);
+
+					Class<?> metaType = ReflectionUtils.getFieldType(linkField);
+
+					if (!Links.class.isAssignableFrom(metaType)) {
+						throw new IllegalArgumentException(String.format("%s is not allowed to be used as @Links " +
+								"attribute. Only com.github.jasminb.jsonapi.Links or its derivatives" +
+								" can be annotated as @Links", metaType.getCanonicalName()));
+					} else {
+						LINK_FIELD_MAP.put(clazz, linkField);
+					}
+				} else if (linkFields.size() > 1) {
+					throw new IllegalArgumentException(String.format("Only one links field is allowed for type '%s'",
+							clazz.getCanonicalName()));
+				}
+
 			} else {
 				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
 			}
@@ -156,6 +193,13 @@ public class ResourceConverter {
 		}
 	}
 
+	/**
+	 * Reads JSON API spec document and converts it into target type.
+	 * @param data {@link byte} raw data (server response)
+	 * @param clazz {@link Class} target type
+	 * @param <T> type
+	 * @return {@link JsonApiDocument}
+	 */
 	public <T> JsonApiDocument<T> readDocument(byte [] data, Class<T> clazz) {
 		try {
 			resourceCache.init();
@@ -183,7 +227,7 @@ public class ResourceConverter {
 
 			// Handle top-level links
 			if (rootNode.has(LINKS)) {
-				result.setLinks(mapLinks(rootNode.get(LINKS)));
+				result.setLinks(new Links(mapLinks(rootNode.get(LINKS))));
 			}
 
 			return result;
@@ -196,6 +240,13 @@ public class ResourceConverter {
 		}
 	}
 
+	/**
+	 * Reads JSON API spec document and converts it into collection of target type objects.
+	 * @param data {@link byte} raw data (server response)
+	 * @param clazz {@link Class} target type
+	 * @param <T> type
+	 * @return {@link JsonApiDocument}
+	 */
 	public <T> JsonApiDocument<List<T>> readDocumentCollection(byte [] data, Class<T> clazz) {
 		try {
 			resourceCache.init();
@@ -224,7 +275,7 @@ public class ResourceConverter {
 
 			// Handle top-level links
 			if (rootNode.has(LINKS)) {
-				result.setLinks(mapLinks(rootNode.get(LINKS)));
+				result.setLinks(new Links(mapLinks(rootNode.get(LINKS))));
 			}
 
 			return result;
@@ -285,7 +336,7 @@ public class ResourceConverter {
 
 			// Handle meta
 			if (source.has(META)) {
-				Field field = META_FIELD.get(clazz);
+				Field field = META_FIELD_MAP.get(clazz);
 				if (field != null) {
 					Class<?> metaType = META_TYPE_MAP.get(clazz);
 					Object metaObject = objectMapper.treeToValue(source.get(META), metaType);
@@ -295,7 +346,10 @@ public class ResourceConverter {
 
 			// Handle links
 			if (source.has(LINKS)) {
-				//TODO: figure this one out (fixed/dynamic structure etc)
+				Field linkField = LINK_FIELD_MAP.get(clazz);
+				if (linkField != null) {
+					linkField.set(result, new Links(mapLinks(source.get(LINKS))));
+				}
 			}
 
 			// Add parsed object to cache
@@ -555,7 +609,7 @@ public class ResourceConverter {
 		Field idField = ID_MAP.get(object.getClass());
 		attributesNode.remove(idField.getName());
 
-		Field metaField = META_FIELD.get(object.getClass());
+		Field metaField = META_FIELD_MAP.get(object.getClass());
 		if (metaField != null) {
 			attributesNode.remove(metaField.getName());
 		}

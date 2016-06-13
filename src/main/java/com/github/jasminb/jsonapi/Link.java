@@ -75,4 +75,8 @@ public class Link {
         this.meta = meta;
     }
 
+	@Override
+	public String toString() {
+		return String.valueOf(getHref());
+	}
 }

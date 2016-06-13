@@ -95,7 +95,7 @@ public class ResourceConverterTest {
 	}
 
 	@Test
-	public void testReadWithMetaSection() throws IOException {
+	public void testReadWithMetaAndLinksSection() throws IOException {
 		String apiResponse = IOUtils.getResourceAsString("user-with-meta.json");
 
 		JsonApiDocument<User> document = converter.readDocument(apiResponse.getBytes(), User.class);
@@ -105,6 +105,16 @@ public class ResourceConverterTest {
 
 		Assert.assertNotNull(document.get().getMeta());
 		Assert.assertEquals("asdASD123", document.get().getMeta().getToken());
+
+		// Assert top level link data
+		Assert.assertNotNull(document.getLinks());
+		Assert.assertEquals("href", document.getLinks().getRelated().getHref());
+		Assert.assertEquals(10, document.getLinks().getRelated().getMeta().get("count"));
+
+		// Assert document level link data
+		Assert.assertNotNull(document.get().links);
+		Assert.assertEquals("href", document.get().links.getRelated().getHref());
+		Assert.assertEquals(10, document.get().links.getRelated().getMeta().get("count"));
 	}
 
 	@Test
