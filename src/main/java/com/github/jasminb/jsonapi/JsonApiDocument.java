@@ -3,7 +3,6 @@ package com.github.jasminb.jsonapi;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * JSON API Document wrapper.
@@ -23,37 +22,58 @@ public class JsonApiDocument<T> {
 	 */
 	private Map<String, ?> meta = Collections.emptyMap();
 
+
+	/**
+	 * Creates new JsonApiDocument.
+	 * @param data {@link T} API resource type
+	 */
 	public JsonApiDocument(T data) {
 		this.data = data;
 	}
 
-	public JsonApiDocument(T data, Objects links) {
-		this(data);
-	}
-
+	/**
+	 * Gets resource object
+	 * @return {@link T} resource object
+	 */
 	public T get() {
 		return data;
 	}
 
+	/**
+	 * Gets all registered links.
+	 * @return {@link Map} link data
+	 */
 	public Map<String, Link> getLinks() {
 		return links;
 	}
 
+	/**
+	 * Sets link data.
+	 * @param links {@link Map} link data
+	 */
 	public void setLinks(Map<String, Link> links) {
 		this.links = new HashMap<>(links);
 	}
 
+	/**
+	 * Get meta data.
+	 * @return {@link Map} meta
+	 */
 	public Map<String, ?> getMeta() {
 		return meta;
 	}
 
+	/**
+	 * Sets meta data.
+	 * @param meta {@link Map} meta
+	 */
 	public void setMeta(Map<String, ?> meta) {
 		this.meta = new HashMap<>(meta);
 	}
 
 	/**
 	 * Convenience method for returning the value of the named link.
-	 *
+	 * @param linkName name of the link to return
 	 * @return the link value, or {@code null} if the named link does not exist or has no value
 	 */
 	public String getLink(String linkName) {

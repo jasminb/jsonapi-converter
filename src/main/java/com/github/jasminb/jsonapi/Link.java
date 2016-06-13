@@ -12,32 +12,66 @@ public class Link {
 
     private Map<String, ?> meta = Collections.emptyMap();
 
-    public Link() {
-
+	/**
+	 * Creates new Link.
+	 */
+	public Link() {
+        // Empty CTOR
     }
 
-    public Link(String href) {
+	/**
+	 * Creates new Link.
+	 *
+	 * @param href {@link String} link value
+	 */
+	public Link(String href) {
         this.href = href;
     }
 
-    public Link(String href, Map<String, ?> meta) {
+	/**
+	 * Creates new Link.
+	 *
+	 * @param href {@link String} link value
+	 * @param meta {@link Map} link meta
+	 */
+	public Link(String href, Map<String, ?> meta) {
         this.href = href;
         this.meta = meta;
     }
 
-    public String getHref() {
+	/**
+	 * Gets href.
+	 *
+	 * @return the href
+	 */
+	public String getHref() {
         return href;
     }
 
-    public void setHref(String href) {
+	/**
+	 * Sets href.
+	 *
+	 * @param href the href
+	 */
+	public void setHref(String href) {
         this.href = href;
     }
 
-    public Map<String, ?> getMeta() {
+	/**
+	 * Gets meta.
+	 *
+	 * @return the meta
+	 */
+	public Map<String, ?> getMeta() {
         return meta;
     }
 
-    public void setMeta(Map<String, ?> meta) {
+	/**
+	 * Sets meta.
+	 *
+	 * @param meta the meta
+	 */
+	public void setMeta(Map<String, ?> meta) {
         this.meta = meta;
     }
 
