@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
 
@@ -50,6 +51,8 @@ public class ResourceConverter {
 	private Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
 
 	private ResourceCache resourceCache;
+
+	private Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
 
 	/**
 	 * Creates new ResourceConverter.
@@ -555,9 +558,20 @@ public class ResourceConverter {
 	 * @return concatenated id and type values
 	 */
 	private String createIdentifier(JsonNode object) {
-		Object id = object.get(ID).asText();
+		JsonNode idNode = object.get(ID);
+
+		String id = "";
+		if (idNode != null) {
+			id = idNode.asText().trim();
+		}
+
+		if ((id == null || id.isEmpty()) &&
+				deserializationFeatures.contains(DeserializationFeature.REQUIRE_RESOURCE_ID)) {
+			throw new IllegalArgumentException("Resource must have an non null and non-empty 'id' attribute!");
+		}
+
 		String type = object.get(TYPE).asText();
-		return type.concat(id.toString());
+		return type.concat(id);
 	}
 
 	/**
@@ -570,7 +584,9 @@ public class ResourceConverter {
 		Field idField = ID_MAP.get(target.getClass());
 
 		// By specification, id value is always a String type
-		idField.set(target, idValue.asText());
+		if (idValue != null) {
+			idField.set(target, idValue.asText());
+		}
 	}
 
 	/**
@@ -822,5 +838,21 @@ public class ResourceConverter {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Adds (enables) new deserialization option.
+	 * @param option {@link DeserializationFeature} option
+	 */
+	public void enableDeserialisationOption(DeserializationFeature option) {
+		this.deserializationFeatures.add(option);
+	}
+
+	/**
+	 * Removes (disables) existing deserialization option.
+	 * @param option
+	 */
+	public void disableDeserialisationOption(DeserializationFeature option) {
+		this.deserializationFeatures.remove(option);
 	}
 }

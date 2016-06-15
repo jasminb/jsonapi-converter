@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -385,6 +386,28 @@ public class ResourceConverterTest {
 		Assert.assertEquals(link, converter.getLink(linkNode));
 		linkNode = mapper.readTree("null");
 		Assert.assertNull(converter.getLink(linkNode));
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testEnforceIdDeserializationOption() throws IOException {
+		String rawData = IOUtils.getResourceAsString("user-john-no-id.json");
+		converter.readDocument(rawData.getBytes(StandardCharsets.UTF_8), User.class);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testEnforceIdDeserializationOptionEmptyId() throws IOException {
+		String rawData = IOUtils.getResourceAsString("user-john-empty-id.json");
+		converter.readDocument(rawData.getBytes(StandardCharsets.UTF_8), User.class);
+	}
+
+	@Test
+	public void testDisableEnforceIdDeserialisationOption() throws  Exception {
+		converter.disableDeserialisationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
+
+		String rawData = IOUtils.getResourceAsString("user-john-no-id.json");
+		User user = converter.readDocument(rawData.getBytes(StandardCharsets.UTF_8), User.class).get();
+		Assert.assertNotNull(user);
+		Assert.assertEquals("john", user.getName());
 	}
 
 	/**
