@@ -73,88 +73,7 @@ public class ResourceConverter {
 	 */
 	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
 		for (Class<?> clazz : classes) {
-			if (clazz.isAnnotationPresent(Type.class)) {
-				Type annotation = clazz.getAnnotation(Type.class);
-				TYPE_TO_CLASS_MAPPING.put(annotation.value(), clazz);
-				TYPE_ANNOTATIONS.put(clazz, annotation);
-				RELATIONSHIP_TYPE_MAP.put(clazz, new HashMap<String, Class<?>>());
-				RELATIONSHIP_FIELD_MAP.put(clazz, new HashMap<String, Field>());
-
-				// collecting Relationship fields
-				List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
-
-				for (Field relationshipField : relationshipFields) {
-					relationshipField.setAccessible(true);
-
-					Relationship relationship = relationshipField.getAnnotation(Relationship.class);
-					Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
-					RELATIONSHIP_TYPE_MAP.get(clazz).put(relationship.value(), targetType);
-					RELATIONSHIP_FIELD_MAP.get(clazz).put(relationship.value(), relationshipField);
-					FIELD_RELATIONSHIP_MAP.put(relationshipField, relationship);
-					if (relationship.resolve() && relationship.relType() == null) {
-						throw new IllegalArgumentException("@Relationship on " + clazz.getName() + "#" +
-								relationshipField.getName() + " with 'resolve = true' must have a relType attribute " +
-								"set." );
-					}
-				}
-
-				RELATIONSHIPS_MAP.put(clazz, relationshipFields);
-
-				// collecting Id fields
-				List<Field> idAnnotatedFields = ReflectionUtils.getAnnotatedFields(clazz, Id.class, true);
-
-				if (!idAnnotatedFields.isEmpty() && idAnnotatedFields.size() == 1) {
-					Field idField = idAnnotatedFields.get(0);
-					idField.setAccessible(true);
-					ID_MAP.put(clazz, idField);
-				} else {
-					if (idAnnotatedFields.isEmpty()) {
-						throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
-								"@Id annotation");
-					} else {
-						throw new IllegalArgumentException("Only single @Id annotation is allowed per defined type!");
-					}
-
-				}
-
-				// Collecting Meta fields
-				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class, true);
-				if (metaFields.size() == 1) {
-					Field metaField = metaFields.get(0);
-					metaField.setAccessible(true);
-					Class<?> metaType = ReflectionUtils.getFieldType(metaField);
-					META_TYPE_MAP.put(clazz, metaType);
-					META_FIELD_MAP.put(clazz, metaField);
-				} else if (metaFields.size() > 1) {
-					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
-							clazz.getCanonicalName()));
-				}
-
-				// Collect and handle 'Link' field
-				List<Field> linkFields = ReflectionUtils.getAnnotatedFields(clazz,
-						com.github.jasminb.jsonapi.annotations.Links.class, true);
-
-				if (linkFields.size() == 1) {
-					Field linkField = linkFields.get(0);
-					linkField.setAccessible(true);
-
-					Class<?> metaType = ReflectionUtils.getFieldType(linkField);
-
-					if (!Links.class.isAssignableFrom(metaType)) {
-						throw new IllegalArgumentException(String.format("%s is not allowed to be used as @Links " +
-								"attribute. Only com.github.jasminb.jsonapi.Links or its derivatives" +
-								" can be annotated as @Links", metaType.getCanonicalName()));
-					} else {
-						LINK_FIELD_MAP.put(clazz, linkField);
-					}
-				} else if (linkFields.size() > 1) {
-					throw new IllegalArgumentException(String.format("Only one links field is allowed for type '%s'",
-							clazz.getCanonicalName()));
-				}
-
-			} else {
-				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
-			}
+			processClass(clazz);
 		}
 
 		// Set custom mapper if provided
@@ -167,6 +86,97 @@ public class ResourceConverter {
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
 		resourceCache = new ResourceCache();
+	}
+
+	private void processClass(Class<?> clazz)
+	{
+		if (clazz.isAnnotationPresent(Type.class)) {
+			Type annotation = clazz.getAnnotation(Type.class);
+			TYPE_TO_CLASS_MAPPING.put(annotation.value(), clazz);
+			TYPE_ANNOTATIONS.put(clazz, annotation);
+			RELATIONSHIP_TYPE_MAP.put(clazz, new HashMap<String, Class<?>>());
+			RELATIONSHIP_FIELD_MAP.put(clazz, new HashMap<String, Field>());
+
+			// collecting Relationship fields
+			List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
+
+			for (Field relationshipField : relationshipFields) {
+				relationshipField.setAccessible(true);
+
+				Relationship relationship = relationshipField.getAnnotation(Relationship.class);
+				Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
+				RELATIONSHIP_TYPE_MAP.get(clazz).put(relationship.value(), targetType);
+				RELATIONSHIP_FIELD_MAP.get(clazz).put(relationship.value(), relationshipField);
+				FIELD_RELATIONSHIP_MAP.put(relationshipField, relationship);
+				if (relationship.resolve() && relationship.relType() == null) {
+					throw new IllegalArgumentException("@Relationship on " + clazz.getName() + "#" +
+							relationshipField.getName() + " with 'resolve = true' must have a relType attribute " +
+							"set." );
+				}
+			}
+
+			RELATIONSHIPS_MAP.put(clazz, relationshipFields);
+
+			// collecting Id fields
+			List<Field> idAnnotatedFields = ReflectionUtils.getAnnotatedFields(clazz, Id.class, true);
+
+			if (!idAnnotatedFields.isEmpty() && idAnnotatedFields.size() == 1) {
+				Field idField = idAnnotatedFields.get(0);
+				idField.setAccessible(true);
+				ID_MAP.put(clazz, idField);
+			} else {
+				if (idAnnotatedFields.isEmpty()) {
+					throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
+							"@Id annotation");
+				} else {
+					throw new IllegalArgumentException("Only single @Id annotation is allowed per defined type!");
+				}
+
+			}
+
+			// Collecting Meta fields
+			List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class, true);
+			if (metaFields.size() == 1) {
+				Field metaField = metaFields.get(0);
+				metaField.setAccessible(true);
+				Class<?> metaType = ReflectionUtils.getFieldType(metaField);
+				META_TYPE_MAP.put(clazz, metaType);
+				META_FIELD_MAP.put(clazz, metaField);
+			} else if (metaFields.size() > 1) {
+				throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
+						clazz.getCanonicalName()));
+			}
+
+			// Collect and handle 'Link' field
+			List<Field> linkFields = ReflectionUtils.getAnnotatedFields(clazz,
+					com.github.jasminb.jsonapi.annotations.Links.class, true);
+
+			if (linkFields.size() == 1) {
+				Field linkField = linkFields.get(0);
+				linkField.setAccessible(true);
+
+				Class<?> metaType = ReflectionUtils.getFieldType(linkField);
+
+				if (!Links.class.isAssignableFrom(metaType)) {
+					throw new IllegalArgumentException(String.format("%s is not allowed to be used as @Links " +
+							"attribute. Only com.github.jasminb.jsonapi.Links or its derivatives" +
+							" can be annotated as @Links", metaType.getCanonicalName()));
+				} else {
+					LINK_FIELD_MAP.put(clazz, linkField);
+				}
+			} else if (linkFields.size() > 1) {
+				throw new IllegalArgumentException(String.format("Only one links field is allowed for type '%s'",
+						clazz.getCanonicalName()));
+			}
+
+		} else {
+			throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
+		}
+	}
+
+	public void registerClass(Class<?> clazz)
+	{
+		processClass(clazz);
 	}
 
 	/**
