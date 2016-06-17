@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
-import com.squareup.okhttp.ResponseBody;
+import okhttp3.ResponseBody;
 
 import java.io.IOException;
 
