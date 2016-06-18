@@ -15,7 +15,7 @@ public enum DeserializationFeature {
 	 */
 	REQUIRE_RESOURCE_ID(true);
 
-	boolean enabled;
+	final boolean enabled;
 
 	DeserializationFeature(boolean enabled) {
 		this.enabled = enabled;
@@ -23,7 +23,7 @@ public enum DeserializationFeature {
 
 	/**
 	 * Returns set of features that are enabled by default.
-	 * @return
+	 * @return returns features that are enabled by default
 	 */
 	public static Set<DeserializationFeature> getDefaultFeatures() {
 		Set<DeserializationFeature> result = new HashSet<>();

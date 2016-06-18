@@ -26,7 +26,7 @@ public class ConverterConfiguration {
 	private final Map<Class<?>, Field> idMap = new HashMap<>();
 	private final Map<Class<?>, List<Field>> relationshipMap = new HashMap<>();
 	private final Map<Class<?>, Map<String, Class<?>>> relationshipTypeMap = new HashMap<>();
-	private final Map<Class<?>, Map<String, Field>> relationshipFieldmap = new HashMap<>();
+	private final Map<Class<?>, Map<String, Field>> relationshipFieldMap = new HashMap<>();
 	private final Map<Field, Relationship> fieldRelationshipMap = new HashMap<>();
 	private final Map<Class<?>, Class<?>> metaTypeMap = new HashMap<>();
 	private final Map<Class<?>, Field> metaFieldMap = new HashMap<>();
@@ -48,7 +48,7 @@ public class ConverterConfiguration {
 			typeToClassMapping.put(annotation.value(), clazz);
 			typeAnnotations.put(clazz, annotation);
 			relationshipTypeMap.put(clazz, new HashMap<String, Class<?>>());
-			relationshipFieldmap.put(clazz, new HashMap<String, Field>());
+			relationshipFieldMap.put(clazz, new HashMap<String, Field>());
 
 			// collecting Relationship fields
 			List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
@@ -59,7 +59,7 @@ public class ConverterConfiguration {
 				Relationship relationship = relationshipField.getAnnotation(Relationship.class);
 				Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
 				relationshipTypeMap.get(clazz).put(relationship.value(), targetType);
-				relationshipFieldmap.get(clazz).put(relationship.value(), relationshipField);
+				relationshipFieldMap.get(clazz).put(relationship.value(), relationshipField);
 				fieldRelationshipMap.put(relationshipField, relationship);
 				if (relationship.resolve() && relationship.relType() == null) {
 					throw new IllegalArgumentException("@Relationship on " + clazz.getName() + "#" +
@@ -179,7 +179,7 @@ public class ConverterConfiguration {
 	 * @return {@link Field} field
 	 */
 	public Field getRelationshipField(Class<?> clazz, String fieldName) {
-		return relationshipFieldmap.get(clazz).get(fieldName);
+		return relationshipFieldMap.get(clazz).get(fieldName);
 	}
 
 	/**

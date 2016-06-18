@@ -17,7 +17,7 @@ import java.util.Map;
  * </p>
  * <p>
  *     If cache is used in recursive calls, it is safe to call <code>init()</code> and <code>clear()</code>
- *     multiple times. Init call will not purge current cache state in case it is called recursievly. Clear call will
+ *     multiple times. Init call will not purge current cache state in case it is called recursively. Clear call will
  *     clear cache state only if recursion exited (initDepth == 0).
  * </p>
  *
@@ -101,7 +101,7 @@ public class ResourceCache {
 	/**
 	 * Returns cached resource or <code>null</code> if resource was not found in cache.
 	 * @param identifier resource identifier
-	 * @return chached resource or <code>null</code>
+	 * @return cached resource or <code>null</code>
 	 */
 	public Object get(String identifier) {
 		verifyState();

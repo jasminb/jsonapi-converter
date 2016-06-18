@@ -30,17 +30,13 @@ import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
  * @author jbegic
  */
 public class ResourceConverter {
-
-	private ConverterConfiguration configuration;
-
-	private ObjectMapper objectMapper;
+	private final ConverterConfiguration configuration;
+	private final ObjectMapper objectMapper;
+	private final Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
+	private final ResourceCache resourceCache;
+	private final Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
 
 	private RelationshipResolver globalResolver;
-	private Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
-
-	private ResourceCache resourceCache;
-
-	private Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
 
 	/**
 	 * Creates new ResourceConverter.
@@ -200,7 +196,7 @@ public class ResourceConverter {
 	 * Converts raw data input into requested target type.
 	 * @param data raw-data
 	 * @param clazz target object
-	 * @param <T>
+	 * @param <T> type
 	 * @return converted object
 	 * @throws RuntimeException in case conversion fails
 	 */
@@ -213,7 +209,7 @@ public class ResourceConverter {
 	 * Converts raw-data input into a collection of requested output objects.
 	 * @param data raw-data input
 	 * @param clazz target type
-	 * @param <T>
+	 * @param <T> type
 	 * @return collection of converted elements
 	 * @throws RuntimeException in case conversion fails
 	 */
@@ -226,7 +222,7 @@ public class ResourceConverter {
 	 * Converts provided input into a target object. After conversion completes any relationships defined are resolved.
 	 * @param source JSON source
 	 * @param clazz target type
-	 * @param <T>
+	 * @param <T> type
 	 * @return converted target object
 	 * @throws IOException
 	 * @throws IllegalAccessException
@@ -378,9 +374,10 @@ public class ResourceConverter {
 
 						if (linkNode != null && ((link = getLink(linkNode)) != null)) {
 							if (isCollection(relationship)) {
-								relationshipField.set(object, readObjectCollection(resolver.resolve(link), type));
+								relationshipField.set(object,
+										readDocumentCollection(resolver.resolve(link), type).get());
 							} else {
-								relationshipField.set(object, readObject(resolver.resolve(link), type));
+								relationshipField.set(object, readDocument(resolver.resolve(link), type).get());
 							}
 						}
 					} else {
@@ -467,13 +464,9 @@ public class ResourceConverter {
 	private String createIdentifier(JsonNode object) {
 		JsonNode idNode = object.get(ID);
 
-		String id = "";
-		if (idNode != null) {
-			id = idNode.asText().trim();
-		}
+		String id = idNode != null ? idNode.asText().trim() : "";
 
-		if ((id == null || id.isEmpty()) &&
-				deserializationFeatures.contains(DeserializationFeature.REQUIRE_RESOURCE_ID)) {
+		if (id.isEmpty() && deserializationFeatures.contains(DeserializationFeature.REQUIRE_RESOURCE_ID)) {
 			throw new IllegalArgumentException("Resource must have an non null and non-empty 'id' attribute!");
 		}
 
@@ -752,15 +745,15 @@ public class ResourceConverter {
 	 * Adds (enables) new deserialization option.
 	 * @param option {@link DeserializationFeature} option
 	 */
-	public void enableDeserialisationOption(DeserializationFeature option) {
+	public void enableDeserializationOption(DeserializationFeature option) {
 		this.deserializationFeatures.add(option);
 	}
 
 	/**
 	 * Removes (disables) existing deserialization option.
-	 * @param option
+	 * @param option {@link DeserializationFeature} feature to disable
 	 */
-	public void disableDeserialisationOption(DeserializationFeature option) {
+	public void disableDeserializationOption(DeserializationFeature option) {
 		this.deserializationFeatures.remove(option);
 	}
 }

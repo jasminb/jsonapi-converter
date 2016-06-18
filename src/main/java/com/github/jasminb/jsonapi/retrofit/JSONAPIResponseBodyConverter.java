@@ -12,9 +12,9 @@ import java.io.IOException;
  * @author jbegic
  */
 public class JSONAPIResponseBodyConverter<T> implements Converter<ResponseBody, T> {
-	private Class<?> clazz;
-	private Boolean isCollection;
-	private ResourceConverter parser;
+	private final Class<?> clazz;
+	private final Boolean isCollection;
+	private final ResourceConverter parser;
 
 	public JSONAPIResponseBodyConverter(ResourceConverter parser, Class<?> clazz, boolean isCollection) {
 		this.clazz = clazz;
@@ -25,9 +25,9 @@ public class JSONAPIResponseBodyConverter<T> implements Converter<ResponseBody, 
 	@Override
 	public T convert(ResponseBody responseBody) throws IOException {
 		if (isCollection) {
-			return (T) parser.readObjectCollection(responseBody.bytes(), clazz);
+			return (T) parser.readDocumentCollection(responseBody.bytes(), clazz).get();
 		} else {
-			return (T) parser.readObject(responseBody.bytes(), clazz);
+			return (T) parser.readDocument(responseBody.bytes(), clazz).get();
 		}
 	}
 }

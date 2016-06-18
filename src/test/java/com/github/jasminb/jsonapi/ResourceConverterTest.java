@@ -402,7 +402,7 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testDisableEnforceIdDeserialisationOption() throws  Exception {
-		converter.disableDeserialisationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
+		converter.disableDeserializationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
 
 		String rawData = IOUtils.getResourceAsString("user-john-no-id.json");
 		User user = converter.readDocument(rawData.getBytes(StandardCharsets.UTF_8), User.class).get();
