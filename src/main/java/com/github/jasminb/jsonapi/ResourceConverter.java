@@ -9,10 +9,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.github.jasminb.jsonapi.annotations.Id;
-import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
-import com.github.jasminb.jsonapi.annotations.Type;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -33,17 +30,8 @@ import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
  * @author jbegic
  */
 public class ResourceConverter {
-	private static final Map<String, Class<?>> TYPE_TO_CLASS_MAPPING = new HashMap<>();
-	private static final Map<Class<?>, Type> TYPE_ANNOTATIONS = new HashMap<>();
-	private static final Map<Class<?>, Field> ID_MAP = new HashMap<>();
-	private static final Map<Class<?>, List<Field>> RELATIONSHIPS_MAP = new HashMap<>();
-	private static final Map<Class<?>, Map<String, Class<?>>> RELATIONSHIP_TYPE_MAP = new HashMap<>();
-	private static final Map<Class<?>, Map<String, Field>> RELATIONSHIP_FIELD_MAP = new HashMap<>();
-	private static final Map<Field, Relationship> FIELD_RELATIONSHIP_MAP = new HashMap<>();
-	private static final Map<Class<?>, Class<?>> META_TYPE_MAP = new HashMap<>();
-	private static final Map<Class<?>, Field> META_FIELD_MAP = new HashMap<>();
-	private static final Map<Class<?>, Field> LINK_FIELD_MAP = new HashMap<>();
 
+	private ConverterConfiguration configuration;
 
 	private ObjectMapper objectMapper;
 
@@ -72,90 +60,7 @@ public class ResourceConverter {
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
 	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
-		for (Class<?> clazz : classes) {
-			if (clazz.isAnnotationPresent(Type.class)) {
-				Type annotation = clazz.getAnnotation(Type.class);
-				TYPE_TO_CLASS_MAPPING.put(annotation.value(), clazz);
-				TYPE_ANNOTATIONS.put(clazz, annotation);
-				RELATIONSHIP_TYPE_MAP.put(clazz, new HashMap<String, Class<?>>());
-				RELATIONSHIP_FIELD_MAP.put(clazz, new HashMap<String, Field>());
-
-				// collecting Relationship fields
-				List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
-
-				for (Field relationshipField : relationshipFields) {
-					relationshipField.setAccessible(true);
-
-					Relationship relationship = relationshipField.getAnnotation(Relationship.class);
-					Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
-					RELATIONSHIP_TYPE_MAP.get(clazz).put(relationship.value(), targetType);
-					RELATIONSHIP_FIELD_MAP.get(clazz).put(relationship.value(), relationshipField);
-					FIELD_RELATIONSHIP_MAP.put(relationshipField, relationship);
-					if (relationship.resolve() && relationship.relType() == null) {
-						throw new IllegalArgumentException("@Relationship on " + clazz.getName() + "#" +
-								relationshipField.getName() + " with 'resolve = true' must have a relType attribute " +
-								"set." );
-					}
-				}
-
-				RELATIONSHIPS_MAP.put(clazz, relationshipFields);
-
-				// collecting Id fields
-				List<Field> idAnnotatedFields = ReflectionUtils.getAnnotatedFields(clazz, Id.class, true);
-
-				if (!idAnnotatedFields.isEmpty() && idAnnotatedFields.size() == 1) {
-					Field idField = idAnnotatedFields.get(0);
-					idField.setAccessible(true);
-					ID_MAP.put(clazz, idField);
-				} else {
-					if (idAnnotatedFields.isEmpty()) {
-						throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
-								"@Id annotation");
-					} else {
-						throw new IllegalArgumentException("Only single @Id annotation is allowed per defined type!");
-					}
-
-				}
-
-				// Collecting Meta fields
-				List<Field> metaFields = ReflectionUtils.getAnnotatedFields(clazz, Meta.class, true);
-				if (metaFields.size() == 1) {
-					Field metaField = metaFields.get(0);
-					metaField.setAccessible(true);
-					Class<?> metaType = ReflectionUtils.getFieldType(metaField);
-					META_TYPE_MAP.put(clazz, metaType);
-					META_FIELD_MAP.put(clazz, metaField);
-				} else if (metaFields.size() > 1) {
-					throw new IllegalArgumentException(String.format("Only one meta field is allowed for type '%s'",
-							clazz.getCanonicalName()));
-				}
-
-				// Collect and handle 'Link' field
-				List<Field> linkFields = ReflectionUtils.getAnnotatedFields(clazz,
-						com.github.jasminb.jsonapi.annotations.Links.class, true);
-
-				if (linkFields.size() == 1) {
-					Field linkField = linkFields.get(0);
-					linkField.setAccessible(true);
-
-					Class<?> metaType = ReflectionUtils.getFieldType(linkField);
-
-					if (!Links.class.isAssignableFrom(metaType)) {
-						throw new IllegalArgumentException(String.format("%s is not allowed to be used as @Links " +
-								"attribute. Only com.github.jasminb.jsonapi.Links or its derivatives" +
-								" can be annotated as @Links", metaType.getCanonicalName()));
-					} else {
-						LINK_FIELD_MAP.put(clazz, linkField);
-					}
-				} else if (linkFields.size() > 1) {
-					throw new IllegalArgumentException(String.format("Only one links field is allowed for type '%s'",
-							clazz.getCanonicalName()));
-				}
-
-			} else {
-				throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
-			}
-		}
+		this.configuration = new ConverterConfiguration(classes);
 
 		// Set custom mapper if provided
 		if (mapper != null) {
@@ -299,6 +204,7 @@ public class ResourceConverter {
 	 * @return converted object
 	 * @throws RuntimeException in case conversion fails
 	 */
+	@Deprecated
 	public <T> T readObject(byte [] data, Class<T> clazz) {
 		return readDocument(data, clazz).get();
 	}
@@ -311,6 +217,7 @@ public class ResourceConverter {
 	 * @return collection of converted elements
 	 * @throws RuntimeException in case conversion fails
 	 */
+	@Deprecated
 	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
 		return readDocumentCollection(data, clazz).get();
 	}
@@ -339,9 +246,9 @@ public class ResourceConverter {
 
 			// Handle meta
 			if (source.has(META)) {
-				Field field = META_FIELD_MAP.get(clazz);
+				Field field = configuration.getMetaField(clazz);
 				if (field != null) {
-					Class<?> metaType = META_TYPE_MAP.get(clazz);
+					Class<?> metaType = configuration.getMetaType(clazz);
 					Object metaObject = objectMapper.treeToValue(source.get(META), metaType);
 					field.set(result, metaObject);
 				}
@@ -349,7 +256,7 @@ public class ResourceConverter {
 
 			// Handle links
 			if (source.has(LINKS)) {
-				Field linkField = LINK_FIELD_MAP.get(clazz);
+				Field linkField = configuration.getLinksField(clazz);
 				if (linkField != null) {
 					linkField.set(result, new Links(mapLinks(source.get(LINKS))));
 				}
@@ -423,7 +330,7 @@ public class ResourceConverter {
 				String type = jsonNode.get(TYPE).asText();
 
 				if (type != null) {
-					Class<?> clazz = TYPE_TO_CLASS_MAPPING.get(type);
+					Class<?> clazz = configuration.getTypeClass(type);
 
 					if (clazz != null) {
 						Object object = readObject(jsonNode, clazz, false);
@@ -447,11 +354,11 @@ public class ResourceConverter {
 				String field = fields.next();
 
 				JsonNode relationship = relationships.get(field);
-				Field relationshipField = RELATIONSHIP_FIELD_MAP.get(object.getClass()).get(field);
+				Field relationshipField = configuration.getRelationshipField(object.getClass(), field);
 
 				if (relationshipField != null) {
 					// Get target type
-					Class<?> type = RELATIONSHIP_TYPE_MAP.get(object.getClass()).get(field);
+					Class<?> type = configuration.getRelationshipType(object.getClass(), field);
 
 					// In case type is not defined, relationship object cannot be processed
 					if (type == null) {
@@ -459,12 +366,12 @@ public class ResourceConverter {
 					}
 
 					// Get resolve flag
-					boolean resolveRelationship = FIELD_RELATIONSHIP_MAP.get(relationshipField).resolve();
+					boolean resolveRelationship = configuration.getFieldRelationship(relationshipField).resolve();
 					RelationshipResolver resolver = getResolver(type);
 
 					// Use resolver if possible
 					if (resolveRelationship && resolver != null && relationship.has(LINKS)) {
-						String relType = FIELD_RELATIONSHIP_MAP.get(relationshipField).relType().getRelName();
+						String relType = configuration.getFieldRelationship(relationshipField).relType().getRelName();
 						JsonNode linkNode = relationship.get(LINKS).get(relType);
 
 						String link;
@@ -581,7 +488,7 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException thrown in case target field is not accessible
 	 */
 	private void setIdValue(Object target, JsonNode idValue) throws IllegalAccessException {
-		Field idField = ID_MAP.get(target.getClass());
+		Field idField = configuration.getIdField(target.getClass());
 
 		// By specification, id value is always a String type
 		if (idValue != null) {
@@ -622,17 +529,17 @@ public class ResourceConverter {
 		ObjectNode attributesNode = objectMapper.valueToTree(object);
 
 		// Remove id, meta and relationship fields
-		Field idField = ID_MAP.get(object.getClass());
+		Field idField = configuration.getIdField(object.getClass());
 		attributesNode.remove(idField.getName());
 
-		Field metaField = META_FIELD_MAP.get(object.getClass());
+		Field metaField = configuration.getMetaField(object.getClass());
 		if (metaField != null) {
 			attributesNode.remove(metaField.getName());
 		}
 
 		// Handle resource identifier
 		ObjectNode dataNode = objectMapper.createObjectNode();
-		dataNode.put(TYPE, TYPE_ANNOTATIONS.get(object.getClass()).value());
+		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
 
 		String resourceId = (String) idField.get(object);
 		if (resourceId != null) {
@@ -642,7 +549,7 @@ public class ResourceConverter {
 
 
 		// Handle relationships (remove from base type and add as relationships)
-		List<Field> relationshipFields = RELATIONSHIPS_MAP.get(object.getClass());
+		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
 
 		if (relationshipFields != null) {
 			ObjectNode relationshipsNode = objectMapper.createObjectNode();
@@ -653,7 +560,7 @@ public class ResourceConverter {
 				if (relationshipObject != null) {
 					attributesNode.remove(relationshipField.getName());
 
-					Relationship relationship = FIELD_RELATIONSHIP_MAP.get(relationshipField);
+					Relationship relationship = configuration.getFieldRelationship(relationshipField);
 
 					// In case serialisation is disabled for a given relationship, skipp it
 					if (!relationship.serialise()) {
@@ -666,8 +573,8 @@ public class ResourceConverter {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
 
 						for (Object element : (List<?>) relationshipObject) {
-							String relationshipType = TYPE_ANNOTATIONS.get(element.getClass()).value();
-							String idValue = (String) ID_MAP.get(element.getClass()).get(element);
+							String relationshipType = configuration.getTypeName(element.getClass());
+							String idValue = (String) configuration.getIdField(element.getClass()).get(element);
 
 							ObjectNode identifierNode = objectMapper.createObjectNode();
 							identifierNode.put(TYPE, relationshipType);
@@ -680,8 +587,9 @@ public class ResourceConverter {
 						relationshipsNode.set(relationshipName, relationshipDataNode);
 
 					} else {
-						String relationshipType = TYPE_ANNOTATIONS.get(relationshipObject.getClass()).value();
-						String idValue = (String) ID_MAP.get(relationshipObject.getClass()).get(relationshipObject);
+						String relationshipType = configuration.getTypeName(relationshipObject.getClass());
+						String idValue = (String) configuration.getIdField(relationshipObject.getClass())
+								.get(relationshipObject);
 
 						ObjectNode identifierNode = objectMapper.createObjectNode();
 						identifierNode.put(TYPE, relationshipType);
@@ -731,7 +639,7 @@ public class ResourceConverter {
 	 * @return returns <code>true</code> if type is registered, else <code>false</code>
 	 */
 	public boolean isRegisteredType(Class<?> type) {
-		return TYPE_ANNOTATIONS.containsKey(type);
+		return configuration.isRegisteredType(type);
 	}
 
 	/**
