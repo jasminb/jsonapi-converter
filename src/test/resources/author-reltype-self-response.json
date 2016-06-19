@@ -1,0 +1,14 @@
+{
+  "links": {
+    "self": { "href": "http://example.com/articles/1/relationships/author",
+      "meta": {}
+    },
+    "related": { "href": "http://example.com/articles/1/author",
+      "meta": {}
+    }
+  },
+  "data": {
+    "type": "people",
+    "id": "12"
+  }
+}

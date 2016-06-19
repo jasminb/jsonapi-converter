@@ -7,10 +7,48 @@ Besides providing support for request/response parsing, library provides a retro
 
 Library is using Jackson (https://github.com/FasterXML/jackson-databind) for JSON data parsing.
 
-##### Note to early adopters
+##### Including the library in your project
 
-Base package name was updated in order to be able to publish the library to maven central.
-Base package name was updated from `com.github.jsonapi` to `com.github.jasminb.jsonapi`.
+Maven:
+
+```
+<dependency>
+  <groupId>com.github.jasminb</groupId>
+  <artifactId>jsonapi-converter</artifactId>
+  <version>0.3</version>
+</dependency>
+```
+
+SBT:
+
+```
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.3"
+```
+
+In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
+
+```
+<repositories>
+    <repository>
+        <id>oss-sonatype</id>
+        <name>oss-sonatype</name>
+        <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        <snapshots>
+            <enabled>true</enabled>
+        </snapshots>
+    </repository>
+</repositories>
+```
+
+Than to add dependency:
+
+```
+<dependency>
+  <groupId>com.github.jasminb</groupId>
+  <artifactId>jsonapi-converter</artifactId>
+  <version>0.4-SNAPSHOT</version>
+</dependency>
+```
 
 ##### Writing your model classes
 
@@ -28,11 +66,13 @@ Annotation has single property `value` which is required and it should be set to
 Example:
 
 ```
-@Type(name = "book")
+@Type("book")
 public class Book {
  ...
 }
 ```
+
+Note that `@Type` annotation is not inherited from supperclasses.
 
 ###### Id annotation
 
@@ -42,15 +82,31 @@ Id is a special attribute that is, together with type, used to uniquely identify
 
 Id annotation has no attributes.
 
+Id annotation is inheritable, one can define a base model class that contains a field with `@Id` annotation and than extend it to create a new type.
+
 Example:
 
 ```
-@Type(name = "book")
+@Type("book")
 public class Book {
   
   @Id
   private String isbn;
   ...
+}
+```
+
+Example with inheritance:
+
+```
+public class BaseModel {
+  @Id
+  private String id;
+}
+
+@Type("book")
+public class Book extends BaseModel {
+  # Your custom member variables
 }
 ```
 
@@ -63,24 +119,25 @@ Imagine modeling a simple library application, you would end up having a `Book` 
 You can model this as two different classes where `Book` resource would have an relationship to an `Author`:
 
 ```
-@Type
+@Type("book")
 public class Book {
   @Id
   private String isbn;
   private String title;
   
-  @Relationship(name = "author")
+  @Relationship("author")
   private Author author;
 }
 ```
 
 Relationship annotation has following attributes:
 
- - name
+ - value
  - resolve
  - serialise
-
-Name attribute is required and each relationship must have it set.
+ - relType
+ 
+Value attribute is required and each relationship must have it set (value attribute represents the 'name' of the relationship).
 
 Resolve attribute is used to instruct the library on how to handle server responses where resource relationships are not provided in `included` section but are rather returned as `type` and `id` combination.
 
@@ -114,32 +171,133 @@ converter.setTypeResolver(new CustomAuthorResolver(), Author.class);
 Serialise attribute is used to instruct the serialisar whether to include or exclude given relationship when serialising resources.
 I is enabled by default, if disabled relationship will not be serialised.
 
+Relationship type (`relType`) is used to instruct the library on how to resolve link data from raw server responses in order to
+resolve given relationship.
+
+There two different relationship types:
+
+ - `SELF` (`self` link will be followed to resolve relationship
+ - `RELATED` (`related` link will be followed)
+ 
+Have in mind that relationship (same as id) is inheritable and can be defined in a base class. 
+
+###### Meta annotation
+
+By JSON API specification, each resource can hold `meta` attribute. Meta can be arbitrary object that is defined by the API implementation.
+
+In order to map and make meta available trough resource conversion, one must create a model that coresponds to the meta object returned by the API, create a member variable in the resource class using created model and annotate it using the `@Meta` annotation.
+
+Meta example:
+
+```
+# Meta model class
+
+public class MyCustomMetaClass {
+    private String myAttribute;
+    
+    public String getMyAttribute() {
+    	return myAttribute;
+    }
+    
+    public void setMyAttribute(String value) {
+    	this.myAttribute = value;
+    }
+}
+
+# Resource class with meta attribute
+
+@Type("book")
+public class Book {
+  @Id
+  private String isbn;
+  private String title;
+  
+  @Relationship("author")
+  private Author author;
+  
+  @Meta
+  private MyCustomMetaClass meta;
+}
+
+```
+
+Meta annotation/attriubutes are inheritable.
+
+###### Links annotation
+
+JSON API specification allows for `links` to be part of resources. Links usually cary information about the resource itself (eg. its URI on the server).
+
+Liks are not arbitray objects, JSON API spec provides links structure therefore it is not required to create a new model to make links object available.
+
+Library provides a `com.github.jasminb.jsonapi.Links` class that must be used in order to make links data available in resources.
+
+Example:
+
+```
+@Type("book")
+public class Book {
+  @Id
+  private String isbn;
+  private String title;
+  
+  @Relationship("author")
+  private Author author;
+  
+  @Meta
+  private MyCustomMetaClass meta;
+  
+  @Links
+  private com.github.jasminb.jsonapi.Links links;
+}
+```
+
+Links are inheritable.
+
 ##### Full example
 
 Define simple POJO, please pay attention to added annotations:
 
 ```
-@Type(name = "book")
-public class Book {
-  
-  @Id
-  private String isbn;
+# Meta is optional, one does not have to define or use it
+public class Meta {
+    private String myAttribute;
+    
+    public String getMyAttribute() {
+    	return myAttribute;
+    }
+    
+    public void setMyAttribute(String value) {
+    	this.myAttribute = value;
+    }
+}
+
+# Creating base class is optional but allows for writing more compact model classes
+public class BaseResource {
+    @Id
+    private String id;
+    
+    @Meta
+    private Meta meta;
+    
+    @Links
+    private Links links;
+}
+
+@Type("book")
+public class Book extends BaseResource {
   private String title;
   
-  @Relationship(name = "author")
+  @Relationship("author")
   private Author author;
   
   # getters and setters
 }
 
-@Type(name = "author")
-public class Author {
-  
-  @Id
-  private String id;
+@Type("author")
+public class Author extends BaseResource {
   private String name;
   
-  @Relationship(name = "books")
+  @Relationship("books")
   private List<Book> books;
   
   # getters and setters
@@ -151,17 +309,35 @@ Create a converter instance:
 ```
 ResourceConverter converter = new ResourceConverter(Book.class, Author.class);
 
-// To convert raw data into POJO
-byte [] rawResponse = ...get data from wire
-Book book = converter.readObject(rawResponse, Book.class);
+// Get response data
+byte [] rawResponse = ...get data from the wire
+
+// To convert raw data into single POJO
+JSONAPIDocument<Book> bookDocument = converter.readDocument(rawResponse, Book.class);
+Book book = bookDocument.get();
+
+// To convert raw data into collection
+JSONAPIDocument<List<Book>> bookDocumentCollection = converter.readDocumentCollection(rawResponse, Book.class);
+List<Book> bookCollection = bookDocumentCollection.get();
 
 // To convert book object back to bytes
 byte [] rawData = converter.writeObject(book);
 ```
 
-Note that calling `readObject(...)` or `readObjectCollection(...)` using content that contains `errors` (`{"errors" : [{...}]}`) attribute will produce `ResourceParseException`.
+Note that calling `readDocument(...)` or `readDocumentCollection(...)` using content that contains `errors` (`{"errors" : [{...}]}`) attribute will produce `ResourceParseException`.
 
 Thrown exception has a method (`getErrorResponse()`) that returns parsed `errors` content. Errors content is expected to comply to JSON API Spec.
+
+##### Top level links and meta
+
+Besides having links and meta information on resource level, by JSON API spec it is also possible to have meta, links or both as top level objects in server responses.
+
+To gain access to top level meta/links, this library provides convinience methods available in `JSONAPIDocument`, namely:
+ 
+ - `getMeta()`
+ - `getLinks()`
+ 
+
 
 ##### Example usage with retrofit
 

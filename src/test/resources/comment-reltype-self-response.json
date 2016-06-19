@@ -1,0 +1,14 @@
+{
+  "links": {
+    "self": { "href": "http://example.com/articles/1/relationships/comments",
+      "meta": {}
+    },
+    "related": { "href": "http://example.com/articles/1/comments",
+      "meta": {}
+    }
+  },
+  "data": [
+    { "type": "comments", "id": "5" },
+    { "type": "comments", "id": "12" }
+  ]
+}

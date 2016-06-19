@@ -8,6 +8,7 @@ import com.github.jasminb.jsonapi.IOUtils;
 import com.github.jasminb.jsonapi.models.User;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
+import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -24,6 +25,7 @@ import java.util.List;
  * @author jbegic
  */
 public class RetrofitTest {
+	private ResourceConverter converter;
 	private MockWebServer server;
 	private SimpleService service;
 
@@ -34,7 +36,7 @@ public class RetrofitTest {
 		server.start();
 
 		// Setup retrofit
-		ResourceConverter converter = new ResourceConverter(User.class);
+		converter = new ResourceConverter(User.class);
 		JSONAPIConverterFactory converterFactory = new JSONAPIConverterFactory(converter);
 
 		Retrofit retrofit = new Retrofit.Builder()
@@ -125,5 +127,29 @@ public class RetrofitTest {
 				.setBody(userResponse));
 
 		service.getNonJSONSPECResource().execute();
+	}
+
+	@Test
+	public void testRequestParsing() throws Exception {
+		String userResponse = IOUtils.getResourceAsString("user-liz.json");
+
+
+		server.enqueue(new MockResponse()
+				.setResponseCode(201)
+				.setBody(userResponse));
+
+		User user = new User();
+		user.setId("id");
+		user.setName("name");
+
+		User response = service.createUser(user).execute().body();
+
+		Assert.assertEquals("liz", response.getName());
+
+		RecordedRequest request = server.takeRequest();
+
+		String requestBody = new String(request.getBody().readByteArray());
+
+		Assert.assertEquals(new String(converter.writeObject(user)), requestBody);
 	}
 }

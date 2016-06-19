@@ -1,0 +1,31 @@
+{
+  "data": {
+    "type": "users",
+    "id": "userId",
+    "attributes": {
+      "name": "liz"
+    },
+    "meta": {
+      "token" : "asdASD123"
+    },
+    "links": {
+      "related": {
+        "href": "href",
+        "meta": {
+          "count": 10
+        }
+      }
+    }
+  },
+  "meta": {
+    "token" : "asdASD123"
+  },
+  "links": {
+    "related": {
+      "href": "href",
+      "meta": {
+        "count": 10
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package com.github.jasminb.jsonapi.models;
 
 
+import com.github.jasminb.jsonapi.RelType;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Type;
@@ -14,10 +15,10 @@ public class Article {
 
 	private String title;
 
-	@Relationship("author")
+	@Relationship(value = "author", resolve = true, relType = RelType.RELATED)
 	private Author author;
 
-	@Relationship("comments")
+	@Relationship(value = "comments", resolve = true)
 	private List<Comment> comments;
 
 

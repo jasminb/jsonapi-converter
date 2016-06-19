@@ -23,9 +23,11 @@ public class ReflectionUtils {
 	 * Returns all field from a given class that are annotated with provided annotation type.
 	 * @param clazz source class
 	 * @param annotation target annotation
+	 * @param checkSuperclass if true, method will follow class hierarchy to look for fields with target annotation
 	 * @return list of fields or empty collection in case no fields were found
 	 */
-	public static List<Field> getAnnotatedFields(Class<?> clazz, Class<? extends Annotation> annotation) {
+	public static List<Field> getAnnotatedFields(Class<?> clazz, Class<? extends Annotation> annotation,
+												 boolean checkSuperclass) {
 		Field [] fields = clazz.getDeclaredFields();
 
 		List<Field> result = new ArrayList<>();
@@ -34,6 +36,10 @@ public class ReflectionUtils {
 			if (field.isAnnotationPresent(annotation)) {
 				result.add(field);
 			}
+		}
+
+		if (checkSuperclass && clazz.getSuperclass() != null && !clazz.getSuperclass().equals(Object.class)) {
+			result.addAll(getAnnotatedFields(clazz.getSuperclass(), annotation, true));
 		}
 
 		return result;
@@ -49,11 +55,11 @@ public class ReflectionUtils {
 		return typeAnnotation != null ? typeAnnotation.value() : null;
 	}
 
-	public static Class<?> getRelationshipType(Field relationshipField) {
-		Class<?> targetType = relationshipField.getType();
+	public static Class<?> getFieldType(Field field) {
+		Class<?> targetType = field.getType();
 
 		if (targetType.equals(List.class)) {
-			ParameterizedType stringListType = (ParameterizedType) relationshipField.getGenericType();
+			ParameterizedType stringListType = (ParameterizedType) field.getGenericType();
 			targetType = (Class<?>) stringListType.getActualTypeArguments()[0];
 		}
 

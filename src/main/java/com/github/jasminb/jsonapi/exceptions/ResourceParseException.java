@@ -9,7 +9,7 @@ import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
  * @author jbegic
  */
 public class ResourceParseException extends RuntimeException {
-	private ErrorResponse errorResponse;
+	private final ErrorResponse errorResponse;
 
 	public ResourceParseException(ErrorResponse errorResponse) {
 		super(errorResponse.toString());
@@ -18,7 +18,7 @@ public class ResourceParseException extends RuntimeException {
 
 	/**
 	 * Returns ErrorResponse or <code>null</code>
-	 * @return
+	 * @return {@link ErrorResponse}
 	 */
 	public ErrorResponse getErrorResponse() {
 		return errorResponse;

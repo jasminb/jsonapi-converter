@@ -13,7 +13,7 @@ import java.io.IOException;
  * @author jbegic
  */
 public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody> {
-	private ResourceConverter converter;
+	private final ResourceConverter converter;
 
 	public JSONAPIRequestBodyConverter(ResourceConverter converter) {
 		this.converter = converter;

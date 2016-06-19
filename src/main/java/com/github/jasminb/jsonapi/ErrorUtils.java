@@ -39,7 +39,7 @@ public class ErrorUtils {
 	 * Parses provided JsonNode and returns it as ErrorResponse.
 	 * @param errorResponse error response body
 	 * @return ErrorResponse collection
-	 * @throws JsonProcessingException thrown in case JsonNode is not parseable
+	 * @throws JsonProcessingException thrown in case JsonNode cannot be parsed
 	 */
 	public static ErrorResponse parseError(JsonNode errorResponse) throws JsonProcessingException {
 		return MAPPER.treeToValue(errorResponse, ErrorResponse.class);
