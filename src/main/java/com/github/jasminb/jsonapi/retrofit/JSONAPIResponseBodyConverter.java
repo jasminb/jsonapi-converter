@@ -1,8 +1,8 @@
 package com.github.jasminb.jsonapi.retrofit;
 
 import com.github.jasminb.jsonapi.ResourceConverter;
-import com.squareup.okhttp.ResponseBody;
-import retrofit.Converter;
+import okhttp3.ResponseBody;
+import retrofit2.Converter;
 
 import java.io.IOException;
 

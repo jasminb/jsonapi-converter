@@ -2,9 +2,10 @@ package com.github.jasminb.jsonapi.retrofit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.ResourceConverter;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.ResponseBody;
-import retrofit.Converter;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import retrofit2.Converter;
+import retrofit2.Retrofit;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
@@ -37,8 +38,10 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 		this.alternativeFactory = alternativeFactory;
 	}
 
+
+
 	@Override
-	public Converter<ResponseBody, ?> fromResponseBody(Type type, Annotation[] annotations) {
+	public Converter<ResponseBody, ?> responseBodyConverter(Type type, Annotation[] annotations, Retrofit retrofit) {
 		RetrofitType retrofitType = new RetrofitType(type);
 
 		if (retrofitType.isValid() && parser.isRegisteredType(retrofitType.getType())) {
@@ -48,20 +51,20 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 				return new JSONAPIResponseBodyConverter<>(parser, retrofitType.getType(), false);
 			}
 		} else if (alternativeFactory != null) {
-			return alternativeFactory.fromResponseBody(type, annotations);
+			return alternativeFactory.responseBodyConverter(type, annotations, retrofit);
 		} else {
 			return null;
 		}
 	}
 
 	@Override
-	public Converter<?, RequestBody> toRequestBody(Type type, Annotation[] annotations) {
+	public Converter<?, RequestBody> requestBodyConverter(Type type, Annotation[] parameterAnnotations, Annotation[] methodAnnotations, Retrofit retrofit) {
 		RetrofitType retrofitType = new RetrofitType(type);
 
 		if (retrofitType.isValid() && parser.isRegisteredType(retrofitType.getType())) {
 			return new JSONAPIRequestBodyConverter<>(parser);
 		} else if (alternativeFactory != null) {
-			return alternativeFactory.toRequestBody(type, annotations);
+			return alternativeFactory.requestBodyConverter(type, parameterAnnotations, methodAnnotations, retrofit);
 		} else {
 			return null;
 		}
