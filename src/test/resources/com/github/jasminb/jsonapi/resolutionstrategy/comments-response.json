@@ -1,0 +1,38 @@
+{
+  "data": [
+    {
+      "type": "comments",
+      "id": "5",
+      "attributes": {
+        "body": "First!"
+      },
+      "relationships": {
+        "author": {
+          "links": {
+            "related": "http://example.com/comments/5/author"
+          }
+        }
+      },
+      "links": {
+        "self": "http://example.com/comments/5"
+      }
+    },
+    {
+      "type": "comments",
+      "id": "12",
+      "attributes": {
+        "body": "I like XML better"
+      },
+      "relationships": {
+        "author": {
+          "links": {
+            "related": "http://example.com/comments/12/author"
+          }
+        }
+      },
+      "links": {
+        "self": "http://example.com/comments/12"
+      }
+    }
+  ]
+}

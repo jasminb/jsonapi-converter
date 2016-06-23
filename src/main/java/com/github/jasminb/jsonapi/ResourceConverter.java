@@ -373,6 +373,18 @@ public class ResourceConverter {
 						String link;
 
 						if (linkNode != null && ((link = getLink(linkNode)) != null)) {
+							if (configuration.getFieldRelationship(relationshipField).strategy() == ResolutionStrategy.REF) {
+								if (String.class.isAssignableFrom(relationshipField.getType())) {
+									relationshipField.set(object, link);
+									continue;
+								}
+
+								throw new IllegalArgumentException("Reference resolution strategy requires String " +
+										"type, but " + relationshipField.getDeclaringClass().getName() + "#" +
+										relationshipField.getName() + " has type " +
+										relationshipField.getType().getName());
+							}
+
 							if (isCollection(relationship)) {
 								relationshipField.set(object,
 										readDocumentCollection(resolver.resolve(link), type).get());
