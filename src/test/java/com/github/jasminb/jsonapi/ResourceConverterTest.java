@@ -324,7 +324,10 @@ public class ResourceConverterTest {
 				Comment.class);
 		underTest.setGlobalResolver(resolver);
 
-		List<Article> articles = underTest.readObjectCollection(apiResponse.getBytes(), Article.class);
+		JSONAPIDocument<List<Article>> responseDocument = underTest
+				.readDocumentCollection(apiResponse.getBytes(), Article.class);
+		Assert.assertNotNull(responseDocument);
+		List<Article> articles = responseDocument.get();
 
 		// Sanity check
 		Assert.assertNotNull(articles);

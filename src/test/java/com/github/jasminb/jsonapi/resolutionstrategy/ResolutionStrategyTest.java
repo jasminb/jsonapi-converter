@@ -2,6 +2,7 @@ package com.github.jasminb.jsonapi.resolutionstrategy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.github.jasminb.jsonapi.JSONAPIDocument;
 import com.github.jasminb.jsonapi.ProbeResolver;
 import com.github.jasminb.jsonapi.ResourceConverter;
 import org.junit.Assert;
@@ -57,8 +58,13 @@ public class ResolutionStrategyTest {
         ResourceConverter underTest = new ResourceConverter(mapper, Article.class, Comment.class);
         underTest.setGlobalResolver(resolver);
 
-        List<Article> articles = underTest.readObjectCollection(org.apache.commons.io.IOUtils.toString(
-                this.getClass().getResource("articles.json"), "UTF-8").getBytes(), Article.class);
+        JSONAPIDocument<List<Article>> responseDocument = underTest.readDocumentCollection(
+                org.apache.commons.io.IOUtils.toString(
+                    this.getClass().getResource("articles.json"), "UTF-8")
+                    .getBytes(),
+                Article.class);
+        Assert.assertNotNull(responseDocument);
+        List<Article> articles = responseDocument.get();
 
         // Sanity checks
         Assert.assertNotNull(articles);
@@ -93,7 +99,7 @@ public class ResolutionStrategyTest {
         ResourceConverter underTest = new ResourceConverter(mapper, Foo.class);
         underTest.setGlobalResolver(new ProbeResolver(Collections.<String, String>emptyMap()));
 
-        underTest.readObject(org.apache.commons.io.IOUtils.toString(
+        underTest.readDocument(org.apache.commons.io.IOUtils.toString(
                 this.getClass().getResource("foo.json"), "UTF-8").getBytes(), Foo.class);
     }
 }
