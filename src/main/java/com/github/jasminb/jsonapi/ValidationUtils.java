@@ -27,12 +27,44 @@ public class ValidationUtils {
 	}
 
 	/**
+	 * Convenience method which forwards to {@link #ensureCollection(JsonNode)} in a try/catch.
+	 *
+	 * @param resource resource
+	 * @return true if the provided resource has the required 'data' node and the 'data' node holds an array object;
+	 *              {@code false} otherwise.
+     */
+	public static boolean isCollection(JsonNode resource) {
+		try {
+			ensureCollection(resource);
+			return true;
+		} catch (IllegalArgumentException e) {
+			return false;
+		}
+	}
+
+	/**
 	 * Asserts that provided resource has required 'data' node and that node is of type object.
 	 * @param resource resource
 	 */
 	public static void ensureObject(JsonNode resource) {
 		if (ensureDataNode(resource).isArray()) {
 			throw new IllegalArgumentException("'data' node is not an object!");
+		}
+	}
+
+	/**
+	 * Convenience method which forwards to {@link #ensureObject(JsonNode)} in a try/catch.
+	 *
+	 * @param resource resource
+	 * @return true if the provided resource has the required 'data' node and the 'data' node is of type object;
+	 *              {@code false} otherwise.
+	 */
+	public static boolean isObject(JsonNode resource) {
+		try {
+			ensureObject(resource);
+			return true;
+		} catch (IllegalArgumentException e) {
+			return false;
 		}
 	}
 

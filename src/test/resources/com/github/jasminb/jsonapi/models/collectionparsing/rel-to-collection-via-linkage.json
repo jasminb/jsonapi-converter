@@ -1,0 +1,20 @@
+{
+  "data": [{
+    "type": "articles",
+    "id": "1",
+    "attributes": {
+      "title": "JSON API paints my bikeshed!"
+    },
+    "relationships": {
+      "comments": {
+        "links": {
+          "related": "http://example.com/articles/1/comments"
+        },
+        "data": [
+          { "type": "comments", "id": "5" },
+          { "type": "comments", "id": "12" }
+        ]
+      }
+    }
+  }]
+}

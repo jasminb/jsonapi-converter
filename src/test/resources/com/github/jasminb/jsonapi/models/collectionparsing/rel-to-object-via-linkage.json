@@ -1,0 +1,20 @@
+{
+  "data": [{
+    "type": "articles",
+    "id": "1",
+    "attributes": {
+      "title": "JSON API paints my bikeshed!"
+    },
+    "relationships": {
+      "author": {
+        "links": {
+          "related": "http://example.com/articles/1/author"
+        },
+        "data": {
+          "type": "people",
+          "id": "9"
+        }
+      }
+    }
+  }]
+}
