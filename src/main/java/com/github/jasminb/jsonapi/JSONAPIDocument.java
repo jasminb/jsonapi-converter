@@ -21,7 +21,7 @@ public class JSONAPIDocument<T> {
 	/**
 	 * A map of meta fields, keyed by the meta field name
 	 */
-	private Map<String, ?> meta = Collections.emptyMap();
+	private Map<String, ?> meta;
 
 
 	/**
