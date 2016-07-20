@@ -25,9 +25,9 @@ public class JSONAPIResponseBodyConverter<T> implements Converter<ResponseBody, 
 	@Override
 	public T convert(ResponseBody responseBody) throws IOException {
 		if (isCollection) {
-			return (T) parser.readDocumentCollection(responseBody.bytes(), clazz).get();
+			return (T) parser.readDocumentCollection(responseBody.bytes(), clazz);
 		} else {
-			return (T) parser.readDocument(responseBody.bytes(), clazz).get();
+			return (T) parser.readDocument(responseBody.bytes(), clazz);
 		}
 	}
 }
