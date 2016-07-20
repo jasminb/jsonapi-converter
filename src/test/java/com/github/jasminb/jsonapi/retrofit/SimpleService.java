@@ -1,5 +1,6 @@
 package com.github.jasminb.jsonapi.retrofit;
 
+import com.github.jasminb.jsonapi.JSONAPIDocument;
 import com.github.jasminb.jsonapi.models.User;
 import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
 import retrofit2.Call;
@@ -17,14 +18,14 @@ import java.util.List;
 public interface SimpleService {
 
 	@GET("user")
-	Call<User> getExampleResource();
+	Call<JSONAPIDocument<User>> getExampleResource();
 
 	@GET("users")
-	Call<List<User>> getExampleResourceList();
+	Call<JSONAPIDocument<List<User>>> getExampleResourceList();
 
 	@GET("notanjsonapiendpoint")
 	Call<ErrorResponse> getNonJSONSPECResource();
 
 	@POST("user")
-	Call<User> createUser(@Body User user);
+	Call<JSONAPIDocument<User>> createUser(@Body User user);
 }

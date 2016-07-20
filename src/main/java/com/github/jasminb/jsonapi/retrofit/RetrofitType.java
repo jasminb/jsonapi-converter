@@ -1,5 +1,7 @@
 package com.github.jasminb.jsonapi.retrofit;
 
+import com.github.jasminb.jsonapi.JSONAPIDocument;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
@@ -14,9 +16,11 @@ public class RetrofitType {
 	/**
 	 * Instantiates a new Retrofit type.
 	 *
-	 * @param type the type
+	 * @param retrofitType the type
 	 */
-	public RetrofitType(Type type) {
+	public RetrofitType(Type retrofitType) {
+		Type type = getActualType(retrofitType);
+
 		if (type instanceof ParameterizedType) {
 			Type[] typeArgs = ((ParameterizedType) type).getActualTypeArguments();
 			if (typeArgs != null && typeArgs.length > 0) {
@@ -30,6 +34,15 @@ public class RetrofitType {
 		} else {
 			valid = false;
 		}
+	}
+
+	private Type getActualType(Type type) {
+		if (type instanceof ParameterizedType &&
+				((ParameterizedType) type).getRawType().equals(JSONAPIDocument.class)) {
+			return ((ParameterizedType) type).getActualTypeArguments()[0];
+		}
+		return type;
+
 	}
 
 	/**

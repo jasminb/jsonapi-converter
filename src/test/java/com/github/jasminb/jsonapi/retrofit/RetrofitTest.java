@@ -1,5 +1,6 @@
 package com.github.jasminb.jsonapi.retrofit;
 
+import com.github.jasminb.jsonapi.JSONAPIDocument;
 import com.github.jasminb.jsonapi.ResourceConverter;
 import com.github.jasminb.jsonapi.models.errors.Error;
 import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
@@ -60,14 +61,14 @@ public class RetrofitTest {
 				.setResponseCode(200)
 				.setBody(userResponse));
 
-		Response<User> response = service.getExampleResource().execute();
+		Response<JSONAPIDocument<User>> response = service.getExampleResource().execute();
 
 		Assert.assertTrue(response.isSuccessful());
 
-		User user = response.body();
+		JSONAPIDocument<User> user = response.body();
 
-		Assert.assertNotNull(user);
-		Assert.assertEquals("liz", user.getName());
+		Assert.assertNotNull(user.get());
+		Assert.assertEquals("liz", user.get().getName());
 	}
 
 	@Test
@@ -78,12 +79,12 @@ public class RetrofitTest {
 				.setResponseCode(200)
 				.setBody(usersResponse));
 
-		Response<List<User>> response = service.getExampleResourceList().execute();
+		Response<JSONAPIDocument<List<User>>> response = service.getExampleResourceList().execute();
 
 		Assert.assertTrue(response.isSuccessful());
 
-		List<User> users = response.body();
-		Assert.assertEquals(2, users.size());
+		JSONAPIDocument<List<User>> users = response.body();
+		Assert.assertEquals(2, users.get().size());
 	}
 
 	@Test
@@ -94,7 +95,7 @@ public class RetrofitTest {
 				.setResponseCode(400)
 				.setBody(errorString));
 
-		Response<User> response = service.getExampleResource().execute();
+		Response<JSONAPIDocument<User>> response = service.getExampleResource().execute();
 
 		Assert.assertFalse(response.isSuccessful());
 
@@ -142,9 +143,9 @@ public class RetrofitTest {
 		user.setId("id");
 		user.setName("name");
 
-		User response = service.createUser(user).execute().body();
+		JSONAPIDocument<User> response = service.createUser(user).execute().body();
 
-		Assert.assertEquals("liz", response.getName());
+		Assert.assertEquals("liz", response.get().getName());
 
 		RecordedRequest request = server.takeRequest();
 
