@@ -8,6 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -25,9 +26,11 @@ public class InheritedAnnotationsTest {
 
 	@Test
 	public void testConversion() throws IOException {
-		String data = IOUtils.getResourceAsString("engineer.json");
+		InputStream data = IOUtils.getResource("engineer.json");
 
-		Engineer engineer = resourceConverter.readObject(data.getBytes(StandardCharsets.UTF_8), Engineer.class);
+		JSONAPIDocument<Engineer> engineerDocument = resourceConverter.readDocument(data, Engineer.class);
+
+		Engineer engineer = engineerDocument.get();
 
 		Assert.assertNotNull(engineer);
 		Assert.assertNotNull(engineer.getField());

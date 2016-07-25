@@ -7,7 +7,7 @@ import java.util.List;
  *
  * @author jbegic
  */
-public class ErrorResponse {
+public class Errors {
 	private List<Error> errors;
 
 	public List<Error> getErrors() {
@@ -20,7 +20,7 @@ public class ErrorResponse {
 
 	@Override
 	public String toString() {
-		return "ErrorResponse{" +
+		return "Errors{" +
 				"errors=" + (errors != null ? errors : "Undefined") +
 				'}';
 	}
