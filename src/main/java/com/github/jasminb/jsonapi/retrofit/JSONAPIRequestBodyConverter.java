@@ -1,11 +1,12 @@
 package com.github.jasminb.jsonapi.retrofit;
 
 import com.github.jasminb.jsonapi.ResourceConverter;
+
+import java.io.IOException;
+
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import retrofit2.Converter;
-
-import java.io.IOException;
 
 /**
  * JSON API request body converter implementation.

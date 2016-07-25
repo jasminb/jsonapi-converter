@@ -1,10 +1,11 @@
 package com.github.jasminb.jsonapi.retrofit;
 
 import com.github.jasminb.jsonapi.ResourceConverter;
-import okhttp3.ResponseBody;
-import retrofit2.Converter;
 
 import java.io.IOException;
+
+import okhttp3.ResponseBody;
+import retrofit2.Converter;
 
 /**
  * JSON API response body converter.
@@ -25,9 +26,9 @@ public class JSONAPIResponseBodyConverter<T> implements Converter<ResponseBody, 
 	@Override
 	public T convert(ResponseBody responseBody) throws IOException {
 		if (isCollection) {
-			return (T) parser.readDocumentCollection(responseBody.bytes(), clazz).get();
+			return (T) parser.readDocumentCollection(responseBody.byteStream(), clazz).get();
 		} else {
-			return (T) parser.readDocument(responseBody.bytes(), clazz).get();
+			return (T) parser.readDocument(responseBody.byteStream(), clazz).get();
 		}
 	}
 }

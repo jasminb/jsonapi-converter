@@ -14,7 +14,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -49,8 +52,8 @@ public class ResourceConverterTest {
 		Assert.assertNotNull(rawData);
 		Assert.assertFalse(rawData.length == 0);
 
-		Status converted = converter.readObject(rawData, Status.class);
-
+		JSONAPIDocument<Status> convertedDocument = converter.readDocument(new ByteArrayInputStream(rawData), Status.class);
+		Status converted = convertedDocument.get();
 		// Make sure relationship with disabled serialisation is not present
 		Assert.assertNull(converted.getRelatedUser());
 
@@ -66,10 +69,10 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testReadWithIncludedSection() throws IOException {
-		String apiResponse = IOUtils.getResourceAsString("status.json");
+		InputStream apiResponse = IOUtils.getResource("status.json");
 
-		Status status = converter.readObject(apiResponse.getBytes(), Status.class);
-
+		JSONAPIDocument<Status> statusDocument = converter.readDocument(apiResponse, Status.class);
+		Status status = statusDocument.get();
 		Assert.assertNotNull(status.getUser());
 		Assert.assertEquals("john", status.getUser().getName());
 
@@ -79,27 +82,35 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testWriteCollection() throws IOException, IllegalAccessException {
-		String usersRequest = IOUtils.getResourceAsString("users.json");
+		InputStream usersRequest = IOUtils.getResource("users.json");
 
-		List<User> users = converter.readObjectCollection(usersRequest.getBytes(), User.class);
-
+		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
+		List<User> users = usersDocument.get();
 		byte[] convertedData = converter.writeObjectCollection(users);
 
 		Assert.assertNotNull(convertedData);
 		Assert.assertFalse(convertedData.length == 0);
 
-		List<User> converted = converter.readObjectCollection(convertedData, User.class);
-
+		JSONAPIDocument<List<User>> convertedDocument = converter.readDocumentCollection(new ByteArrayInputStream(convertedData), User.class);
+		List<User> converted = convertedDocument.get();
 		Assert.assertNotNull(converted);
+
 		Assert.assertEquals(users.size(), converted.size());
-		Assert.assertEquals(usersRequest.replaceAll("\\s",""), new String(convertedData).replaceAll("\\s",""));
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			JsonNode node1 = mapper.readTree(IOUtils.getResource("users.json"));
+			JsonNode node2 = mapper.readTree(convertedData);
+			Assert.assertEquals(node1, node2);
+		} catch (IOException e) {
+			throw new RuntimeException("Unable to read json, make sure is correct", e);
+		}
 	}
 
 	@Test
 	public void testReadWithMetaAndLinksSection() throws IOException {
-		String apiResponse = IOUtils.getResourceAsString("user-with-meta.json");
+		InputStream apiResponse = IOUtils.getResource("user-with-meta.json");
 
-		JSONAPIDocument<User> document = converter.readDocument(apiResponse.getBytes(), User.class);
+		JSONAPIDocument<User> document = converter.readDocument(apiResponse, User.class);
 
 		Assert.assertNotNull(document.getMeta());
 		Assert.assertEquals("asdASD123", document.getMeta().get("token"));
@@ -133,9 +144,8 @@ public class ResourceConverterTest {
 		Assert.assertNotNull(rawData);
 		Assert.assertFalse(rawData.length == 0);
 
-		User converted = converter.readObject(rawData, User.class);
-
-		Assert.assertEquals(null, converted.getMeta());
+		JSONAPIDocument<User> converted = converter.readDocument(new ByteArrayInputStream(rawData), User.class);
+		Assert.assertEquals(null, converted.get().getMeta());
 	}
 
 	@Test
@@ -151,10 +161,10 @@ public class ResourceConverterTest {
 			}
 		});
 
-		String apiResponse = IOUtils.getResourceAsString("status.json");
+		InputStream apiResponse = IOUtils.getResource("status.json");
 
-		Status status = converter.readObject(apiResponse.getBytes(), Status.class);
-
+		JSONAPIDocument<Status> statusDocument = converter.readDocument(apiResponse, Status.class);
+		Status status = statusDocument.get();
 		Assert.assertNotNull(status.getUser());
 		Assert.assertEquals("liz", status.getUser().getName());
 	}
@@ -183,9 +193,10 @@ public class ResourceConverterTest {
 			}
 		}, User.class);
 
-		String apiResponse = IOUtils.getResourceAsString("status.json");
+		InputStream apiResponse = IOUtils.getResource("status.json");
 
-		Status status = converter.readObject(apiResponse.getBytes(), Status.class);
+		JSONAPIDocument<Status> statusDocument = converter.readDocument(apiResponse, Status.class);
+		Status status = statusDocument.get();
 
 		Assert.assertNotNull(status.getUser());
 		Assert.assertEquals("john", status.getUser().getName());
@@ -193,9 +204,10 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testReadCollection() throws IOException {
-		String apiResponse = IOUtils.getResourceAsString("users.json");
+		InputStream apiResponse = IOUtils.getResource("users.json");
 
-		List<User> users = converter.readObjectCollection(apiResponse.getBytes(), User.class);
+		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(apiResponse, User.class);
+		List<User> users = usersDocument.get();
 
 		Assert.assertEquals(2, users.size());
 
@@ -209,36 +221,36 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testReadWithCollectionRelationship() throws IOException {
-		String apiResponse = IOUtils.getResourceAsString("user-with-statuses.json");
+		InputStream apiResponse = IOUtils.getResource("user-with-statuses.json");
 
-		User user = converter.readObject(apiResponse.getBytes(), User.class);
-
+		JSONAPIDocument<User> userDocument = converter.readDocument(apiResponse, User.class);
+		User user = userDocument.get();
 		Assert.assertNotNull(user.getStatuses());
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testExpectCollection() throws IOException {
-		converter.readObjectCollection(IOUtils.getResourceAsString("user-with-statuses.json").getBytes(), User.class);
+		converter.readDocumentCollection(IOUtils.getResource("user-with-statuses.json"), User.class);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testExpectObject() throws IOException {
-		converter.readObject(IOUtils.getResourceAsString("users.json").getBytes(), User.class);
+		converter.readDocument(IOUtils.getResource("users.json"), User.class);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void testExpectData() {
-		converter.readObject("{}".getBytes(), User.class);
+	public void testExpectData() throws UnsupportedEncodingException {
+		converter.readDocument(new ByteArrayInputStream("{}".getBytes()), User.class);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testDataNodeMustBeAnObject() {
-		converter.readObject("{\"data\" : \"attribute\"}".getBytes(), User.class);
+		converter.readDocument(new ByteArrayInputStream("{\"data\" : \"attribute\"}".getBytes()), User.class);
 	}
 
 	@Test
 	public void testIncludedFullRelationships() throws IOException {
-		String apiResponse = IOUtils.getResourceAsString("articles.json");
+		InputStream apiResponse = IOUtils.getResource("articles.json");
 
 		ObjectMapper articlesMapper = new ObjectMapper();
 		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
@@ -246,8 +258,8 @@ public class ResourceConverterTest {
 		ResourceConverter articlesConverter = new ResourceConverter(articlesMapper, Article.class, Author.class,
 				Comment.class);
 
-		List<Article> articles = articlesConverter.readObjectCollection(apiResponse.getBytes(), Article.class);
-
+		JSONAPIDocument<List<Article>> articlesDocument = articlesConverter.readDocumentCollection(apiResponse, Article.class);
+		List<Article> articles = articlesDocument.get();
 
 		Assert.assertNotNull(articles);
 		Assert.assertEquals(1, articles.size());
@@ -282,10 +294,10 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testReadWithCollectionInvalidRelationships() throws IOException {
-		String apiResponse = IOUtils.getResourceAsString("user-with-invalid-relationships.json");
+		InputStream apiResponse = IOUtils.getResource("user-with-invalid-relationships.json");
 
-		User user = converter.readObject(apiResponse.getBytes(), User.class);
-
+		JSONAPIDocument<User> userDocument = converter.readDocument(apiResponse, User.class);
+		User user = userDocument.get();
 		Assert.assertNotNull(user.getStatuses());
 		Assert.assertFalse(user.getStatuses().isEmpty());
 
@@ -306,7 +318,7 @@ public class ResourceConverterTest {
 	public void testLinkObjectsAndRelType() throws Exception {
 		ObjectMapper articlesMapper = new ObjectMapper();
 
-		String apiResponse = IOUtils.getResourceAsString("articles-with-link-objects.json");
+		InputStream apiResponse = IOUtils.getResource("articles-with-link-objects.json");
 		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
 
 		// Configure the ProbeResolver
@@ -324,7 +336,7 @@ public class ResourceConverterTest {
 				Comment.class);
 		underTest.setGlobalResolver(resolver);
 
-		List<Article> articles = underTest.readObjectCollection(apiResponse.getBytes(), Article.class);
+		List<Article> articles = underTest.readDocumentCollection(apiResponse, Article.class).get();
 
 		// Sanity check
 		Assert.assertNotNull(articles);
@@ -353,7 +365,7 @@ public class ResourceConverterTest {
 		ResourceConverter underTest = new ResourceConverter(mapper, RecursingNode.class);
 		underTest.setGlobalResolver(resolver);
 
-		RecursingNode p = underTest.readObject(loopJson.getBytes(), RecursingNode.class);
+		RecursingNode p = underTest.readDocument(new ByteArrayInputStream(loopJson.getBytes()), RecursingNode.class).get();
 
 		// Sanity check
 		Assert.assertNotNull(p);
@@ -390,22 +402,22 @@ public class ResourceConverterTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testEnforceIdDeserializationOption() throws IOException {
-		String rawData = IOUtils.getResourceAsString("user-john-no-id.json");
-		converter.readDocument(rawData.getBytes(StandardCharsets.UTF_8), User.class);
+		InputStream rawData = IOUtils.getResource("user-john-no-id.json");
+		converter.readDocument(rawData, User.class);
 	}
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testEnforceIdDeserializationOptionEmptyId() throws IOException {
-		String rawData = IOUtils.getResourceAsString("user-john-empty-id.json");
-		converter.readDocument(rawData.getBytes(StandardCharsets.UTF_8), User.class);
+		InputStream rawData = IOUtils.getResource("user-john-empty-id.json");
+		converter.readDocument(rawData, User.class);
 	}
 
 	@Test
 	public void testDisableEnforceIdDeserialisationOption() throws  Exception {
 		converter.disableDeserializationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
 
-		String rawData = IOUtils.getResourceAsString("user-john-no-id.json");
-		User user = converter.readDocument(rawData.getBytes(StandardCharsets.UTF_8), User.class).get();
+		InputStream rawData = IOUtils.getResource("user-john-no-id.json");
+		User user = converter.readDocument(rawData, User.class).get();
 		Assert.assertNotNull(user);
 		Assert.assertEquals("john", user.getName());
 	}

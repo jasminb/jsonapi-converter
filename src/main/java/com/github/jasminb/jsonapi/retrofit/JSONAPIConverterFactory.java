@@ -2,13 +2,14 @@ package com.github.jasminb.jsonapi.retrofit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.ResourceConverter;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
+
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Converter;
 import retrofit2.Retrofit;
-
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Type;
 
 /**
  * JSON API request/response converter factory.
@@ -17,10 +18,17 @@ import java.lang.reflect.Type;
  */
 public class JSONAPIConverterFactory extends Converter.Factory {
 	private ResourceConverter parser;
+	private ResourceConverter serializer;
 	private Converter.Factory alternativeFactory;
 
-	public JSONAPIConverterFactory(ResourceConverter parser) {
+	public JSONAPIConverterFactory(ResourceConverter converter) {
+		this.parser = converter;
+		this.serializer = converter;
+	}
+
+	public JSONAPIConverterFactory(ResourceConverter parser, ResourceConverter serializer) {
 		this.parser = parser;
+		this.serializer = serializer;
 	}
 
 	public JSONAPIConverterFactory(ObjectMapper mapper, Class<?>... classes) {
@@ -45,10 +53,10 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 		RetrofitType retrofitType = new RetrofitType(type);
 
 		if (retrofitType.isValid() && parser.isRegisteredType(retrofitType.getType())) {
-			if (retrofitType.isCollection()) {
-				return new JSONAPIResponseBodyConverter<>(parser, retrofitType.getType(), true);
+			if (retrofitType.isJSONAPIDocumentType()) {
+				return new JSONAPIDocumentResponseBodyConverter<>(parser, retrofitType.getType(), retrofitType.isCollection());
 			} else {
-				return new JSONAPIResponseBodyConverter<>(parser, retrofitType.getType(), false);
+				return new JSONAPIResponseBodyConverter<>(parser, retrofitType.getType(), retrofitType.isCollection());
 			}
 		} else if (alternativeFactory != null) {
 			return alternativeFactory.responseBodyConverter(type, annotations, retrofit);
@@ -62,7 +70,7 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 		RetrofitType retrofitType = new RetrofitType(type);
 
 		if (retrofitType.isValid() && parser.isRegisteredType(retrofitType.getType())) {
-			return new JSONAPIRequestBodyConverter<>(parser);
+			return new JSONAPIRequestBodyConverter<>(serializer);
 		} else if (alternativeFactory != null) {
 			return alternativeFactory.requestBodyConverter(type, parameterAnnotations, methodAnnotations, retrofit);
 		} else {
