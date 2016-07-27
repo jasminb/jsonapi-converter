@@ -11,7 +11,9 @@ import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -96,6 +98,31 @@ public class ResourceConverter {
 			}
 		}
 	}
+	/**
+	* Converts raw data input into requested target type.
+	* @param data raw data
+	* @param clazz target object
+	* @param <T> type
+	* @return converted object
+	* @throws RuntimeException in case conversion fails
+	*/
+	@Deprecated
+	public <T> T readObject(byte [] data, Class<T> clazz) {
+		return readDocument(data, clazz).get();
+	}
+
+	/**
+	 * Converts rawdata input into a collection of requested output objects.
+	 * @param data raw data input
+	 * @param clazz target type
+	 * @param <T> type
+	 * @return collection of converted elements
+	 * @throws RuntimeException in case conversion fails
+	 */
+	@Deprecated
+	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
+		return readDocumentCollection(data, clazz).get();
+	}
 
 	/**
 	 * Reads JSON API spec document and converts it into target type.
@@ -104,14 +131,25 @@ public class ResourceConverter {
 	 * @param <T> type
 	 * @return {@link JSONAPIDocument}
 	 */
-	public <T> JSONAPIDocument<T> readDocument(byte [] data, Class<T> clazz) {
+	public <T> JSONAPIDocument<T> readDocument(byte[] data, Class<T> clazz) {
+		return readDocument(new ByteArrayInputStream(data), clazz);
+	}
+
+	/**
+	 * Reads JSON API spec document and converts it into target type.
+	 * @param dataStream {@link byte} raw dataStream (server response)
+	 * @param clazz {@link Class} target type
+	 * @param <T> type
+	 * @return {@link JSONAPIDocument}
+	 */
+	public <T> JSONAPIDocument<T> readDocument(InputStream dataStream, Class<T> clazz) {
 		try {
 			resourceCache.init();
 
-			JsonNode rootNode = objectMapper.readTree(data);
+			JsonNode rootNode = objectMapper.readTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureNotError(rootNode);
+			ValidationUtils.ensureNotError(objectMapper, rootNode);
 			ValidationUtils.ensureObject(rootNode);
 
 			resourceCache.cache(parseIncluded(rootNode));
@@ -151,14 +189,24 @@ public class ResourceConverter {
 	 * @param <T> type
 	 * @return {@link JSONAPIDocument}
 	 */
-	public <T> JSONAPIDocument<List<T>> readDocumentCollection(byte [] data, Class<T> clazz) {
+	public <T> JSONAPIDocument<List<T>> readDocumentCollection(byte[] data, Class<T> clazz) {
+		return readDocumentCollection(new ByteArrayInputStream(data), clazz);
+	}
+	/**
+	 * Reads JSON API spec document and converts it into collection of target type objects.
+	 * @param dataStream {@link InputStream} input stream
+	 * @param clazz {@link Class} target type
+	 * @param <T> type
+	 * @return {@link JSONAPIDocument}
+	 */
+	public <T> JSONAPIDocument<List<T>> readDocumentCollection(InputStream dataStream, Class<T> clazz) {
 		try {
 			resourceCache.init();
 
-			JsonNode rootNode = objectMapper.readTree(data);
+			JsonNode rootNode = objectMapper.readTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureNotError(rootNode);
+			ValidationUtils.ensureNotError(objectMapper, rootNode);
 			ValidationUtils.ensureCollection(rootNode);
 
 			resourceCache.cache(parseIncluded(rootNode));
@@ -193,32 +241,6 @@ public class ResourceConverter {
 	}
 
 	/**
-	 * Converts raw data input into requested target type.
-	 * @param data raw-data
-	 * @param clazz target object
-	 * @param <T> type
-	 * @return converted object
-	 * @throws RuntimeException in case conversion fails
-	 */
-	@Deprecated
-	public <T> T readObject(byte [] data, Class<T> clazz) {
-		return readDocument(data, clazz).get();
-	}
-
-	/**
-	 * Converts raw-data input into a collection of requested output objects.
-	 * @param data raw-data input
-	 * @param clazz target type
-	 * @param <T> type
-	 * @return collection of converted elements
-	 * @throws RuntimeException in case conversion fails
-	 */
-	@Deprecated
-	public <T> List<T> readObjectCollection(byte [] data, Class<T> clazz) {
-		return readDocumentCollection(data, clazz).get();
-	}
-
-	/**
 	 * Converts provided input into a target object. After conversion completes any relationships defined are resolved.
 	 * @param source JSON source
 	 * @param clazz target type
@@ -237,7 +259,11 @@ public class ResourceConverter {
 			if (source.has(ATTRIBUTES)) {
 				result = objectMapper.treeToValue(source.get(ATTRIBUTES), clazz);
 			} else {
-				result = clazz.newInstance();
+				if (clazz.isInterface()) {
+					result = null;
+				} else {
+					result = clazz.newInstance();
+				}
 			}
 
 			// Handle meta
@@ -258,15 +284,17 @@ public class ResourceConverter {
 				}
 			}
 
-			// Add parsed object to cache
-			resourceCache.cache(identifier, result);
+			if(result != null) {
+				// Add parsed object to cache
+				resourceCache.cache(identifier, result);
 
-			// Set object id
-			setIdValue(result, source.get(ID));
+				// Set object id
+				setIdValue(result, source.get(ID));
 
-			if (handleRelationships) {
-				// Handle relationships
-				handleRelationships(source, result);
+				if (handleRelationships) {
+					// Handle relationships
+					handleRelationships(source, result);
+				}
 			}
 		}
 
@@ -330,7 +358,9 @@ public class ResourceConverter {
 
 					if (clazz != null) {
 						Object object = readObject(jsonNode, clazz, false);
-						result.add(new Resource(createIdentifier(jsonNode), object));
+						if (object != null) {
+							result.add(new Resource(createIdentifier(jsonNode), object));
+						}
 					}
 				}
 			}
@@ -375,9 +405,9 @@ public class ResourceConverter {
 						if (linkNode != null && ((link = getLink(linkNode)) != null)) {
 							if (isCollection(relationship)) {
 								relationshipField.set(object,
-										readDocumentCollection(resolver.resolve(link), type).get());
+										readDocumentCollection(new ByteArrayInputStream(resolver.resolve(link)), type).get());
 							} else {
-								relationshipField.set(object, readDocument(resolver.resolve(link), type).get());
+								relationshipField.set(object, readDocument(new ByteArrayInputStream(resolver.resolve(link)), type).get());
 							}
 						}
 					} else {

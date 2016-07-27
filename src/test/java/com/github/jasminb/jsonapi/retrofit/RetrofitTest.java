@@ -1,11 +1,12 @@
 package com.github.jasminb.jsonapi.retrofit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.ResourceConverter;
 import com.github.jasminb.jsonapi.models.errors.Error;
-import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
 import com.github.jasminb.jsonapi.ErrorUtils;
 import com.github.jasminb.jsonapi.IOUtils;
 import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.errors.Errors;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -98,7 +99,7 @@ public class RetrofitTest {
 
 		Assert.assertFalse(response.isSuccessful());
 
-		ErrorResponse errorResponse = ErrorUtils.parseErrorResponse(response.errorBody());
+		Errors errorResponse = ErrorUtils.parseErrorResponse(new ObjectMapper(), response.errorBody(), Errors.class);
 
 		Assert.assertNotNull(errorResponse);
 		Assert.assertEquals(1, errorResponse.getErrors().size());
