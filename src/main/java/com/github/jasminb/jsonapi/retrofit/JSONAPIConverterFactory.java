@@ -17,22 +17,37 @@ import retrofit2.Retrofit;
  * @author jbegic
  */
 public class JSONAPIConverterFactory extends Converter.Factory {
-	private ResourceConverter parser;
+	private ResourceConverter deserializer;
 	private ResourceConverter serializer;
 	private Converter.Factory alternativeFactory;
 
+	/**
+	 * Creates new JSONAPIConverterFactory.
+	 * @param converter {@link ResourceConverter}
+	 */
 	public JSONAPIConverterFactory(ResourceConverter converter) {
-		this.parser = converter;
+		this.deserializer = converter;
 		this.serializer = converter;
 	}
 
-	public JSONAPIConverterFactory(ResourceConverter parser, ResourceConverter serializer) {
-		this.parser = parser;
+
+	/**
+	 * Creates new JSONAPIConverterFactory.
+	 * @param deserializer {@link ResourceConverter} converter instance to be used for deserializing responses
+	 * @param serializer {@link ResourceConverter} converter instance to be used for serializing requests
+	 */
+	public JSONAPIConverterFactory(ResourceConverter deserializer, ResourceConverter serializer) {
+		this.deserializer = deserializer;
 		this.serializer = serializer;
 	}
 
+	/**
+	 * Creates new JSONAPIConverterFactory.
+	 * @param mapper {@link ObjectMapper} raw data mapper
+	 * @param classes classes to be handled by this factory instance
+	 */
 	public JSONAPIConverterFactory(ObjectMapper mapper, Class<?>... classes) {
-		this.parser = new ResourceConverter(mapper, classes);
+		this.deserializer = new ResourceConverter(mapper, classes);
 	}
 
 	/**
@@ -46,17 +61,17 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 		this.alternativeFactory = alternativeFactory;
 	}
 
-
-
 	@Override
 	public Converter<ResponseBody, ?> responseBodyConverter(Type type, Annotation[] annotations, Retrofit retrofit) {
 		RetrofitType retrofitType = new RetrofitType(type);
 
-		if (retrofitType.isValid() && parser.isRegisteredType(retrofitType.getType())) {
+		if (retrofitType.isValid() && deserializer.isRegisteredType(retrofitType.getType())) {
 			if (retrofitType.isJSONAPIDocumentType()) {
-				return new JSONAPIDocumentResponseBodyConverter<>(parser, retrofitType.getType(), retrofitType.isCollection());
+				return new JSONAPIDocumentResponseBodyConverter<>(deserializer, retrofitType.getType(),
+						retrofitType.isCollection());
 			} else {
-				return new JSONAPIResponseBodyConverter<>(parser, retrofitType.getType(), retrofitType.isCollection());
+				return new JSONAPIResponseBodyConverter<>(deserializer, retrofitType.getType(),
+						retrofitType.isCollection());
 			}
 		} else if (alternativeFactory != null) {
 			return alternativeFactory.responseBodyConverter(type, annotations, retrofit);
@@ -66,10 +81,11 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 	}
 
 	@Override
-	public Converter<?, RequestBody> requestBodyConverter(Type type, Annotation[] parameterAnnotations, Annotation[] methodAnnotations, Retrofit retrofit) {
+	public Converter<?, RequestBody> requestBodyConverter(Type type, Annotation[] parameterAnnotations,
+														  Annotation[] methodAnnotations, Retrofit retrofit) {
 		RetrofitType retrofitType = new RetrofitType(type);
 
-		if (retrofitType.isValid() && parser.isRegisteredType(retrofitType.getType())) {
+		if (retrofitType.isValid() && deserializer.isRegisteredType(retrofitType.getType())) {
 			return new JSONAPIRequestBodyConverter<>(serializer);
 		} else if (alternativeFactory != null) {
 			return alternativeFactory.requestBodyConverter(type, parameterAnnotations, methodAnnotations, retrofit);

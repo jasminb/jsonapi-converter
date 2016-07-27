@@ -45,7 +45,11 @@ public class RetrofitType {
         }
     }
 
-    public boolean isJSONAPIDocumentType() {
+	/**
+	 * Returns true if type used to instantiate this object was wrapped with {@link JSONAPIDocument}.
+	 * @return {@link Boolean}
+	 */
+	public boolean isJSONAPIDocumentType() {
         return isParentType;
     }
 

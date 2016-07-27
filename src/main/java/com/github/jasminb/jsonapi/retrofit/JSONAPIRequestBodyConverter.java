@@ -16,10 +16,13 @@ import retrofit2.Converter;
 public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody> {
 	private final ResourceConverter converter;
 
+	/**
+	 * Creates new JSONAPIRequestBodyConverter.
+	 * @param converter {@link ResourceConverter} converter instance
+	 */
 	public JSONAPIRequestBodyConverter(ResourceConverter converter) {
 		this.converter = converter;
 	}
-
 
 	@Override
 	public RequestBody convert(T t) throws IOException {

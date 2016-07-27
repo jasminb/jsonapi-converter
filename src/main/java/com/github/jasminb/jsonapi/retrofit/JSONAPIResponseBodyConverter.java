@@ -17,6 +17,12 @@ public class JSONAPIResponseBodyConverter<T> implements Converter<ResponseBody, 
 	private final Boolean isCollection;
 	private final ResourceConverter parser;
 
+	/**
+	 * Creates new JSONAPIResponseBodyConverter.
+	 * @param parser {@link ResourceConverter} parser instance
+	 * @param clazz {@link Class} class to be handled
+	 * @param isCollection {@link Boolean} flag that denotes if processed resource is a single object or collection
+	 */
 	public JSONAPIResponseBodyConverter(ResourceConverter parser, Class<?> clazz, boolean isCollection) {
 		this.clazz = clazz;
 		this.isCollection = isCollection;
