@@ -1,5 +1,6 @@
 package com.github.jasminb.jsonapi.retrofit;
 
+import com.github.jasminb.jsonapi.JSONAPIDocument;
 import com.github.jasminb.jsonapi.ResourceConverter;
 
 import java.io.IOException;
@@ -28,7 +29,15 @@ public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody>
 	public RequestBody convert(T t) throws IOException {
 		try {
 			MediaType mediaType = MediaType.parse("application/vnd.api+json");
-			return RequestBody.create(mediaType, converter.writeObject(t));
+
+			JSONAPIDocument<?> document;
+
+			if (t instanceof JSONAPIDocument) {
+				document = (JSONAPIDocument<?>) t;
+			} else {
+				document = new JSONAPIDocument<>(t);
+			}
+			return RequestBody.create(mediaType, converter.writeDocument(document));
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

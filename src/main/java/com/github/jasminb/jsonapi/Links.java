@@ -1,5 +1,7 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -90,6 +92,7 @@ public class Links {
 	 * Gets all registered links.
 	 * @return {@link Map} link data
 	 */
+	@JsonIgnore
 	public Map<String, Link> getLinks() {
 		return new HashMap<>(links);
 	}
