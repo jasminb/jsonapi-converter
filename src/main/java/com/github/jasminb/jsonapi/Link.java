@@ -1,6 +1,5 @@
 package com.github.jasminb.jsonapi;
 
-import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -9,8 +8,7 @@ import java.util.Map;
 public class Link {
 
     private String href;
-
-    private Map<String, ?> meta = Collections.emptyMap();
+    private Map<String, ?> meta;
 
 	/**
 	 * Creates new Link.

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -37,6 +38,7 @@ public class ResourceConverter {
 	private final Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
 	private final ResourceCache resourceCache;
 	private final Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
+	private final Set<SerializationFeature> serializationFeatures = SerializationFeature.getDefaultFeatures();
 
 	private RelationshipResolver globalResolver;
 
@@ -537,6 +539,7 @@ public class ResourceConverter {
 	 * @throws JsonProcessingException
 	 * @throws IllegalAccessException
 	 */
+	@Deprecated
 	public byte [] writeObject(Object object) throws JsonProcessingException, IllegalAccessException {
 		ObjectNode dataNode = getDataNode(object);
 		ObjectNode result = objectMapper.createObjectNode();
@@ -546,22 +549,65 @@ public class ResourceConverter {
 		return objectMapper.writeValueAsBytes(result);
 	}
 
+	/**
+	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 * @param document {@link JSONAPIDocument} document to serialize
+	 * @return serialized content in bytes
+	 * @throws DocumentSerializationException thrown in case serialization fails
+	 */
+	public byte [] writeDocument(JSONAPIDocument<?> document) throws DocumentSerializationException {
+		try {
+			ObjectNode dataNode = getDataNode(document.get());
+			ObjectNode result = objectMapper.createObjectNode();
+			result.set(DATA, dataNode);
+
+			// Handle global links and meta
+			if (document.getMeta() != null && !document.getMeta().isEmpty() &&
+					serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+				result.set(META, objectMapper.valueToTree(document.getMeta()));
+			}
+
+			if (document.getLinks() != null && serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+				result.set(LINKS, objectMapper.valueToTree(document.getLinks()));
+			}
+			return objectMapper.writeValueAsBytes(result);
+		} catch (Exception e) {
+			throw new DocumentSerializationException(e);
+		}
+
+	}
+
+
 	private ObjectNode getDataNode(Object object) throws IllegalAccessException {
+		ObjectNode dataNode = objectMapper.createObjectNode();
 
 		// Perform initial conversion
 		ObjectNode attributesNode = objectMapper.valueToTree(object);
 
-		// Remove id, meta and relationship fields
+		// Handle id, meta and relationship fields
 		Field idField = configuration.getIdField(object.getClass());
 		attributesNode.remove(idField.getName());
 
+		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
 		if (metaField != null) {
-			attributesNode.remove(metaField.getName());
+			JsonNode meta = attributesNode.remove(metaField.getName());
+			if (meta != null && serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+				dataNode.set(META, meta);
+			}
 		}
 
+		// Handle links
+		Field linksField = configuration.getLinksField(object.getClass());
+		if (linksField != null) {
+			JsonNode links = attributesNode.remove(LINKS);
+			if (links != null && serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+				dataNode.set(LINKS, links);
+			}
+		}
+
+
 		// Handle resource identifier
-		ObjectNode dataNode = objectMapper.createObjectNode();
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
 
 		String resourceId = (String) idField.get(object);
@@ -785,5 +831,21 @@ public class ResourceConverter {
 	 */
 	public void disableDeserializationOption(DeserializationFeature option) {
 		this.deserializationFeatures.remove(option);
+	}
+
+	/**
+	 * Adds (enables) new serialization option.
+	 * @param option {@link SerializationFeature} option
+	 */
+	public void enableSerializationOption(SerializationFeature option) {
+		this.serializationFeatures.add(option);
+	}
+
+	/**
+	 * Removes (disables) existing serialization option.
+	 * @param option {@link SerializationFeature} feature to disable
+	 */
+	public void disableSerializationOption(SerializationFeature option) {
+		this.serializationFeatures.remove(option);
 	}
 }
