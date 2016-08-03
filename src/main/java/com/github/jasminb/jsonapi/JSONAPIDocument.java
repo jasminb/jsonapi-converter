@@ -32,9 +32,6 @@ public class JSONAPIDocument<T> {
 	 * @param data {@link T} API resource type
 	 */
 	public JSONAPIDocument(T data) {
-		if (data == null) {
-			throw new IllegalArgumentException("Data object must not be null reference");
-		}
 		this.data = data;
 	}
 
@@ -47,6 +44,13 @@ public class JSONAPIDocument<T> {
 	public JSONAPIDocument(T data, ObjectMapper deserializer) {
 		this(data);
 		this.deserializer = deserializer;
+	}
+
+	/**
+	 * Creates new JsonApiDocument.
+	 */
+	public JSONAPIDocument() {
+		// Default constructor
 	}
 
 	/**

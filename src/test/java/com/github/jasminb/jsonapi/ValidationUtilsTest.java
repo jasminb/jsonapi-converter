@@ -83,4 +83,14 @@ public class ValidationUtilsTest {
 	public void testRelationshipValidationNullNode() {
 		Assert.assertFalse(ValidationUtils.isRelationshipParsable(NullNode.getInstance()));
 	}
+
+	@Test
+	public void nullCollectionNode() throws IOException {
+		ValidationUtils.ensureCollection(mapper.readTree("{\"data\" : null}"));
+	}
+
+	@Test
+	public void nullObjectNode() throws IOException {
+		ValidationUtils.ensureObject(mapper.readTree("{\"data\" : null}"));
+	}
 }

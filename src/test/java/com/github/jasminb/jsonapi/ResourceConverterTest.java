@@ -427,6 +427,19 @@ public class ResourceConverterTest {
 		Assert.assertEquals("john", user.getName());
 	}
 
+	@Test
+	public void testNullDataNodeObject() {
+		JSONAPIDocument<User> nullObject = converter.readDocument("{\"data\" : null}".getBytes(), User.class);
+		Assert.assertNull(nullObject.get());
+	}
+
+	@Test
+	public void testNullDataNodeCollection() {
+		JSONAPIDocument<List<User>> nullObjectCollection = converter
+				.readDocumentCollection("{\"data\" : null}".getBytes(), User.class);
+		Assert.assertTrue(nullObjectCollection.get().isEmpty());
+	}
+
 	/**
 	 * Simple global RelationshipResolver implementation that maintains a count of responses for each
 	 * relationship url.

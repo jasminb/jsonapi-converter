@@ -158,10 +158,14 @@ public class ResourceConverter {
 
 			JsonNode dataNode = rootNode.get(DATA);
 
+			JSONAPIDocument<T> result;
 
-			T resourceObject = readObject(dataNode, clazz, true);
-
-			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, objectMapper);
+			if (!dataNode.isNull()) {
+				T resourceObject = readObject(dataNode, clazz, true);
+				result = new JSONAPIDocument<>(resourceObject, objectMapper);
+			} else {
+				result = new JSONAPIDocument<>();
+			}
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {

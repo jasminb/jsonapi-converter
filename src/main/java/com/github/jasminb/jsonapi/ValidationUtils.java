@@ -23,7 +23,9 @@ public class ValidationUtils {
 	 * @param resource resource
 	 */
 	public static void ensureCollection(JsonNode resource) {
-		if (!ensureDataNode(resource).isArray()) {
+		JsonNode node = ensureDataNode(resource);
+
+		if (!node.isArray() && !node.isNull()) {
 			throw new IllegalArgumentException("'data' node is not an array!");
 		}
 	}
@@ -72,7 +74,7 @@ public class ValidationUtils {
 		}
 
 		// Make sure data node is not a simple attribute
-		if (!dataNode.isContainerNode()) {
+		if (!dataNode.isNull() && !dataNode.isContainerNode()) {
 			throw new IllegalArgumentException("'data' node cannot be simple attribute!");
 		}
 
