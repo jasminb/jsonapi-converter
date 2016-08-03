@@ -161,8 +161,7 @@ public class ResourceConverter {
 
 			T resourceObject = readObject(dataNode, clazz, true);
 
-			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject);
-
+			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -220,7 +219,7 @@ public class ResourceConverter {
 				resourceList.add(pojo);
 			}
 
-			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList);
+			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {

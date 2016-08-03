@@ -8,6 +8,7 @@ import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
 import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
 import com.github.jasminb.jsonapi.models.RecursingNode;
+import com.github.jasminb.jsonapi.models.SimpleMeta;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
 import org.junit.Assert;
@@ -18,7 +19,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,6 +127,11 @@ public class ResourceConverterTest {
 		Assert.assertNotNull(document.get().links);
 		Assert.assertEquals("href", document.get().links.getRelated().getHref());
 		Assert.assertEquals(10, document.get().links.getRelated().getMeta().get("count"));
+
+		// Assert typed meta
+		SimpleMeta meta = document.getMeta(SimpleMeta.class);
+		Assert.assertEquals("asdASD123", meta.getToken());
+
 	}
 
 	@Test
