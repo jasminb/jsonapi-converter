@@ -3,6 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
@@ -19,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +35,7 @@ public class ResourceConverterTest {
 
 	@Before
 	public void setup() {
-		converter = new ResourceConverter(Status.class, User.class);
+		converter = new ResourceConverter(Status.class, User.class, Author.class, Article.class, Comment.class);
 	}
 
 	@Test
@@ -438,6 +440,51 @@ public class ResourceConverterTest {
 		JSONAPIDocument<List<User>> nullObjectCollection = converter
 				.readDocumentCollection("{\"data\" : null}".getBytes(), User.class);
 		Assert.assertTrue(nullObjectCollection.get().isEmpty());
+	}
+
+	@Test
+	public void testWriteWithRelationships() throws DocumentSerializationException {
+		Author author = new Author();
+		author.setId("id");
+		author.setFirstName("John");
+
+		List<Comment> comments = new ArrayList<>();
+		Comment comment = new Comment();
+		comment.setId("id");
+		comment.setBody("body");
+		comment.setAuthor(author);
+		comments.add(comment);
+
+		Article article = new Article();
+		article.setId("id");
+		article.setTitle("title");
+		article.setAuthor(author);
+		article.setComments(comments);
+
+		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+		byte [] serialized = converter.writeDocument(new JSONAPIDocument<>(article));
+
+		JSONAPIDocument<Article> deserialized = converter.readDocument(serialized, Article.class);
+
+		Assert.assertEquals(article.getTitle(), deserialized.get().getTitle());
+		Assert.assertEquals(article.getAuthor().getFirstName(), deserialized.get().getAuthor().getFirstName());
+
+		Assert.assertEquals(1, deserialized.get().getComments().size());
+		Assert.assertEquals(comment.getBody(), deserialized.get().getComments().iterator().next().getBody());
+		Assert.assertEquals(author.getFirstName(),
+				deserialized.get().getComments().iterator().next().getAuthor().getFirstName());
+
+
+		// Make sure that disabling serializing attributes works
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+		serialized = converter.writeDocument(new JSONAPIDocument<>(article));
+		deserialized = converter.readDocument(serialized, Article.class);
+
+		Assert.assertNull(deserialized.get().getComments().iterator().next().getBody());
+		Assert.assertNull(deserialized.get().getAuthor().getFirstName());
+
 	}
 
 	/**

@@ -544,10 +544,12 @@ public class ResourceConverter {
 	 */
 	@Deprecated
 	public byte [] writeObject(Object object) throws JsonProcessingException, IllegalAccessException {
-		ObjectNode dataNode = getDataNode(object);
+		Map<String, ObjectNode> includedDataMap = new HashMap<>();
+		ObjectNode dataNode = getDataNode(object, includedDataMap);
 		ObjectNode result = objectMapper.createObjectNode();
 
 		result.set(DATA, dataNode);
+		result = addIncludedSection(result, includedDataMap);
 
 		return objectMapper.writeValueAsBytes(result);
 	}
@@ -560,9 +562,11 @@ public class ResourceConverter {
 	 */
 	public byte [] writeDocument(JSONAPIDocument<?> document) throws DocumentSerializationException {
 		try {
-			ObjectNode dataNode = getDataNode(document.get());
+			Map<String, ObjectNode> includedDataMap = new HashMap<>();
+			ObjectNode dataNode = getDataNode(document.get(), includedDataMap);
 			ObjectNode result = objectMapper.createObjectNode();
 			result.set(DATA, dataNode);
+			result = addIncludedSection(result, includedDataMap);
 
 			// Handle global links and meta
 			if (document.getMeta() != null && !document.getMeta().isEmpty() &&
@@ -581,7 +585,8 @@ public class ResourceConverter {
 	}
 
 
-	private ObjectNode getDataNode(Object object) throws IllegalAccessException {
+	private ObjectNode getDataNode(Object object, Map<String, ObjectNode> includedContainer)
+			throws IllegalAccessException {
 		ObjectNode dataNode = objectMapper.createObjectNode();
 
 		// Perform initial conversion
@@ -652,6 +657,16 @@ public class ResourceConverter {
 							identifierNode.put(TYPE, relationshipType);
 							identifierNode.put(ID, idValue);
 							dataArrayNode.add(identifierNode);
+
+							// Handle included data
+							if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
+									idValue != null) {
+								String identifier = idValue.concat(relationshipType);
+								if (!includedContainer.containsKey(identifier)) {
+									includedContainer.put(identifier,
+											getDataNode(element, includedContainer));
+								}
+							}
 						}
 
 						ObjectNode relationshipDataNode = objectMapper.createObjectNode();
@@ -672,6 +687,14 @@ public class ResourceConverter {
 						relationshipDataNode.set(DATA, identifierNode);
 
 						relationshipsNode.set(relationshipName, relationshipDataNode);
+
+						if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
+								idValue != null) {
+							String identifier = idValue.concat(relationshipType);
+							if (!includedContainer.containsKey(identifier)) {
+								includedContainer.put(identifier, getDataNode(relationshipObject, includedContainer));
+							}
+						}
 					}
 				}
 
@@ -694,13 +717,17 @@ public class ResourceConverter {
 	 */
 	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JsonProcessingException, IllegalAccessException {
 		ArrayNode results = objectMapper.createArrayNode();
+		Map<String, ObjectNode> includedDataMap = new HashMap<>();
 
 		for(T object : objects) {
-			results.add(getDataNode(object));
+			results.add(getDataNode(object, includedDataMap));
 		}
 
 		ObjectNode result = objectMapper.createObjectNode();
 		result.set(DATA, results);
+
+		result = addIncludedSection(result, includedDataMap);
+
 		return objectMapper.writeValueAsBytes(result);
 	}
 
@@ -819,6 +846,18 @@ public class ResourceConverter {
 
 		return null;
 	}
+
+	private ObjectNode addIncludedSection(ObjectNode rootNode, Map<String, ObjectNode> includedDataMap) {
+		if (!includedDataMap.isEmpty()) {
+			ArrayNode includedArray = objectMapper.createArrayNode();
+			includedArray.addAll(includedDataMap.values());
+
+			rootNode.set(INCLUDED, includedArray);
+		}
+
+		return rootNode;
+	}
+
 
 	/**
 	 * Adds (enables) new deserialization option.
