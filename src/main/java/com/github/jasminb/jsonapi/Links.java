@@ -39,6 +39,7 @@ public class Links {
 	 *
 	 * @return the link, or {@code null} if the named link does not exist
 	 */
+	@JsonIgnore
 	public Link getPrevious() {
 		return getLink(JSONAPISpecConstants.PREV);
 	}
@@ -48,6 +49,7 @@ public class Links {
 	 *
 	 * @return the link, or {@code null} if the named link does not exist
 	 */
+	@JsonIgnore
 	public Link getFirst() {
 		return getLink(JSONAPISpecConstants.FIRST);
 	}
@@ -57,6 +59,7 @@ public class Links {
 	 *
 	 * @return the link, or {@code null} if the named link does not exist
 	 */
+	@JsonIgnore
 	public Link getNext() {
 		return getLink(JSONAPISpecConstants.NEXT);
 	}
@@ -66,6 +69,7 @@ public class Links {
 	 *
 	 * @return the link, or {@code null} if the named link does not exist
 	 */
+	@JsonIgnore
 	public Link getLast() {
 		return getLink(JSONAPISpecConstants.LAST);
 	}
@@ -75,6 +79,7 @@ public class Links {
 	 *
 	 * @return the link, or {@code null} if the named link does not exist
 	 */
+	@JsonIgnore
 	public Link getSelf() {
 		return getLink(JSONAPISpecConstants.SELF);
 	}
@@ -84,6 +89,7 @@ public class Links {
 	 *
 	 * @return the link, or {@code null} if the named link does not exist
 	 */
+	@JsonIgnore
 	public Link getRelated() {
 		return getLink(JSONAPISpecConstants.RELATED);
 	}
@@ -92,7 +98,6 @@ public class Links {
 	 * Gets all registered links.
 	 * @return {@link Map} link data
 	 */
-	@JsonIgnore
 	public Map<String, Link> getLinks() {
 		return new HashMap<>(links);
 	}

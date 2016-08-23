@@ -574,8 +574,9 @@ public class ResourceConverter {
 				result.set(META, objectMapper.valueToTree(document.getMeta()));
 			}
 
-			if (document.getLinks() != null && serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
-				result.set(LINKS, objectMapper.valueToTree(document.getLinks()));
+			if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() &&
+					serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+				result.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
 			}
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
@@ -608,9 +609,9 @@ public class ResourceConverter {
 		// Handle links
 		Field linksField = configuration.getLinksField(object.getClass());
 		if (linksField != null) {
-			JsonNode links = attributesNode.remove(LINKS);
+			JsonNode links = attributesNode.remove(linksField.getName());
 			if (links != null && serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
-				dataNode.set(LINKS, links);
+				dataNode.set(LINKS, links.get(LINKS));
 			}
 		}
 
