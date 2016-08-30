@@ -229,7 +229,12 @@ public class ConverterConfiguration {
 	 * @return type name or <code>null</code> if type was not registered
 	 */
 	public String getTypeName(Class<?> clazz) {
-		return typeAnnotations.get(clazz).value();
+		Type type = typeAnnotations.get(clazz);
+
+		if (type != null) {
+			return type.value();
+		}
+		return null;
 	}
 
 }

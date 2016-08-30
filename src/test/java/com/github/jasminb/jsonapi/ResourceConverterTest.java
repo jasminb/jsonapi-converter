@@ -12,6 +12,10 @@ import com.github.jasminb.jsonapi.models.RecursingNode;
 import com.github.jasminb.jsonapi.models.SimpleMeta;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.inheritance.BaseModel;
+import com.github.jasminb.jsonapi.models.inheritance.City;
+import com.github.jasminb.jsonapi.models.inheritance.Engineer;
+import com.github.jasminb.jsonapi.models.inheritance.EngineeringField;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +39,8 @@ public class ResourceConverterTest {
 
 	@Before
 	public void setup() {
-		converter = new ResourceConverter(Status.class, User.class, Author.class, Article.class, Comment.class);
+		converter = new ResourceConverter(Status.class, User.class, Author.class, Article.class, Comment.class,
+				Engineer.class, EngineeringField.class, City.class);
 	}
 
 	@Test
@@ -485,6 +490,15 @@ public class ResourceConverterTest {
 		Assert.assertNull(deserialized.get().getComments().iterator().next().getBody());
 		Assert.assertNull(deserialized.get().getAuthor().getFirstName());
 
+	}
+
+	@Test
+	public void testSubtypeDeserialization() throws IOException {
+		InputStream data = IOUtils.getResource("engineer.json");
+
+		JSONAPIDocument<BaseModel> engineerDocument = converter.readDocument(data, BaseModel.class);
+
+		Assert.assertTrue(engineerDocument.get() instanceof Engineer);
 	}
 
 	/**

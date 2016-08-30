@@ -259,23 +259,24 @@ public class ResourceConverter {
 		String identifier = createIdentifier(source);
 
 		T result = (T) resourceCache.get(identifier);
-
 		if (result == null) {
+			Class<?> type = getActualType(source, clazz);
+
 			if (source.has(ATTRIBUTES)) {
-				result = objectMapper.treeToValue(source.get(ATTRIBUTES), clazz);
+				result = (T) objectMapper.treeToValue(source.get(ATTRIBUTES), type);
 			} else {
-				if (clazz.isInterface()) {
+				if (type.isInterface()) {
 					result = null;
 				} else {
-					result = clazz.newInstance();
+					result = (T) type.newInstance();
 				}
 			}
 
 			// Handle meta
 			if (source.has(META)) {
-				Field field = configuration.getMetaField(clazz);
+				Field field = configuration.getMetaField(type);
 				if (field != null) {
-					Class<?> metaType = configuration.getMetaType(clazz);
+					Class<?> metaType = configuration.getMetaType(type);
 					Object metaObject = objectMapper.treeToValue(source.get(META), metaType);
 					field.set(result, metaObject);
 				}
@@ -283,7 +284,7 @@ public class ResourceConverter {
 
 			// Handle links
 			if (source.has(LINKS)) {
-				Field linkField = configuration.getLinksField(clazz);
+				Field linkField = configuration.getLinksField(type);
 				if (linkField != null) {
 					linkField.set(result, new Links(mapLinks(source.get(LINKS))));
 				}
@@ -857,6 +858,36 @@ public class ResourceConverter {
 		}
 
 		return rootNode;
+	}
+
+	/**
+	 * Resolves actual type to be used for resource deserialization.
+	 * <p>
+	 *     If user provides class with type annotation that is equal to the type value in response data, same class
+	 *     will be used. If provided class is super type of actual class that is resolved using response type value,
+	 *     subclass will be returned. This allows for deserializing responses in use cases where one of many subtypes
+	 *     can be returned by the server and user is not sure which one will it be.
+	 * </p>
+	 * @param object JSON object containing type value
+	 * @param userType provided user type
+	 * @return {@link Class}
+	 */
+	private Class<?> getActualType(JsonNode object, Class<?> userType) {
+		String type = object.get(TYPE).asText();
+
+		String definedTypeName = configuration.getTypeName(userType);
+
+		if (definedTypeName != null && definedTypeName.equals(type)) {
+			return userType;
+		} else {
+			Class<?> actualType = configuration.getTypeClass(type);
+
+			if (actualType != null && userType.isAssignableFrom(actualType)) {
+				return actualType;
+			}
+		}
+
+		return null;
 	}
 
 
