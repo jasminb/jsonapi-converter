@@ -545,14 +545,11 @@ public class ResourceConverter {
 	 */
 	@Deprecated
 	public byte [] writeObject(Object object) throws JsonProcessingException, IllegalAccessException {
-		Map<String, ObjectNode> includedDataMap = new HashMap<>();
-		ObjectNode dataNode = getDataNode(object, includedDataMap);
-		ObjectNode result = objectMapper.createObjectNode();
-
-		result.set(DATA, dataNode);
-		result = addIncludedSection(result, includedDataMap);
-
-		return objectMapper.writeValueAsBytes(result);
+		try {
+			return writeDocument(new JSONAPIDocument<>(object));
+		} catch (DocumentSerializationException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	/**
@@ -563,6 +560,8 @@ public class ResourceConverter {
 	 */
 	public byte [] writeDocument(JSONAPIDocument<?> document) throws DocumentSerializationException {
 		try {
+			resourceCache.init();
+
 			Map<String, ObjectNode> includedDataMap = new HashMap<>();
 			ObjectNode dataNode = getDataNode(document.get(), includedDataMap);
 			ObjectNode result = objectMapper.createObjectNode();
@@ -582,8 +581,9 @@ public class ResourceConverter {
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
+		} finally {
+			resourceCache.clear();
 		}
-
 	}
 
 
@@ -623,6 +623,9 @@ public class ResourceConverter {
 		String resourceId = (String) idField.get(object);
 		if (resourceId != null) {
 			dataNode.put(ID, resourceId);
+
+			// Cache the object for recursion breaking purposes
+			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
 		dataNode.set(ATTRIBUTES, attributesNode);
 
@@ -664,7 +667,7 @@ public class ResourceConverter {
 							if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
 									idValue != null) {
 								String identifier = idValue.concat(relationshipType);
-								if (!includedContainer.containsKey(identifier)) {
+								if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
 									includedContainer.put(identifier,
 											getDataNode(element, includedContainer));
 								}
@@ -718,21 +721,25 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException
 	 */
 	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JsonProcessingException, IllegalAccessException {
-		ArrayNode results = objectMapper.createArrayNode();
-		Map<String, ObjectNode> includedDataMap = new HashMap<>();
+		try {
+			resourceCache.init();
+			ArrayNode results = objectMapper.createArrayNode();
+			Map<String, ObjectNode> includedDataMap = new HashMap<>();
 
-		for(T object : objects) {
-			results.add(getDataNode(object, includedDataMap));
+			for(T object : objects) {
+				results.add(getDataNode(object, includedDataMap));
+			}
+
+			ObjectNode result = objectMapper.createObjectNode();
+			result.set(DATA, results);
+
+			result = addIncludedSection(result, includedDataMap);
+
+			return objectMapper.writeValueAsBytes(result);
+		} finally {
+			resourceCache.clear();
 		}
-
-		ObjectNode result = objectMapper.createObjectNode();
-		result.set(DATA, results);
-
-		result = addIncludedSection(result, includedDataMap);
-
-		return objectMapper.writeValueAsBytes(result);
 	}
-
 
 	/**
 	 * Checks if provided type is registered with this converter instance.
