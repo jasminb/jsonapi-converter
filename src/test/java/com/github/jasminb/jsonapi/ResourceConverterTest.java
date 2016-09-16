@@ -7,6 +7,7 @@ import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
+import com.github.jasminb.jsonapi.models.NoDefaultConstructorClass;
 import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
 import com.github.jasminb.jsonapi.models.RecursingNode;
 import com.github.jasminb.jsonapi.models.SimpleMeta;
@@ -40,7 +41,7 @@ public class ResourceConverterTest {
 	@Before
 	public void setup() {
 		converter = new ResourceConverter(Status.class, User.class, Author.class, Article.class, Comment.class,
-				Engineer.class, EngineeringField.class, City.class);
+				Engineer.class, EngineeringField.class, City.class, NoDefaultConstructorClass.class);
 	}
 
 	@Test
@@ -499,6 +500,23 @@ public class ResourceConverterTest {
 		JSONAPIDocument<BaseModel> engineerDocument = converter.readDocument(data, BaseModel.class);
 
 		Assert.assertTrue(engineerDocument.get() instanceof Engineer);
+	}
+
+	@Test
+	public void testNoDefCtorObjectDeserialization() throws IOException {
+		String data = "{\"data\":{\"type\":\"no-def-ctor\",\"id\":\"1\",\"attributes\":{\"name\":\"Name\"}}}";
+
+		JSONAPIDocument<NoDefaultConstructorClass> result = converter.readDocument(data.getBytes(),
+				NoDefaultConstructorClass.class);
+
+		Assert.assertEquals("Name", result.get().getName());
+
+		result = converter.readDocument("{\"data\":{\"type\":\"no-def-ctor\",\"id\":\"1\"}}".getBytes(),
+				NoDefaultConstructorClass.class);
+
+		Assert.assertNotNull(result.get());
+		Assert.assertEquals("1", result.get().getId());
+
 	}
 
 	/**

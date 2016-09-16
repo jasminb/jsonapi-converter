@@ -268,7 +268,7 @@ public class ResourceConverter {
 				if (type.isInterface()) {
 					result = null;
 				} else {
-					result = (T) type.newInstance();
+					result = (T) objectMapper.treeToValue(objectMapper.createObjectNode(), type);
 				}
 			}
 
