@@ -15,14 +15,14 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.4</version>
+  <version>0.5</version>
 </dependency>
 ```
 
 SBT:
 
 ```
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.4"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.5"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -46,7 +46,7 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.5-SNAPSHOT</version>
+  <version>0.6-SNAPSHOT</version>
 </dependency>
 ```
 
