@@ -1,6 +1,7 @@
 package com.github.jasminb.jsonapi;
 
-import java.util.Collections;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +13,7 @@ import java.util.Map;
  */
 public class JSONAPIDocument<T> {
 	private T data;
+	private ObjectMapper deserializer;
 
 	/**
 	 * Top level response link object.
@@ -21,7 +23,7 @@ public class JSONAPIDocument<T> {
 	/**
 	 * A map of meta fields, keyed by the meta field name
 	 */
-	private Map<String, ?> meta = Collections.emptyMap();
+	private Map<String, ?> meta;
 
 
 	/**
@@ -30,10 +32,25 @@ public class JSONAPIDocument<T> {
 	 * @param data {@link T} API resource type
 	 */
 	public JSONAPIDocument(T data) {
-		if (data == null) {
-			throw new IllegalArgumentException("Data object must not be null reference");
-		}
 		this.data = data;
+	}
+
+	/**
+	 * Creates new JsonApiDocument.
+	 *
+	 * @param data {@link T} API resource type
+	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
+	 */
+	public JSONAPIDocument(T data, ObjectMapper deserializer) {
+		this(data);
+		this.deserializer = deserializer;
+	}
+
+	/**
+	 * Creates new JsonApiDocument.
+	 */
+	public JSONAPIDocument() {
+		// Default constructor
 	}
 
 	/**
@@ -79,5 +96,19 @@ public class JSONAPIDocument<T> {
 	 */
 	public void setLinks(Links links) {
 		this.links = links;
+	}
+
+	/**
+	 * Returns typed meta-data object or <code>null</code> if no meta is present.
+	 * @param metaType {@link Class} target type
+	 * @param <T> type
+	 * @return meta or <code>null</code>
+	 */
+	public <T> T getMeta(Class<?> metaType) {
+		if (meta != null && deserializer != null) {
+			return (T) deserializer.convertValue(meta, metaType);
+		}
+
+		return null;
 	}
 }

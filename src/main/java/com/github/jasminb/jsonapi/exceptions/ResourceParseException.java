@@ -1,6 +1,6 @@
 package com.github.jasminb.jsonapi.exceptions;
 
-import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
+import com.github.jasminb.jsonapi.models.errors.Errors;
 
 /**
  * ResourceParseException implementation. <br />
@@ -9,18 +9,18 @@ import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
  * @author jbegic
  */
 public class ResourceParseException extends RuntimeException {
-	private final ErrorResponse errorResponse;
+	private final Errors errors;
 
-	public ResourceParseException(ErrorResponse errorResponse) {
-		super(errorResponse.toString());
-		this.errorResponse = errorResponse;
+	public ResourceParseException(Errors errors) {
+		super(errors.toString());
+		this.errors = errors;
 	}
 
 	/**
-	 * Returns ErrorResponse or <code>null</code>
-	 * @return {@link ErrorResponse}
+	 * Returns Errors or <code>null</code>
+	 * @return {@link Errors}
 	 */
-	public ErrorResponse getErrorResponse() {
-		return errorResponse;
+	public Errors getErrors() {
+		return errors;
 	}
 }

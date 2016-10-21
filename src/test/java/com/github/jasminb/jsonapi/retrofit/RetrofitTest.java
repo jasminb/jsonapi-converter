@@ -1,11 +1,12 @@
 package com.github.jasminb.jsonapi.retrofit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.ResourceConverter;
 import com.github.jasminb.jsonapi.models.errors.Error;
-import com.github.jasminb.jsonapi.models.errors.ErrorResponse;
 import com.github.jasminb.jsonapi.ErrorUtils;
 import com.github.jasminb.jsonapi.IOUtils;
 import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.errors.Errors;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -13,8 +14,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import retrofit.Response;
-import retrofit.Retrofit;
+import retrofit2.Response;
+import retrofit2.Retrofit;
 
 import java.io.IOException;
 import java.util.List;
@@ -62,7 +63,7 @@ public class RetrofitTest {
 
 		Response<User> response = service.getExampleResource().execute();
 
-		Assert.assertTrue(response.isSuccess());
+		Assert.assertTrue(response.isSuccessful());
 
 		User user = response.body();
 
@@ -80,7 +81,7 @@ public class RetrofitTest {
 
 		Response<List<User>> response = service.getExampleResourceList().execute();
 
-		Assert.assertTrue(response.isSuccess());
+		Assert.assertTrue(response.isSuccessful());
 
 		List<User> users = response.body();
 		Assert.assertEquals(2, users.size());
@@ -96,9 +97,9 @@ public class RetrofitTest {
 
 		Response<User> response = service.getExampleResource().execute();
 
-		Assert.assertFalse(response.isSuccess());
+		Assert.assertFalse(response.isSuccessful());
 
-		ErrorResponse errorResponse = ErrorUtils.parseErrorResponse(response.errorBody());
+		Errors errorResponse = ErrorUtils.parseErrorResponse(new ObjectMapper(), response.errorBody(), Errors.class);
 
 		Assert.assertNotNull(errorResponse);
 		Assert.assertEquals(1, errorResponse.getErrors().size());

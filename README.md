@@ -15,14 +15,14 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.3</version>
+  <version>0.4</version>
 </dependency>
 ```
 
 SBT:
 
 ```
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.3"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.4"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -46,7 +46,7 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.4-SNAPSHOT</version>
+  <version>0.5-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -320,8 +320,6 @@ Book book = bookDocument.get();
 JSONAPIDocument<List<Book>> bookDocumentCollection = converter.readDocumentCollection(rawResponse, Book.class);
 List<Book> bookCollection = bookDocumentCollection.get();
 
-// To convert book object back to bytes
-byte [] rawData = converter.writeObject(book);
 ```
 
 Note that calling `readDocument(...)` or `readDocumentCollection(...)` using content that contains `errors` (`{"errors" : [{...}]}`) attribute will produce `ResourceParseException`.
@@ -337,7 +335,81 @@ To gain access to top level meta/links, this library provides convinience method
  - `getMeta()`
  - `getLinks()`
  
+##### Resource serialization
 
+Besides providing options to deserialize json-api spec complaint resource representation, library also includes support for serializing resources.
+
+Following are available serialization options that can be enabled/disabled on `ResourceConverter` instance:
+
+ - `INCLUDE_META` disabled by default, if enabled, meta data will be serialized
+ - `INCLUDE_LINKS` disabled by default, if enabled links will be serialized
+ - `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled by default, if enabled, relationship objects will be serialized fully, this means that besides generating `relationship` objects for each relationship, `included` section will be created that contains actuall relationship attributes
+
+To enable or disable serialization options:
+
+```
+ResourceConverter converter = ...
+# Enable generating included section
+converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+# Disable generating included section
+converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+```
+
+
+Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled:
+
+```
+{
+  "data": {
+    "type": "articles",
+    "id": "id",
+    "attributes": {
+      "title": "title"
+    },
+    "relationships": {
+      "author": {
+        "data": {
+          "type": "people",
+          "id": "id"
+        }
+      }
+    }
+  }
+}
+```
+
+Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` enabled:
+
+```
+{
+  "data": {
+    "type": "articles",
+    "id": "id",
+    "attributes": {
+      "title": "title"
+    },
+    "relationships": {
+      "author": {
+        "data": {
+          "type": "people",
+          "id": "id"
+        }
+      }
+    }
+  },
+  "included": [
+    {
+      "type": "people",
+      "id": "id",
+      "attributes": {
+        "firstName": "John"
+      }
+    }
+  ]
+}
+```
 
 ##### Example usage with retrofit
 
@@ -360,14 +432,14 @@ Retrofit retrofit = new Retrofit.Builder()
 		
 // Create service using service interface
 
-MyBooksService<Book> booksService = retrofit.create(MyBooksService.class);
+MyBooksService booksService = retrofit.create(MyBooksService.class);
 
 ```
 
 ###### Synchronous usage
 
 ```
-Response<Book> bookResponse = booksService.find("123").execute();
+Response<JSONAPIDocument<Book>> bookResponse = booksService.find("123").execute();
 
 if (bookResponse.isSuccess()) {
     // Consume response
@@ -380,11 +452,11 @@ if (bookResponse.isSuccess()) {
 ###### Asynchronous usage
 
 ```
-Call<Book> bookServiceCall = service.getExampleResource();
+Call<JSONAPIDocument<Book>> bookServiceCall = service.getExampleResource();
 
 bookServiceCall.enqueue(new Callback<Book>() {
   @Override
-  public void onResponse(Response<Book> bookResponse, Retrofit retrofit) {
+  public void onResponse(Response<JSONAPIDocument<Book>> bookResponse, Retrofit retrofit) {
     if (bookResponse.isSuccess()) {
         // Consume response
     } else {
@@ -398,4 +470,16 @@ bookServiceCall.enqueue(new Callback<Book>() {
     // Handle network errors/unexpected errors
   }
 });
+```
+
+Notice that expected return types in `MyBookService` calls are all wrapped with `JSONAPIDocument`, this is intended way to use the library since it allows for gaining access to response level `meta` and `links` data.
+
+Example service interface:
+
+```
+public interface MyBooksService {
+    @GET("books")
+    Call<JSONAPIDocument<List<Book>> allBooks();
+}
+
 ```

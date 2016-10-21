@@ -50,7 +50,7 @@ public class ValidationUtilsTest {
 	@Test(expected = ResourceParseException.class)
 	public void testNodeIsError() throws IOException {
 		JsonNode node = mapper.readTree(IOUtils.getResourceAsString("errors.json"));
-		ValidationUtils.ensureNotError(node);
+		ValidationUtils.ensureNotError(mapper, node);
 	}
 
 	@Test
@@ -82,5 +82,15 @@ public class ValidationUtilsTest {
 	@Test
 	public void testRelationshipValidationNullNode() {
 		Assert.assertFalse(ValidationUtils.isRelationshipParsable(NullNode.getInstance()));
+	}
+
+	@Test
+	public void nullCollectionNode() throws IOException {
+		ValidationUtils.ensureCollection(mapper.readTree("{\"data\" : null}"));
+	}
+
+	@Test
+	public void nullObjectNode() throws IOException {
+		ValidationUtils.ensureObject(mapper.readTree("{\"data\" : null}"));
 	}
 }

@@ -2,7 +2,9 @@ package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.exceptions.ResourceParseException;
+import com.github.jasminb.jsonapi.models.errors.Errors;
 
 /**
  * Utility methods for validating segments of JSON API resource object.
@@ -21,7 +23,9 @@ public class ValidationUtils {
 	 * @param resource resource
 	 */
 	public static void ensureCollection(JsonNode resource) {
-		if (!ensureDataNode(resource).isArray()) {
+		JsonNode node = ensureDataNode(resource);
+
+		if (!node.isArray() && !node.isNull()) {
 			throw new IllegalArgumentException("'data' node is not an array!");
 		}
 	}
@@ -51,10 +55,10 @@ public class ValidationUtils {
 	 * @param resourceNode resource node
 	 * @throws ResourceParseException
 	 */
-	public static void ensureNotError(JsonNode resourceNode) {
+	public static void ensureNotError(ObjectMapper mapper, JsonNode resourceNode) {
 		if (resourceNode != null && resourceNode.hasNonNull(JSONAPISpecConstants.ERRORS)) {
 			try {
-				throw new ResourceParseException(ErrorUtils.parseError(resourceNode));
+				throw new ResourceParseException(ErrorUtils.parseError(mapper, resourceNode, Errors.class));
 			} catch (JsonProcessingException e) {
 				throw new RuntimeException(e);
 			}
@@ -70,7 +74,7 @@ public class ValidationUtils {
 		}
 
 		// Make sure data node is not a simple attribute
-		if (!dataNode.isContainerNode()) {
+		if (!dataNode.isNull() && !dataNode.isContainerNode()) {
 			throw new IllegalArgumentException("'data' node cannot be simple attribute!");
 		}
 

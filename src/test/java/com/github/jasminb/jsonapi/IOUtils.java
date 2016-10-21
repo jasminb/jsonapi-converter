@@ -25,4 +25,8 @@ public class IOUtils {
 			return resultBuilder.toString();
 		}
 	}
+	public static InputStream getResource(String name) throws IOException {
+		InputStream input = IOUtils.class.getClassLoader().getResourceAsStream(name);
+		return input;
+	}
 }
