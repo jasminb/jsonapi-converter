@@ -569,15 +569,57 @@ public class ResourceConverter {
 			result = addIncludedSection(result, includedDataMap);
 
 			// Handle global links and meta
-			if (document.getMeta() != null && !document.getMeta().isEmpty() &&
-					serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
-				result.set(META, objectMapper.valueToTree(document.getMeta()));
+			serializeMeta(document, result);
+			serializeLinks(document, result);
+			return objectMapper.writeValueAsBytes(result);
+		} catch (Exception e) {
+			throw new DocumentSerializationException(e);
+		} finally {
+			resourceCache.clear();
+		}
+	}
+
+	private void serializeMeta(JSONAPIDocument<?> document, ObjectNode resultNode) {
+		// Handle global links and meta
+		if (document.getMeta() != null && !document.getMeta().isEmpty() &&
+				serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+			resultNode.set(META, objectMapper.valueToTree(document.getMeta()));
+		}
+	}
+
+	private void serializeLinks(JSONAPIDocument<?> document, ObjectNode resultNode) {
+		if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() &&
+				serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+			resultNode.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
+		}
+	}
+
+	/**
+	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 * @param documentCollection {@link JSONAPIDocument} document collection to serialize
+	 * @return serialized content in bytes
+	 * @throws DocumentSerializationException thrown in case serialization fails
+	 */
+	public byte [] writeDocumentCollection(JSONAPIDocument<? extends Iterable<?>> documentCollection)
+			throws DocumentSerializationException{
+
+		try {
+			resourceCache.init();
+			ArrayNode results = objectMapper.createArrayNode();
+			Map<String, ObjectNode> includedDataMap = new HashMap<>();
+
+			for (Object object : documentCollection.get()) {
+				results.add(getDataNode(object, includedDataMap));
 			}
 
-			if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() &&
-					serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
-				result.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
-			}
+			ObjectNode result = objectMapper.createObjectNode();
+			result.set(DATA, results);
+
+			result = addIncludedSection(result, includedDataMap);
+
+			// Handle global links and meta
+			serializeMeta(documentCollection, result);
+			serializeLinks(documentCollection, result);
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -719,25 +761,19 @@ public class ResourceConverter {
 	 * @return raw bytes
 	 * @throws JsonProcessingException
 	 * @throws IllegalAccessException
+	 * @deprecated use writeDocumentCollection instead
 	 */
+	@Deprecated
 	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JsonProcessingException, IllegalAccessException {
 		try {
-			resourceCache.init();
-			ArrayNode results = objectMapper.createArrayNode();
-			Map<String, ObjectNode> includedDataMap = new HashMap<>();
-
-			for(T object : objects) {
-				results.add(getDataNode(object, includedDataMap));
+			return writeDocumentCollection(new JSONAPIDocument<>(objects));
+		} catch (DocumentSerializationException e) {
+			if (e.getCause() instanceof JsonProcessingException) {
+				throw (JsonProcessingException) e.getCause();
+			} else if (e.getCause() instanceof  IllegalAccessException) {
+				throw (IllegalAccessException) e.getCause();
 			}
-
-			ObjectNode result = objectMapper.createObjectNode();
-			result.set(DATA, results);
-
-			result = addIncludedSection(result, includedDataMap);
-
-			return objectMapper.writeValueAsBytes(result);
-		} finally {
-			resourceCache.clear();
+			throw new RuntimeException(e.getCause());
 		}
 	}
 

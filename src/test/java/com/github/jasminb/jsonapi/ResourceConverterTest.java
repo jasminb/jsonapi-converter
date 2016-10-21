@@ -519,6 +519,39 @@ public class ResourceConverterTest {
 
 	}
 
+	@Test
+	public void testWriteDocumentCollection() throws IOException, DocumentSerializationException {
+		InputStream usersRequest = IOUtils.getResource("users.json");
+
+		converter.enableSerializationOption(SerializationFeature.INCLUDE_LINKS);
+		converter.enableSerializationOption(SerializationFeature.INCLUDE_META);
+
+		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
+
+		Map<String, String> meta = new HashMap<>();
+		meta.put("meta", "abc");
+
+		usersDocument.setMeta(meta);
+
+		Map<String, Link> linkMap = new HashMap<>();
+		linkMap.put("self", new Link("abc"));
+		usersDocument.setLinks(new Links(linkMap));
+
+		JSONAPIDocument<List<User>> checkDocument = converter
+				.readDocumentCollection(converter.writeDocumentCollection(usersDocument), User.class);
+
+		Assert.assertEquals(2, checkDocument.get().size());
+
+		Assert.assertEquals(usersDocument.get().iterator().next().getId(),
+				checkDocument.get().iterator().next().getId());
+
+		Assert.assertNotNull(checkDocument.getMeta());
+		Assert.assertNotNull(checkDocument.getLinks());
+
+		Assert.assertEquals("abc", checkDocument.getLinks().getSelf().toString());
+		Assert.assertEquals("abc", checkDocument.getMeta().get("meta"));
+	}
+
 	/**
 	 * Simple global RelationshipResolver implementation that maintains a count of responses for each
 	 * relationship url.
