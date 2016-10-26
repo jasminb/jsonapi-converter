@@ -1,5 +1,6 @@
 package com.github.jasminb.jsonapi.retrofit;
 
+import com.github.jasminb.jsonapi.JSONAPIDocument;
 import com.github.jasminb.jsonapi.models.User;
 import com.github.jasminb.jsonapi.models.errors.Errors;
 import retrofit2.Call;
@@ -27,4 +28,7 @@ public interface SimpleService {
 
 	@POST("user")
 	Call<User> createUser(@Body User user);
+
+	@POST("users")
+	Call<JSONAPIDocument<List<User>>> createMultipleUsers(@Body JSONAPIDocument<List<User>> users);
 }

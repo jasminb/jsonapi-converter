@@ -32,12 +32,22 @@ public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody>
 
 			JSONAPIDocument<?> document;
 
+			boolean isCollection;
+
 			if (t instanceof JSONAPIDocument) {
 				document = (JSONAPIDocument<?>) t;
+				isCollection = Iterable.class.isAssignableFrom(document.get().getClass());
 			} else {
 				document = new JSONAPIDocument<>(t);
+				isCollection = Iterable.class.isAssignableFrom(t.getClass());
 			}
-			return RequestBody.create(mediaType, converter.writeDocument(document));
+
+			if (isCollection) {
+				return RequestBody.create(mediaType,
+						converter.writeDocumentCollection((JSONAPIDocument<? extends Iterable<?>>) document));
+			} else {
+				return RequestBody.create(mediaType, converter.writeDocument(document));
+			}
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
