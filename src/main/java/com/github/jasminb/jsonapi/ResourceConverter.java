@@ -16,8 +16,11 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -419,7 +422,7 @@ public class ResourceConverter {
 					} else {
 						if (isCollection(relationship)) {
 							@SuppressWarnings("rawtypes")
-							List elements = new ArrayList<>();
+							Collection elements = createCollectionInstance(relationshipField.getType());
 
 							for (JsonNode element : relationship.get(DATA)) {
 								Object relationshipObject = parseRelationship(element, type);
@@ -930,9 +933,40 @@ public class ResourceConverter {
 			}
 		}
 
-		return null;
+
+		throw new RuntimeException("No class was registered for type '" + type + "'.");
 	}
 
+
+	private Collection<?> createCollectionInstance(Class<?> type)
+			throws InstantiationException, IllegalAccessException {
+		if (!type.isInterface() && !Modifier.isAbstract(type.getModifiers())) {
+			return (Collection<?>) type.newInstance();
+		}
+
+		if (List.class.equals(type) || Collection.class.equals(type)) {
+			return new ArrayList<>();
+		}
+
+		if (Set.class.equals(type)) {
+			return new HashSet<>();
+		}
+
+		throw new RuntimeException("Unable to create appropriate instance for type: " + type.getSimpleName());
+	}
+
+	/**
+	 * Registers new type to be used with this converter instance.
+	 * @param type {@link Class} type to register
+	 * @return <code>true</code> if type was registed, else <code>false</code> (in case type was registered already or
+	 * type is not eligible for registering ie. missing required annotations)
+	 */
+	public boolean registerType(Class<?> type) {
+		if (!configuration.isRegisteredType(type) && ConverterConfiguration.isEligibleType(type)) {
+			return configuration.registerType(type);
+		}
+		return false;
+	}
 
 	/**
 	 * Adds (enables) new deserialization option.

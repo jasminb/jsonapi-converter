@@ -6,6 +6,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -58,7 +59,7 @@ public class ReflectionUtils {
 	public static Class<?> getFieldType(Field field) {
 		Class<?> targetType = field.getType();
 
-		if (targetType.equals(List.class)) {
+		if (Collection.class.isAssignableFrom(targetType)) {
 			ParameterizedType stringListType = (ParameterizedType) field.getGenericType();
 			targetType = (Class<?>) stringListType.getActualTypeArguments()[0];
 		}

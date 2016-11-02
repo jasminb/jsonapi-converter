@@ -7,7 +7,7 @@ import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 
-import java.util.List;
+import java.util.Collection;
 
 @Type("people")
 @JsonIdentityInfo(generator = ObjectIdGenerators.StringIdGenerator.class, property = "id")
@@ -19,7 +19,7 @@ public class Author {
 	private String twitter;
 
 	@Relationship("articles")
-	private List<Article> articles;
+	private Collection<Article> articles;
 
 	public String getId() {
 		return id;
@@ -53,11 +53,11 @@ public class Author {
 		this.twitter = twitter;
 	}
 
-	public List<Article> getArticles() {
+	public Collection<Article> getArticles() {
 		return articles;
 	}
 
-	public void setArticles(List<Article> articles) {
+	public void setArticles(Collection<Article> articles) {
 		this.articles = articles;
 	}
 }

@@ -38,7 +38,7 @@ public class ConverterConfiguration {
 	 */
 	public ConverterConfiguration(Class<?>... classes) {
 		for (Class<?> clazz : classes) {
-			processClass(clazz);
+			registerType(clazz);
 		}
 	}
 
@@ -61,11 +61,14 @@ public class ConverterConfiguration {
 				relationshipTypeMap.get(clazz).put(relationship.value(), targetType);
 				relationshipFieldMap.get(clazz).put(relationship.value(), relationshipField);
 				fieldRelationshipMap.put(relationshipField, relationship);
+
 				if (relationship.resolve() && relationship.relType() == null) {
 					throw new IllegalArgumentException("@Relationship on " + clazz.getName() + "#" +
 							relationshipField.getName() + " with 'resolve = true' must have a relType attribute " +
 							"set." );
 				}
+
+				registerType(targetType);
 			}
 
 			relationshipMap.put(clazz, relationshipFields);
@@ -235,6 +238,31 @@ public class ConverterConfiguration {
 			return type.value();
 		}
 		return null;
+	}
+
+	/**
+	 * Registers new type with this configuration instance.
+	 * @param type {@link Class} type to register
+	 * @return <code>true</code> in case type was registered, <code>false</code> in case type was registered already
+	 */
+	public synchronized boolean registerType(Class<?> type) {
+		if (!isRegisteredType(type)) {
+			processClass(type);
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks if class is eligible as resource type (must have {@link Type} annotation and field annotated with
+	 * {@link Id}.
+	 * @param type type to test
+	 * @return <code>true</code> if type is eligible
+	 */
+	public static boolean isEligibleType(Class<?> type) {
+		return type.isAnnotationPresent(Type.class) &&
+				!ReflectionUtils.getAnnotatedFields(type, Id.class, true).isEmpty();
 	}
 
 }
