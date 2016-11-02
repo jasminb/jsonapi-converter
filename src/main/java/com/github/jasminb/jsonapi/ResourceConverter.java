@@ -167,7 +167,7 @@ public class ResourceConverter {
 				T resourceObject = readObject(dataNode, clazz, true);
 				result = new JSONAPIDocument<>(resourceObject, objectMapper);
 			} else {
-				result = new JSONAPIDocument<>();
+				result = new JSONAPIDocument<>(null, objectMapper);
 			}
 
 			// Handle top-level meta
