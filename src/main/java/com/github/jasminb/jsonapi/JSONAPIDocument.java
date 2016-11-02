@@ -1,6 +1,7 @@
 package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.jasminb.jsonapi.models.errors.Error;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,6 +15,8 @@ import java.util.Map;
 public class JSONAPIDocument<T> {
 	private T data;
 	private ObjectMapper deserializer;
+	
+	private Iterable<? extends Error> errors;
 
 	/**
 	 * Top level response link object.
@@ -36,7 +39,7 @@ public class JSONAPIDocument<T> {
 	}
 
 	/**
-	 * Creates new JsonApiDocument.
+	 * Creates new JSONAPIDocument.
 	 *
 	 * @param data {@link T} API resource type
 	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
@@ -47,10 +50,24 @@ public class JSONAPIDocument<T> {
 	}
 
 	/**
-	 * Creates new JsonApiDocument.
+	 * Creates new JSONAPIDocument.
 	 */
 	public JSONAPIDocument() {
 		// Default constructor
+	}
+	
+	/**
+	 * Factory method for creating JSONAPIDocument that holds the Error object.
+	 *
+	 * <p>
+	 *     This method should be used in case error response is being built by the server side.
+	 * </p>
+	 * @param errors
+	 */
+	public static JSONAPIDocument<?> createErrorDocument(Iterable<? extends Error> errors) {
+		JSONAPIDocument<?> result = new JSONAPIDocument();
+		result.errors = errors;
+		return result;
 	}
 
 	/**
@@ -110,5 +127,13 @@ public class JSONAPIDocument<T> {
 		}
 
 		return null;
+	}
+	
+	/**
+	 * Returns error objects or <code>null</code> in case no errors were set.
+	 * @return {@link Iterable} errors
+	 */
+	public Iterable<? extends Error> getErrors() {
+		return errors;
 	}
 }

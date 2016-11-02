@@ -5,11 +5,13 @@ import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.errors.Error;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -91,6 +93,19 @@ public class SerializationTest {
 		Assert.assertEquals(author.getFirstName(), authorResource.get().getFirstName());
 		Assert.assertEquals(author.getArticles().size(), authorResource.get().getArticles().size());
 		Assert.assertEquals(article.getTitle(), authorResource.get().getArticles().iterator().next().getTitle());
+	}
+	
+	@Test
+	public void testErrorSerialisation() throws DocumentSerializationException {
+		Error error = new Error();
+		error.setCode("code");
+		
+		JSONAPIDocument<?> document = JSONAPIDocument.createErrorDocument(Collections.singleton(error));
+		
+		String serialised = new String(converter.writeDocument(document));
+		
+		Assert.assertEquals("{\"errors\":[{\"code\":\"code\"}]}", serialised);
+		
 	}
 
 	private JSONAPIDocument<User> createDocument(User user) {

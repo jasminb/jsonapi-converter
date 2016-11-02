@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
+import com.github.jasminb.jsonapi.models.errors.Error;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -566,12 +567,27 @@ public class ResourceConverter {
 			resourceCache.init();
 
 			Map<String, ObjectNode> includedDataMap = new HashMap<>();
-			ObjectNode dataNode = getDataNode(document.get(), includedDataMap);
+			
 			ObjectNode result = objectMapper.createObjectNode();
-			result.set(DATA, dataNode);
-			result = addIncludedSection(result, includedDataMap);
-
-			// Handle global links and meta
+			
+			// Serialize data if present
+			if (document.get() != null) {
+				ObjectNode dataNode = getDataNode(document.get(), includedDataMap);
+				result.set(DATA, dataNode);
+				result = addIncludedSection(result, includedDataMap);
+			}
+			
+			// Serialize errors if present
+			if (document.getErrors() != null) {
+				ArrayNode errorsNode = objectMapper.createArrayNode();
+				for (Error error : document.getErrors()) {
+					errorsNode.add(objectMapper.valueToTree(error));
+				}
+				
+				result.set(ERRORS, errorsNode);
+			}
+			
+			// Serialize global links and meta
 			serializeMeta(document, result);
 			serializeLinks(document, result);
 			return objectMapper.writeValueAsBytes(result);
