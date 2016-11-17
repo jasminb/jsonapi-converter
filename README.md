@@ -65,7 +65,7 @@ Annotation has single property `value` which is required and it should be set to
 
 Example:
 
-```
+```java
 @Type("book")
 public class Book {
  ...
@@ -86,7 +86,7 @@ Id annotation is inheritable, one can define a base model class that contains a 
 
 Example:
 
-```
+```java
 @Type("book")
 public class Book {
   
@@ -98,7 +98,7 @@ public class Book {
 
 Example with inheritance:
 
-```
+```java
 public class BaseModel {
   @Id
   private String id;
@@ -118,7 +118,7 @@ Imagine modeling a simple library application, you would end up having a `Book` 
 
 You can model this as two different classes where `Book` resource would have an relationship to an `Author`:
 
-```
+```java
 @Type("book")
 public class Book {
   @Id
@@ -146,7 +146,7 @@ Resolving a relationship means using provided `links` attribute to perform addit
 
 Relationship resolver interface has a single method:
 
-```
+```java
 byte [] resolve(String relationshipURL);
 ````
 
@@ -154,14 +154,14 @@ After implementing relationship resolver, in order to use it, one must register 
 
 Example:
 
-```
+```java
 ResourceConverter converter = new ResourceConverter(Book.class, Author.class);
 converter.setGlobalResolver(new CustomRelationshipResolverInstance());
 ```
 
 Besides support for global resolvers, there is an option to have different resolvers for different resource types:
 
-```
+```java
 ResourceConverter converter = new ResourceConverter(Book.class, Author.class);
 converter.setTypeResolver(new CustomBooksResolver(), Book.class);
 converter.setTypeResolver(new CustomAuthorResolver(), Author.class);
@@ -189,7 +189,7 @@ In order to map and make meta available trough resource conversion, one must cre
 
 Meta example:
 
-```
+```java
 # Meta model class
 
 public class MyCustomMetaClass {
@@ -233,7 +233,7 @@ Library provides a `com.github.jasminb.jsonapi.Links` class that must be used in
 
 Example:
 
-```
+```java
 @Type("book")
 public class Book {
   @Id
@@ -257,7 +257,7 @@ Links are inheritable.
 
 Define simple POJO, please pay attention to added annotations:
 
-```
+```java
 # Meta is optional, one does not have to define or use it
 public class Meta {
     private String myAttribute;
@@ -306,7 +306,7 @@ public class Author extends BaseResource {
 
 Create a converter instance:
 
-```
+```java
 ResourceConverter converter = new ResourceConverter(Book.class, Author.class);
 
 // Get response data
@@ -347,7 +347,7 @@ Following are available serialization options that can be enabled/disabled on `R
 
 To enable or disable serialization options:
 
-```
+```java
 ResourceConverter converter = ...
 # Enable generating included section
 converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
@@ -360,7 +360,7 @@ converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_A
 
 Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled:
 
-```
+```json
 {
   "data": {
     "type": "articles",
@@ -382,7 +382,7 @@ Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled:
 
 Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` enabled:
 
-```
+```json
 {
   "data": {
     "type": "articles",
@@ -419,7 +419,7 @@ After defining models, define your service interfaces as you would usually do wi
 
 To create retrofit instance:
 
-```
+```java
 // Create object mapper
 ObjectMapper objectMapper = new ObjectMapper();
 
@@ -438,7 +438,7 @@ MyBooksService booksService = retrofit.create(MyBooksService.class);
 
 ###### Synchronous usage
 
-```
+```java
 Response<JSONAPIDocument<Book>> bookResponse = booksService.find("123").execute();
 
 if (bookResponse.isSuccess()) {
@@ -451,7 +451,7 @@ if (bookResponse.isSuccess()) {
 
 ###### Asynchronous usage
 
-```
+```java
 Call<JSONAPIDocument<Book>> bookServiceCall = service.getExampleResource();
 
 bookServiceCall.enqueue(new Callback<Book>() {
@@ -476,7 +476,7 @@ Notice that expected return types in `MyBookService` calls are all wrapped with 
 
 Example service interface:
 
-```
+```java
 public interface MyBooksService {
     @GET("books")
     Call<JSONAPIDocument<List<Book>> allBooks();
