@@ -551,6 +551,28 @@ public class ResourceConverterTest {
 		Assert.assertEquals("abc", checkDocument.getLinks().getSelf().toString());
 		Assert.assertEquals("abc", checkDocument.getMeta().get("meta"));
 	}
+	
+	@Test
+	public void testReadRelationshipMeta() throws IOException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		
+		Status status = converter.readDocument(statusStream, Status.class).get();
+		
+		Assert.assertNotNull(status.getUserRelationshipMeta());
+		Assert.assertEquals("token", status.getUserRelationshipMeta().getToken());
+	}
+	
+	@Test
+	public void testWriteRelationshipMeta() throws IOException, DocumentSerializationException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		JSONAPIDocument<Status> statusJSONAPIDocument = converter.readDocument(statusStream, Status.class);
+		
+		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
+		
+		Status status = converter.readDocument(serialized, Status.class).get();
+		Assert.assertNotNull(status.getUserRelationshipMeta());
+		Assert.assertEquals("token", status.getUserRelationshipMeta().getToken());
+	}
 
 	/**
 	 * Simple global RelationshipResolver implementation that maintains a count of responses for each

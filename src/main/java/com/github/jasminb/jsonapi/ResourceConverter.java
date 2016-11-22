@@ -400,6 +400,16 @@ public class ResourceConverter {
 					if (type == null) {
 						continue;
 					}
+					
+					// Handle meta if present
+					if (relationship.has(META)) {
+						Field relationshipMetaField = configuration.getRelationshipMetaField(object.getClass(), field);
+						
+						if (relationshipField != null) {
+							relationshipMetaField.set(object, objectMapper.treeToValue(relationship.get(META),
+									configuration.getRelationshipMetaType(object.getClass(), field)));
+						}
+					}
 
 					// Get resolve flag
 					boolean resolveRelationship = configuration.getFieldRelationship(relationshipField).resolve();
@@ -711,11 +721,23 @@ public class ResourceConverter {
 					}
 
 					String relationshipName = relationship.value();
+					
+					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
+					relationshipsNode.set(relationshipName, relationshipDataNode);
+					
+					// Serialize relationship meta
+					Field relationshipMetaField = configuration
+							.getRelationshipMetaField(object.getClass(), relationshipName);
+					
+					if (relationshipMetaField != null && relationshipMetaField.get(object) != null) {
+						JsonNode relationshipMeta = objectMapper.valueToTree(relationshipMetaField.get(object));
+						relationshipDataNode.set(META, relationshipMeta);
+					}
 
-					if (relationshipObject instanceof List) {
+					if (relationshipObject instanceof Collection) {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
 
-						for (Object element : (List<?>) relationshipObject) {
+						for (Object element : (Collection<?>) relationshipObject) {
 							String relationshipType = configuration.getTypeName(element.getClass());
 							String idValue = (String) configuration.getIdField(element.getClass()).get(element);
 
@@ -734,10 +756,7 @@ public class ResourceConverter {
 								}
 							}
 						}
-
-						ObjectNode relationshipDataNode = objectMapper.createObjectNode();
 						relationshipDataNode.set(DATA, dataArrayNode);
-						relationshipsNode.set(relationshipName, relationshipDataNode);
 
 					} else {
 						String relationshipType = configuration.getTypeName(relationshipObject.getClass());
@@ -747,12 +766,8 @@ public class ResourceConverter {
 						ObjectNode identifierNode = objectMapper.createObjectNode();
 						identifierNode.put(TYPE, relationshipType);
 						identifierNode.put(ID, idValue);
-
-
-						ObjectNode relationshipDataNode = objectMapper.createObjectNode();
+						
 						relationshipDataNode.set(DATA, identifierNode);
-
-						relationshipsNode.set(relationshipName, relationshipDataNode);
 
 						if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
 								idValue != null) {

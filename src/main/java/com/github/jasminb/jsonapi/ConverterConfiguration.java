@@ -3,6 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
 import com.github.jasminb.jsonapi.annotations.Type;
 
 import java.lang.reflect.Field;
@@ -28,6 +29,9 @@ public class ConverterConfiguration {
 	private final Map<Class<?>, Map<String, Class<?>>> relationshipTypeMap = new HashMap<>();
 	private final Map<Class<?>, Map<String, Field>> relationshipFieldMap = new HashMap<>();
 	private final Map<Field, Relationship> fieldRelationshipMap = new HashMap<>();
+	private final Map<Field, RelationshipMeta> fieldRelationshipMetaMap = new HashMap<>();
+	private final Map<Class<?>, Map<String, Class<?>>> relationshipMetaTypeMap = new HashMap<>();
+	private final Map<Class<?>, Map<String, Field>> relationshipMetaFieldMap = new HashMap<>();
 	private final Map<Class<?>, Class<?>> metaTypeMap = new HashMap<>();
 	private final Map<Class<?>, Field> metaFieldMap = new HashMap<>();
 	private final Map<Class<?>, Field> linkFieldMap = new HashMap<>();
@@ -49,6 +53,8 @@ public class ConverterConfiguration {
 			typeAnnotations.put(clazz, annotation);
 			relationshipTypeMap.put(clazz, new HashMap<String, Class<?>>());
 			relationshipFieldMap.put(clazz, new HashMap<String, Field>());
+			relationshipMetaFieldMap.put(clazz, new HashMap<String, Field>());
+			relationshipMetaTypeMap.put(clazz, new HashMap<String, Class<?>>());
 
 			// collecting Relationship fields
 			List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
@@ -72,6 +78,19 @@ public class ConverterConfiguration {
 			}
 
 			relationshipMap.put(clazz, relationshipFields);
+			
+			// collecting RelationshipMeta fields
+			List<Field> relMetaFields = ReflectionUtils.getAnnotatedFields(clazz, RelationshipMeta.class, true);
+			
+			for (Field relMetaField : relMetaFields) {
+				relMetaField.setAccessible(true);
+				
+				RelationshipMeta relationshipMeta = relMetaField.getAnnotation(RelationshipMeta.class);
+				Class<?> targetType = ReflectionUtils.getFieldType(relMetaField);
+				relationshipMetaTypeMap.get(clazz).put(relationshipMeta.value(), targetType);
+				fieldRelationshipMetaMap.put(relMetaField, relationshipMeta);
+				relationshipMetaFieldMap.get(clazz).put(relationshipMeta.value(), relMetaField);
+			}
 
 			// collecting Id fields
 			List<Field> idAnnotatedFields = ReflectionUtils.getAnnotatedFields(clazz, Id.class, true);
@@ -263,6 +282,26 @@ public class ConverterConfiguration {
 	public static boolean isEligibleType(Class<?> type) {
 		return type.isAnnotationPresent(Type.class) &&
 				!ReflectionUtils.getAnnotatedFields(type, Id.class, true).isEmpty();
+	}
+	
+	/**
+	 * Returns relationship meta field.
+	 * @param clazz {@link Class} class holding relationship
+	 * @param relationshipName {@link String} name of the relationship
+	 * @return {@link Field} field
+	 */
+	public Field getRelationshipMetaField(Class<?> clazz, String relationshipName) {
+		return relationshipMetaFieldMap.get(clazz).get(relationshipName);
+	}
+	
+	/**
+	 * Returns a type of a relationship meta field.
+	 * @param clazz {@link Class} owning the field with relationship meta annotation
+	 * @param relationshipName {@link String} name of the field
+	 * @return {@link Class} meta field type
+	 */
+	public Class<?> getRelationshipMetaType(Class<?> clazz, String relationshipName) {
+		return relationshipMetaTypeMap.get(clazz).get(relationshipName);
 	}
 
 }

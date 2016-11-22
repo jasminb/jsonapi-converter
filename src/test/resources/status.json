@@ -15,6 +15,9 @@
         "data": {
           "type": "users",
           "id": "userid"
+        },
+        "meta" : {
+          "token" : "token"
         }
       }
     }
