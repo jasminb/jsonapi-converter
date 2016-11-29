@@ -1,7 +1,9 @@
 package com.github.jasminb.jsonapi.models;
 
+import com.github.jasminb.jsonapi.Links;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
 import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
 import com.github.jasminb.jsonapi.annotations.Type;
 
@@ -18,6 +20,9 @@ public class Status {
 	
 	@RelationshipMeta("user")
 	private SimpleMeta userRelationshipMeta;
+	
+	@RelationshipLinks("user")
+	private Links userRelationshipLinks;
 
 	@Relationship(value = "related-user", resolve = true, serialise = false)
 	private User relatedUser;
@@ -76,6 +81,14 @@ public class Status {
 	
 	public void setUserRelationshipMeta(SimpleMeta userRelationshipMeta) {
 		this.userRelationshipMeta = userRelationshipMeta;
+	}
+	
+	public Links getUserRelationshipLinks() {
+		return userRelationshipLinks;
+	}
+	
+	public void setUserRelationshipLinks(Links userRelationshipLinks) {
+		this.userRelationshipLinks = userRelationshipLinks;
 	}
 	
 	@Override

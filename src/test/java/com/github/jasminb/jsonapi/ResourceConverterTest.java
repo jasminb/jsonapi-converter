@@ -151,12 +151,14 @@ public class ResourceConverterTest {
 		initialUser.meta = userMeta;
 		initialUser.id = "123";
 		initialUser.name = "John Nash";
-
+		
+		
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_META);
 		byte [] rawData = converter.writeObject(initialUser);
 
 		Assert.assertNotNull(rawData);
 		Assert.assertFalse(rawData.length == 0);
-
+		
 		JSONAPIDocument<User> converted = converter.readDocument(new ByteArrayInputStream(rawData), User.class);
 		Assert.assertEquals(null, converted.get().getMeta());
 	}
@@ -466,10 +468,14 @@ public class ResourceConverterTest {
 		article.setTitle("title");
 		article.setAuthor(author);
 		article.setComments(comments);
-
+		
 		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
-
+		converter.enableSerializationOption(SerializationFeature.INCLUDE_LINKS);
+		
+		
 		byte [] serialized = converter.writeDocument(new JSONAPIDocument<>(article));
+		
+		System.out.println(new String(serialized));
 
 		JSONAPIDocument<Article> deserialized = converter.readDocument(serialized, Article.class);
 
@@ -572,6 +578,27 @@ public class ResourceConverterTest {
 		Status status = converter.readDocument(serialized, Status.class).get();
 		Assert.assertNotNull(status.getUserRelationshipMeta());
 		Assert.assertEquals("token", status.getUserRelationshipMeta().getToken());
+	}
+	
+	@Test
+	public void testReadRelationshipLinks() throws IOException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		Status status = converter.readDocument(statusStream, Status.class).get();
+		
+		Assert.assertNotNull(status.getUserRelationshipLinks());
+		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
+	}
+	
+	@Test
+	public void testWriteRelationshipLinks() throws IOException, DocumentSerializationException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		JSONAPIDocument<Status> statusJSONAPIDocument = converter.readDocument(statusStream, Status.class);
+		
+		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
+		
+		Status status = converter.readDocument(serialized, Status.class).get();
+		Assert.assertNotNull(status.getUserRelationshipLinks());
+		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
 	}
 
 	/**

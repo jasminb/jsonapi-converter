@@ -405,9 +405,18 @@ public class ResourceConverter {
 					if (relationship.has(META)) {
 						Field relationshipMetaField = configuration.getRelationshipMetaField(object.getClass(), field);
 						
-						if (relationshipField != null) {
+						if (relationshipMetaField != null) {
 							relationshipMetaField.set(object, objectMapper.treeToValue(relationship.get(META),
 									configuration.getRelationshipMetaType(object.getClass(), field)));
+						}
+					}
+					
+					// Handle links if present
+					if (relationship.has(LINKS)) {
+						Field relationshipLinksField = configuration.getRelationshipLinksField(object.getClass(), field);
+						if (relationshipLinksField != null) {
+							Links links = new Links(mapLinks(relationship.get(LINKS)));
+							relationshipLinksField.set(object, links);
 						}
 					}
 
@@ -715,7 +724,7 @@ public class ResourceConverter {
 
 					Relationship relationship = configuration.getFieldRelationship(relationshipField);
 
-					// In case serialisation is disabled for a given relationship, skipp it
+					// In case serialisation is disabled for a given relationship, skip it
 					if (!relationship.serialise()) {
 						continue;
 					}
@@ -726,14 +735,22 @@ public class ResourceConverter {
 					relationshipsNode.set(relationshipName, relationshipDataNode);
 					
 					// Serialize relationship meta
-					Field relationshipMetaField = configuration
-							.getRelationshipMetaField(object.getClass(), relationshipName);
-					
-					if (relationshipMetaField != null && relationshipMetaField.get(object) != null) {
-						JsonNode relationshipMeta = objectMapper.valueToTree(relationshipMetaField.get(object));
+					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName);
+					if (relationshipMeta != null) {
 						relationshipDataNode.set(META, relationshipMeta);
+						attributesNode.remove(configuration
+								.getRelationshipMetaField(object.getClass(), relationshipName).getName());
 					}
-
+					
+					// Serialize relationship links
+					JsonNode relationshipLinks = getRelationshipLinks(object, relationshipName);
+					if (relationshipLinks != null) {
+						relationshipDataNode.set(LINKS, relationshipLinks);
+						attributesNode.remove(configuration
+								.getRelationshipLinksField(object.getClass(), relationshipName).getName());
+						
+					}
+					
 					if (relationshipObject instanceof Collection) {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
 
@@ -768,7 +785,7 @@ public class ResourceConverter {
 						identifierNode.put(ID, idValue);
 						
 						relationshipDataNode.set(DATA, identifierNode);
-
+						
 						if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
 								idValue != null) {
 							String identifier = idValue.concat(relationshipType);
@@ -985,6 +1002,35 @@ public class ResourceConverter {
 
 		throw new RuntimeException("Unable to create appropriate instance for type: " + type.getSimpleName());
 	}
+	
+	private JsonNode getRelationshipMeta(Object source, String relationshipName) throws IllegalAccessException {
+		if (serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+			Field relationshipMetaField = configuration
+					.getRelationshipMetaField(source.getClass(), relationshipName);
+			
+			if (relationshipMetaField != null && relationshipMetaField.get(source) != null) {
+				return objectMapper.valueToTree(relationshipMetaField.get(source));
+			}
+		}
+		return null;
+	}
+	
+	private JsonNode getRelationshipLinks(Object source, String relationshipName) throws IllegalAccessException {
+		if (serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+			Field relationshipLinksField = configuration.getRelationshipLinksField(source.getClass(), relationshipName);
+			
+			if (relationshipLinksField != null) {
+				Object links = relationshipLinksField.get(source);
+				
+				if (links != null) {
+					return objectMapper.valueToTree(links).get(LINKS);
+				}
+			}
+		}
+		
+		return null;
+	}
+	
 
 	/**
 	 * Registers new type to be used with this converter instance.

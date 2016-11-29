@@ -26,8 +26,6 @@ public class SerializationTest {
 	@Before
 	public void setup() {
 		converter = new ResourceConverter(Status.class, User.class, Article.class, Author.class);
-		converter.enableSerializationOption(SerializationFeature.INCLUDE_LINKS);
-		converter.enableSerializationOption(SerializationFeature.INCLUDE_META);
 		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
 	}
 
@@ -59,7 +57,10 @@ public class SerializationTest {
 	@Test
 	public void testWithDisabledOptions() throws DocumentSerializationException {
 		ResourceConverter converter = new ResourceConverter(Status.class, User.class);
-
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_META);
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_LINKS);
+		
+		
 		JSONAPIDocument<User> convertedBack = converter
 				.readDocument(converter.writeDocument(createDocument(createUser())), User.class);
 

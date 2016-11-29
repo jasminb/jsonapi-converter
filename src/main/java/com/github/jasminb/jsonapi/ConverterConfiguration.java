@@ -3,6 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
 import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
 import com.github.jasminb.jsonapi.annotations.Type;
 
@@ -35,6 +36,9 @@ public class ConverterConfiguration {
 	private final Map<Class<?>, Class<?>> metaTypeMap = new HashMap<>();
 	private final Map<Class<?>, Field> metaFieldMap = new HashMap<>();
 	private final Map<Class<?>, Field> linkFieldMap = new HashMap<>();
+	
+	// Relationship links lookups
+	private final Map<Class<?>, Map<String, Field>> relationshipLinksFieldMap = new HashMap<>();
 
 	/**
 	 * Creates new ConverterConfiguration.
@@ -55,6 +59,7 @@ public class ConverterConfiguration {
 			relationshipFieldMap.put(clazz, new HashMap<String, Field>());
 			relationshipMetaFieldMap.put(clazz, new HashMap<String, Field>());
 			relationshipMetaTypeMap.put(clazz, new HashMap<String, Class<?>>());
+			relationshipLinksFieldMap.put(clazz, new HashMap<String, Field>());
 
 			// collecting Relationship fields
 			List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
@@ -90,6 +95,16 @@ public class ConverterConfiguration {
 				relationshipMetaTypeMap.get(clazz).put(relationshipMeta.value(), targetType);
 				fieldRelationshipMetaMap.put(relMetaField, relationshipMeta);
 				relationshipMetaFieldMap.get(clazz).put(relationshipMeta.value(), relMetaField);
+			}
+			
+			// Collecting RelationshipLink fields
+			List<Field> relLinkFields = ReflectionUtils.getAnnotatedFields(clazz, RelationshipLinks.class, true);
+			
+			for (Field relLinkField : relLinkFields) {
+				relLinkField.setAccessible(true);
+				
+				RelationshipLinks links = relLinkField.getAnnotation(RelationshipLinks.class);
+				relationshipLinksFieldMap.get(clazz).put(links.value(), relLinkField);
 			}
 
 			// collecting Id fields
@@ -302,6 +317,16 @@ public class ConverterConfiguration {
 	 */
 	public Class<?> getRelationshipMetaType(Class<?> clazz, String relationshipName) {
 		return relationshipMetaTypeMap.get(clazz).get(relationshipName);
+	}
+	
+	/**
+	 * Returns relationship links field.
+	 * @param clazz {@link Class} class holding relationship
+	 * @param relationshipName {@link String} name of the relationship
+	 * @return {@link Field} field
+	 */
+	public Field getRelationshipLinksField(Class<?> clazz, String relationshipName) {
+		return relationshipLinksFieldMap.get(clazz).get(relationshipName);
 	}
 
 }
