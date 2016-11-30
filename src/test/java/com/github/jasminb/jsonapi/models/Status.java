@@ -7,15 +7,18 @@ import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
 import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
 import com.github.jasminb.jsonapi.annotations.Type;
 
-@Type("statuses")
+@Type(value = "statuses", path = "/statuses/{id}")
 public class Status {
 	@Id
 	private String id;
 	private String content;
 	private Integer commentCount;
 	private Integer likeCount;
+	
+	@com.github.jasminb.jsonapi.annotations.Links
+	private Links links;
 
-	@Relationship(value = "user", resolve = true)
+	@Relationship(value = "user", resolve = true, path = "/relationships/user", relatedPath = "user")
 	private User user;
 	
 	@RelationshipMeta("user")
@@ -89,6 +92,14 @@ public class Status {
 	
 	public void setUserRelationshipLinks(Links userRelationshipLinks) {
 		this.userRelationshipLinks = userRelationshipLinks;
+	}
+	
+	public Links getLinks() {
+		return links;
+	}
+	
+	public void setLinks(Links links) {
+		this.links = links;
 	}
 	
 	@Override

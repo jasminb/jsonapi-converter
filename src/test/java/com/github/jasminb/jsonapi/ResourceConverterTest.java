@@ -40,8 +40,9 @@ public class ResourceConverterTest {
 
 	@Before
 	public void setup() {
-		converter = new ResourceConverter(Status.class, User.class, Author.class, Article.class, Comment.class,
-				Engineer.class, EngineeringField.class, City.class, NoDefaultConstructorClass.class);
+		converter = new ResourceConverter("https://api.example.com", Status.class, User.class, Author.class,
+				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
+				NoDefaultConstructorClass.class);
 	}
 
 	@Test
@@ -55,8 +56,8 @@ public class ResourceConverterTest {
 		status.getUser().setId("userid");
 		status.setRelatedUser(status.getUser());
 
-		byte [] rawData = converter.writeObject(status);
-
+		byte [] rawData = converter.writeDocument(new JSONAPIDocument<>(status));
+		
 		Assert.assertNotNull(rawData);
 		Assert.assertFalse(rawData.length == 0);
 
@@ -73,6 +74,19 @@ public class ResourceConverterTest {
 
 		Assert.assertNotNull(converted.getUser());
 		Assert.assertEquals(status.getUser().getId(), converted.getUser().getId());
+		
+		// Make sure type link is present
+		Assert.assertNotNull(converted.getLinks());
+		Assert.assertEquals("https://api.example.com/statuses/id",
+				converted.getLinks().getSelf().getHref());
+		
+		// Make sure relationship links are present
+		Assert.assertNotNull(converted.getUserRelationshipLinks());
+		Assert.assertEquals("https://api.example.com/statuses/id/relationships/user",
+				converted.getUserRelationshipLinks().getSelf().getHref());
+		Assert.assertEquals("https://api.example.com/statuses/id/user",
+				converted.getUserRelationshipLinks().getRelated().getHref());
+		
 	}
 
 	@Test
@@ -475,8 +489,6 @@ public class ResourceConverterTest {
 		
 		byte [] serialized = converter.writeDocument(new JSONAPIDocument<>(article));
 		
-		System.out.println(new String(serialized));
-
 		JSONAPIDocument<Article> deserialized = converter.readDocument(serialized, Article.class);
 
 		Assert.assertEquals(article.getTitle(), deserialized.get().getTitle());
@@ -595,6 +607,8 @@ public class ResourceConverterTest {
 		JSONAPIDocument<Status> statusJSONAPIDocument = converter.readDocument(statusStream, Status.class);
 		
 		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
+		
+		System.out.println(new String(serialized));
 		
 		Status status = converter.readDocument(serialized, Status.class).get();
 		Assert.assertNotNull(status.getUserRelationshipLinks());

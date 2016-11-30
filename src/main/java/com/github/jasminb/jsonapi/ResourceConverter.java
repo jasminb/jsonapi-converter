@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.errors.Error;
 
@@ -45,6 +46,8 @@ public class ResourceConverter {
 	private final Set<SerializationFeature> serializationFeatures = SerializationFeature.getDefaultFeatures();
 
 	private RelationshipResolver globalResolver;
+	
+	private String baseURL;
 
 	/**
 	 * Creates new ResourceConverter.
@@ -55,16 +58,35 @@ public class ResourceConverter {
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
 	public ResourceConverter(Class<?>... classes) {
-		this(null, classes);
+		this(null, null, classes);
+	}
+	
+	/**
+	 * Creates new ResourceConverter.
+	 * <p>
+	 *     All classes that should be handled by instance of {@link ResourceConverter} must be registered
+	 *     when creating a new instance of it.
+	 * </p>
+	 * @param baseURL {@link String} base URL, eg. https://api.mysite.com
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 */
+	public ResourceConverter(String baseURL, Class<?>... classes) {
+		this(null, baseURL, classes);
+	}
+	
+	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
+		this(mapper, null, classes);
 	}
 
 	/**
 	 * Creates new ResourceConverter.
 	 * @param mapper {@link ObjectMapper} custom mapper to be used for resource parsing
+	 * @param baseURL {@link String} base URL, eg. https://api.mysite.com
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
-	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
+	public ResourceConverter(ObjectMapper mapper, String baseURL, Class<?>... classes) {
 		this.configuration = new ConverterConfiguration(classes);
+		this.baseURL = baseURL != null ? baseURL : "";
 
 		// Set custom mapper if provided
 		if (mapper != null) {
@@ -676,7 +698,7 @@ public class ResourceConverter {
 
 		// Handle id, meta and relationship fields
 		Field idField = configuration.getIdField(object.getClass());
-		attributesNode.remove(idField.getName());
+		JsonNode id = attributesNode.remove(idField.getName());
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
@@ -688,14 +710,16 @@ public class ResourceConverter {
 		}
 
 		// Handle links
-		Field linksField = configuration.getLinksField(object.getClass());
-		if (linksField != null) {
-			JsonNode links = attributesNode.remove(linksField.getName());
-			if (links != null && serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
-				dataNode.set(LINKS, links.get(LINKS));
+		JsonNode jsonLinks = getResourceLinks(object, attributesNode, id.textValue());
+		String selfHref = null;
+		
+		if (jsonLinks != null) {
+			dataNode.set(LINKS, jsonLinks);
+			
+			if (jsonLinks.has(SELF)) {
+				selfHref = jsonLinks.get(SELF).get(HREF).asText();
 			}
 		}
-
 
 		// Handle resource identifier
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
@@ -743,12 +767,18 @@ public class ResourceConverter {
 					}
 					
 					// Serialize relationship links
-					JsonNode relationshipLinks = getRelationshipLinks(object, relationshipName);
+					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref);
+					
 					if (relationshipLinks != null) {
 						relationshipDataNode.set(LINKS, relationshipLinks);
-						attributesNode.remove(configuration
-								.getRelationshipLinksField(object.getClass(), relationshipName).getName());
 						
+						// Remove link object from serialized JSON
+						Field refField = configuration
+								.getRelationshipLinksField(object.getClass(), relationshipName);
+						
+						if (refField != null) {
+							attributesNode.remove(refField.getName());
+						}
 					}
 					
 					if (relationshipObject instanceof Collection) {
@@ -1015,23 +1045,91 @@ public class ResourceConverter {
 		return null;
 	}
 	
-	private JsonNode getRelationshipLinks(Object source, String relationshipName) throws IllegalAccessException {
-		if (serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
-			Field relationshipLinksField = configuration.getRelationshipLinksField(source.getClass(), relationshipName);
+	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId)
+			throws IllegalAccessException {
+		Type type = configuration.getType(resource.getClass());
+		
+		// Check if there are user-provided links
+		Links links = null;
+		Field linksField = configuration.getLinksField(resource.getClass());
+		if (linksField != null) {
+			links = (Links) linksField.get(resource);
 			
-			if (relationshipLinksField != null) {
-				Object links = relationshipLinksField.get(source);
-				
-				if (links != null) {
-					return objectMapper.valueToTree(links).get(LINKS);
-				}
+			// Remove links from attributes object
+			if (links != null) {
+				serializedResource.remove(linksField.getName());
 			}
 		}
 		
+		// If enabled, handle links
+		if (serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+			Map<String, Link> linkMap = new HashMap<>();
+			
+			if (links != null) {
+				linkMap.putAll(links.getLinks());
+			}
+			
+			// If link path is defined in type and id is not null and user did not explicity set link value, create it
+			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && resourceId != null) {
+				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", resourceId))));
+			}
+			
+			// If there is at least one link generated, serialize and return
+			if (!linkMap.isEmpty()) {
+				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+			}
+		}
 		return null;
 	}
 	
-
+	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink)
+			throws IllegalAccessException {
+		if (serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+			Links links = null;
+			
+			Field relationshipLinksField = configuration
+					.getRelationshipLinksField(source.getClass(), relationship.value());
+			
+			if (relationshipLinksField != null) {
+				links = (Links) relationshipLinksField.get(source);
+			}
+			
+			Map<String, Link> linkMap = new HashMap<>();
+			
+			if (links != null) {
+				linkMap.putAll(links.getLinks());
+			}
+			
+			if (!relationship.path().trim().isEmpty() && !linkMap.containsKey(SELF)) {
+				linkMap.put(SELF, new Link(createURL(ownerLink, relationship.path())));
+			}
+			
+			if (!relationship.relatedPath().trim().isEmpty() && !linkMap.containsKey(RELATED)) {
+				linkMap.put(RELATED, new Link(createURL(ownerLink, relationship.relatedPath())));
+			}
+			
+			if (!linkMap.isEmpty()) {
+				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+			}
+		}
+		return null;
+	}
+	
+	private String createURL(String base, String path) {
+		String result = base;
+		if (!result.endsWith("/")) {
+			result = result.concat("/");
+		}
+		
+		if (path.startsWith("/")) {
+			result = result.concat(path.substring(1));
+		} else {
+			result = result.concat(path);
+		}
+		
+		return result;
+	}
+	
 	/**
 	 * Registers new type to be used with this converter instance.
 	 * @param type {@link Class} type to register

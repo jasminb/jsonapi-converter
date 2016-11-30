@@ -273,6 +273,15 @@ public class ConverterConfiguration {
 		}
 		return null;
 	}
+	
+	/**
+	 * Resolves and returns the type given to provided class.
+	 * @param clazz {@link Class} to resolve type name for
+	 * @return type or <code>null</code> if type was not registered
+	 */
+	public Type getType(Class<?> clazz) {
+		return typeAnnotations.get(clazz);
+	}
 
 	/**
 	 * Registers new type with this configuration instance.
