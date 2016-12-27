@@ -25,6 +25,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -460,7 +461,7 @@ public class ResourceConverterTest {
 	@Test
 	public void testNullDataNodeCollection() {
 		JSONAPIDocument<List<User>> nullObjectCollection = converter
-				.readDocumentCollection("{\"data\" : null}".getBytes(), User.class);
+				.readDocumentCollection("{\"data\" : null, \"meta\": {}}".getBytes(), User.class);
 		Assert.assertTrue(nullObjectCollection.get().isEmpty());
 	}
 
@@ -613,6 +614,14 @@ public class ResourceConverterTest {
 		Status status = converter.readDocument(serialized, Status.class).get();
 		Assert.assertNotNull(status.getUserRelationshipLinks());
 		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
+	}
+	
+	@Test
+	public void testReadMetaOnly() {
+		JSONAPIDocument<Status> status = converter.readDocument("{\"meta\" : {}}".getBytes(StandardCharsets.UTF_8),
+				Status.class);
+		
+		Assert.assertNotNull(status.getMeta());
 	}
 
 	/**

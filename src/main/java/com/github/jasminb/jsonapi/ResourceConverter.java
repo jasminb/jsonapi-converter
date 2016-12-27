@@ -178,7 +178,7 @@ public class ResourceConverter {
 
 			// Validate
 			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureObject(rootNode);
+			ValidationUtils.ensureValidResource(rootNode);
 
 			resourceCache.cache(parseIncluded(rootNode));
 
@@ -186,7 +186,7 @@ public class ResourceConverter {
 
 			JSONAPIDocument<T> result;
 
-			if (!dataNode.isNull()) {
+			if (dataNode != null && !dataNode.isNull()) {
 				T resourceObject = readObject(dataNode, clazz, true);
 				result = new JSONAPIDocument<>(resourceObject, objectMapper);
 			} else {
@@ -238,7 +238,7 @@ public class ResourceConverter {
 
 			// Validate
 			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureCollection(rootNode);
+			ValidationUtils.ensureValidResource(rootNode);
 
 			resourceCache.cache(parseIncluded(rootNode));
 
