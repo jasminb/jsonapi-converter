@@ -186,7 +186,7 @@ public class ResourceConverter {
 
 			JSONAPIDocument<T> result;
 
-			if (dataNode != null && !dataNode.isNull()) {
+			if (dataNode != null && dataNode.isObject()) {
 				T resourceObject = readObject(dataNode, clazz, true);
 				result = new JSONAPIDocument<>(resourceObject, objectMapper);
 			} else {
@@ -244,11 +244,13 @@ public class ResourceConverter {
 
 			List<T> resourceList = new ArrayList<>();
 
-			for (JsonNode element : rootNode.get(DATA)) {
-				T pojo = readObject(element, clazz, true);
-				resourceList.add(pojo);
+			if (rootNode.has(DATA) && rootNode.get(DATA).isArray()) {
+				for (JsonNode element : rootNode.get(DATA)) {
+					T pojo = readObject(element, clazz, true);
+					resourceList.add(pojo);
+				}
 			}
-
+			
 			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, objectMapper);
 
 			// Handle top-level meta

@@ -23,7 +23,7 @@ public class ValidationUtils {
 	 */
 	public static void ensureValidResource(JsonNode resource) {
 		if (!resource.has(JSONAPISpecConstants.DATA) && !resource.has(JSONAPISpecConstants.META)) {
-			throw new IllegalArgumentException("Resource must contain one of 'data', 'error' or 'meta' nodes");
+			throw new IllegalArgumentException("Resource must contain at least one of 'data', 'error' or 'meta' nodes");
 		}
 	}
 

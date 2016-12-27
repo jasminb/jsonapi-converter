@@ -257,25 +257,10 @@ public class ResourceConverterTest {
 		User user = userDocument.get();
 		Assert.assertNotNull(user.getStatuses());
 	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testExpectCollection() throws IOException {
-		converter.readDocumentCollection(IOUtils.getResource("user-with-statuses.json"), User.class);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testExpectObject() throws IOException {
-		converter.readDocument(IOUtils.getResource("users.json"), User.class);
-	}
-
+	
 	@Test(expected = IllegalArgumentException.class)
 	public void testExpectData() throws UnsupportedEncodingException {
 		converter.readDocument(new ByteArrayInputStream("{}".getBytes()), User.class);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testDataNodeMustBeAnObject() {
-		converter.readDocument(new ByteArrayInputStream("{\"data\" : \"attribute\"}".getBytes()), User.class);
 	}
 
 	@Test
