@@ -316,7 +316,7 @@ public class ResourceConverter {
 				}
 			}
 
-			if(result != null) {
+			if (result != null) {
 				// Add parsed object to cache
 				resourceCache.cache(identifier, result);
 
@@ -384,16 +384,17 @@ public class ResourceConverter {
 		if (parent.has(INCLUDED)) {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
 				String type = jsonNode.get(TYPE).asText();
-
-				if (type != null) {
-					Class<?> clazz = configuration.getTypeClass(type);
-
-					if (clazz != null) {
-						Object object = readObject(jsonNode, clazz, false);
-						if (object != null) {
-							result.add(new Resource(createIdentifier(jsonNode), object));
-						}
+				
+				Class<?> clazz = configuration.getTypeClass(type);
+				
+				if (clazz != null) {
+					Object object = readObject(jsonNode, clazz, false);
+					if (object != null) {
+						result.add(new Resource(createIdentifier(jsonNode), object));
 					}
+				} else {
+					throw new IllegalArgumentException("Included section contains unknown resource type: " +
+							String.valueOf(true));
 				}
 			}
 		}
