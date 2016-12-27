@@ -108,6 +108,76 @@ public class SerializationTest {
 		Assert.assertEquals("{\"errors\":[{\"code\":\"code\"}]}", serialised);
 		
 	}
+	
+	@Test
+	public void testIncludedDataDisabledTroughSettings() throws DocumentSerializationException {
+		JSONAPIDocument<User> document = createDocument(createUser());
+		
+		SerializationSettings serializationSettings = new SerializationSettings.Builder()
+				.excludedRelationships("statuses")
+				.build();
+		
+		JSONAPIDocument<User> convertedBack = converter.readDocument(
+				converter.writeDocument(document, serializationSettings), User.class);
+		
+		Status status = convertedBack.get().getStatuses().iterator().next();
+		Assert.assertNull(status.getContent());
+	}
+	
+	/**
+	 * Covers use-case where global settings are used to disable relationship attribute inclusion but
+	 * behaviour is changed trouh local settings provided when serialization is executed.
+	 * @throws DocumentSerializationException
+	 */
+	@Test
+	public void testIncludedDataEnabledTroughSettings() throws DocumentSerializationException {
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+		JSONAPIDocument<User> document = createDocument(createUser());
+		
+		SerializationSettings serializationSettings = new SerializationSettings.Builder()
+				.includeRelationship("statuses")
+				.build();
+		
+		JSONAPIDocument<User> convertedBack = converter.readDocument(
+				converter.writeDocument(document, serializationSettings), User.class);
+		
+		Status status = convertedBack.get().getStatuses().iterator().next();
+		Assert.assertNotNull(status.getContent());
+	}
+	
+	@Test
+	public void testOverrideGlobalMetaLinksSettings() throws DocumentSerializationException {
+		JSONAPIDocument<User> document = createDocument(createUser());
+		
+		SerializationSettings serializationSettings = new SerializationSettings.Builder()
+				.serializeLinks(false)
+				.serializeMeta(false)
+				.build();
+		
+		JSONAPIDocument<User> convertedBack = converter.readDocument(
+				converter.writeDocument(document, serializationSettings), User.class);
+		
+		Assert.assertNull(convertedBack.getMeta());
+		Assert.assertNull(convertedBack.getLinks());
+		Assert.assertNull(convertedBack.get().getMeta());
+		Assert.assertNull(convertedBack.get().links);
+		
+		serializationSettings = new SerializationSettings.Builder()
+				.serializeLinks(true)
+				.serializeMeta(true)
+				.build();
+		
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_META);
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_LINKS);
+		
+		convertedBack = converter.readDocument(
+				converter.writeDocument(document, serializationSettings), User.class);
+		
+		Assert.assertNotNull(convertedBack.getMeta());
+		Assert.assertNotNull(convertedBack.getLinks());
+		Assert.assertNotNull(convertedBack.get().getMeta());
+		Assert.assertNotNull(convertedBack.get().links);
+	}
 
 	private JSONAPIDocument<User> createDocument(User user) {
 		JSONAPIDocument<User> document = new JSONAPIDocument<>(user);
@@ -128,6 +198,14 @@ public class SerializationTest {
 
 		user.meta = new User.UserMeta();
 		user.meta.token = "token";
+		
+		user.setStatuses(new ArrayList<Status>());
+		
+		Status status = new Status();
+		status.setId("sid");
+		status.setContent("content");
+		user.getStatuses().add(status);
+		
 
 		Map<String, Link> linkMap = new HashMap<>();
 		linkMap.put(JSONAPISpecConstants.SELF, new Link("link"));
@@ -144,6 +222,4 @@ public class SerializationTest {
 
 		return user;
 	}
-
-
 }

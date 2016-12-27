@@ -596,7 +596,7 @@ public class ResourceConverter {
 			throw new RuntimeException(e);
 		}
 	}
-
+	
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
 	 * @param document {@link JSONAPIDocument} document to serialize
@@ -604,6 +604,18 @@ public class ResourceConverter {
 	 * @throws DocumentSerializationException thrown in case serialization fails
 	 */
 	public byte [] writeDocument(JSONAPIDocument<?> document) throws DocumentSerializationException {
+		return writeDocument(document, null);
+	}
+	
+	/**
+	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 * @param document {@link JSONAPIDocument} document to serialize
+	 * @param settings {@link SerializationSettings} settings that override global serialization settings
+	 * @return serialized content in bytes
+	 * @throws DocumentSerializationException thrown in case serialization fails
+	 */
+	public byte [] writeDocument(JSONAPIDocument<?> document, SerializationSettings settings)
+			throws DocumentSerializationException {
 		try {
 			resourceCache.init();
 
@@ -613,7 +625,7 @@ public class ResourceConverter {
 			
 			// Serialize data if present
 			if (document.get() != null) {
-				ObjectNode dataNode = getDataNode(document.get(), includedDataMap);
+				ObjectNode dataNode = getDataNode(document.get(), includedDataMap, settings);
 				result.set(DATA, dataNode);
 				result = addIncludedSection(result, includedDataMap);
 			}
@@ -629,8 +641,8 @@ public class ResourceConverter {
 			}
 			
 			// Serialize global links and meta
-			serializeMeta(document, result);
-			serializeLinks(document, result);
+			serializeMeta(document, result, settings);
+			serializeLinks(document, result, settings);
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -639,21 +651,20 @@ public class ResourceConverter {
 		}
 	}
 
-	private void serializeMeta(JSONAPIDocument<?> document, ObjectNode resultNode) {
+	private void serializeMeta(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
 		// Handle global links and meta
-		if (document.getMeta() != null && !document.getMeta().isEmpty() &&
-				serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+		if (document.getMeta() != null && !document.getMeta().isEmpty() && shouldSerializeMeta(settings)) {
 			resultNode.set(META, objectMapper.valueToTree(document.getMeta()));
 		}
 	}
 
-	private void serializeLinks(JSONAPIDocument<?> document, ObjectNode resultNode) {
+	private void serializeLinks(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
 		if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() &&
-				serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+				shouldSerializeLinks(settings)) {
 			resultNode.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
 		}
 	}
-
+	
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
 	 * @param documentCollection {@link JSONAPIDocument} document collection to serialize
@@ -661,7 +672,20 @@ public class ResourceConverter {
 	 * @throws DocumentSerializationException thrown in case serialization fails
 	 */
 	public byte [] writeDocumentCollection(JSONAPIDocument<? extends Iterable<?>> documentCollection)
-			throws DocumentSerializationException{
+			throws DocumentSerializationException {
+		return writeDocumentCollection(documentCollection, null);
+	}
+	
+	/**
+	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 * @param documentCollection {@link JSONAPIDocument} document collection to serialize
+	 * @param serializationSettings {@link SerializationSettings} settings that override global serialization settings
+	 * @return serialized content in bytes
+	 * @throws DocumentSerializationException thrown in case serialization fails
+	 */
+	public byte [] writeDocumentCollection(JSONAPIDocument<? extends Iterable<?>> documentCollection,
+										   SerializationSettings serializationSettings)
+			throws DocumentSerializationException {
 
 		try {
 			resourceCache.init();
@@ -669,7 +693,7 @@ public class ResourceConverter {
 			Map<String, ObjectNode> includedDataMap = new HashMap<>();
 
 			for (Object object : documentCollection.get()) {
-				results.add(getDataNode(object, includedDataMap));
+				results.add(getDataNode(object, includedDataMap, serializationSettings));
 			}
 
 			ObjectNode result = objectMapper.createObjectNode();
@@ -678,8 +702,8 @@ public class ResourceConverter {
 			result = addIncludedSection(result, includedDataMap);
 
 			// Handle global links and meta
-			serializeMeta(documentCollection, result);
-			serializeLinks(documentCollection, result);
+			serializeMeta(documentCollection, result, serializationSettings);
+			serializeLinks(documentCollection, result, serializationSettings);
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -689,8 +713,8 @@ public class ResourceConverter {
 	}
 
 
-	private ObjectNode getDataNode(Object object, Map<String, ObjectNode> includedContainer)
-			throws IllegalAccessException {
+	private ObjectNode getDataNode(Object object, Map<String, ObjectNode> includedContainer,
+								   SerializationSettings settings) throws IllegalAccessException {
 		ObjectNode dataNode = objectMapper.createObjectNode();
 
 		// Perform initial conversion
@@ -704,13 +728,13 @@ public class ResourceConverter {
 		Field metaField = configuration.getMetaField(object.getClass());
 		if (metaField != null) {
 			JsonNode meta = attributesNode.remove(metaField.getName());
-			if (meta != null && serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+			if (meta != null && shouldSerializeMeta(settings)) {
 				dataNode.set(META, meta);
 			}
 		}
 
 		// Handle links
-		JsonNode jsonLinks = getResourceLinks(object, attributesNode, id.textValue());
+		JsonNode jsonLinks = getResourceLinks(object, attributesNode, id.textValue(), settings);
 		String selfHref = null;
 		
 		if (jsonLinks != null) {
@@ -759,7 +783,7 @@ public class ResourceConverter {
 					relationshipsNode.set(relationshipName, relationshipDataNode);
 					
 					// Serialize relationship meta
-					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName);
+					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
 					if (relationshipMeta != null) {
 						relationshipDataNode.set(META, relationshipMeta);
 						attributesNode.remove(configuration
@@ -767,7 +791,7 @@ public class ResourceConverter {
 					}
 					
 					// Serialize relationship links
-					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref);
+					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
 					
 					if (relationshipLinks != null) {
 						relationshipDataNode.set(LINKS, relationshipLinks);
@@ -794,12 +818,11 @@ public class ResourceConverter {
 							dataArrayNode.add(identifierNode);
 
 							// Handle included data
-							if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
-									idValue != null) {
+							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
 								String identifier = idValue.concat(relationshipType);
 								if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
 									includedContainer.put(identifier,
-											getDataNode(element, includedContainer));
+											getDataNode(element, includedContainer, settings));
 								}
 							}
 						}
@@ -816,11 +839,11 @@ public class ResourceConverter {
 						
 						relationshipDataNode.set(DATA, identifierNode);
 						
-						if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
-								idValue != null) {
+						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
 							String identifier = idValue.concat(relationshipType);
 							if (!includedContainer.containsKey(identifier)) {
-								includedContainer.put(identifier, getDataNode(relationshipObject, includedContainer));
+								includedContainer.put(identifier,
+										getDataNode(relationshipObject, includedContainer, settings));
 							}
 						}
 					}
@@ -1033,8 +1056,9 @@ public class ResourceConverter {
 		throw new RuntimeException("Unable to create appropriate instance for type: " + type.getSimpleName());
 	}
 	
-	private JsonNode getRelationshipMeta(Object source, String relationshipName) throws IllegalAccessException {
-		if (serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+	private JsonNode getRelationshipMeta(Object source, String relationshipName, SerializationSettings settings)
+			throws IllegalAccessException {
+		if (shouldSerializeMeta(settings)) {
 			Field relationshipMetaField = configuration
 					.getRelationshipMetaField(source.getClass(), relationshipName);
 			
@@ -1045,8 +1069,8 @@ public class ResourceConverter {
 		return null;
 	}
 	
-	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId)
-			throws IllegalAccessException {
+	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId,
+									  SerializationSettings settings) throws IllegalAccessException {
 		Type type = configuration.getType(resource.getClass());
 		
 		// Check if there are user-provided links
@@ -1056,20 +1080,21 @@ public class ResourceConverter {
 			links = (Links) linksField.get(resource);
 			
 			// Remove links from attributes object
+			//TODO: this state change needs to be removed from here
 			if (links != null) {
 				serializedResource.remove(linksField.getName());
 			}
 		}
 		
 		// If enabled, handle links
-		if (serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+		if (shouldSerializeLinks(settings)) {
 			Map<String, Link> linkMap = new HashMap<>();
 			
 			if (links != null) {
 				linkMap.putAll(links.getLinks());
 			}
 			
-			// If link path is defined in type and id is not null and user did not explicity set link value, create it
+			// If link path is defined in type and id is not null and user did not explicitly set link value, create it
 			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && resourceId != null) {
 				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", resourceId))));
 			}
@@ -1082,9 +1107,9 @@ public class ResourceConverter {
 		return null;
 	}
 	
-	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink)
-			throws IllegalAccessException {
-		if (serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
+										  SerializationSettings settings) throws IllegalAccessException {
+		if (shouldSerializeLinks(settings)) {
 			Links links = null;
 			
 			Field relationshipLinksField = configuration
@@ -1128,6 +1153,33 @@ public class ResourceConverter {
 		}
 		
 		return result;
+	}
+	
+	private boolean shouldSerializeRelationship(String relationshipName, SerializationSettings settings) {
+		if (settings != null) {
+			if (settings.isRelationshipIncluded(relationshipName) && !settings.isRelationshipExcluded(relationshipName)) {
+				return true;
+			}
+			
+			if (settings.isRelationshipExcluded(relationshipName)) {
+				return false;
+			}
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+	}
+	
+	private boolean shouldSerializeLinks(SerializationSettings settings) {
+		if (settings != null && settings.serializeLinks() != null) {
+			return settings.serializeLinks();
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS);
+	}
+	
+	private boolean shouldSerializeMeta(SerializationSettings settings) {
+		if (settings != null && settings.serializeMeta() != null) {
+			return settings.serializeMeta();
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_META);
 	}
 	
 	/**
