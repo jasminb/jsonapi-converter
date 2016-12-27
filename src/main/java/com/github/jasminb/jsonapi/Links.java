@@ -2,6 +2,7 @@ package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,8 +11,9 @@ import java.util.Map;
  *
  * @author jbegic
  */
-public class Links {
-
+public class Links implements Serializable {
+	private static final long serialVersionUID = 1305238708279094084L;
+	
 	/**
 	 * A map of link objects keyed by link name.
 	 */
