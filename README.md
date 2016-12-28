@@ -15,7 +15,7 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.5</version>
+  <version>0.6</version>
 </dependency>
 ```
 
@@ -46,7 +46,7 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.6-SNAPSHOT</version>
+  <version>0.7-SNAPSHOT</version>
 </dependency>
 ```
 
