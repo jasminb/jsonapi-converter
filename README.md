@@ -22,7 +22,7 @@ Maven:
 SBT:
 
 ```
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.5"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.6"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
