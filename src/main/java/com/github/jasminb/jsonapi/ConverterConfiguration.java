@@ -160,7 +160,8 @@ public class ConverterConfiguration {
 			}
 
 		} else {
-			throw new IllegalArgumentException("All resource classes must be annotated with Type annotation!");
+			throw new IllegalArgumentException("Class " + clazz.getName() + 
+					" don't have Type annotation. All resource classes must be annotated with Type annotation!");
 		}
 	}
 
