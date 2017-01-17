@@ -437,6 +437,24 @@ public class ResourceConverterTest {
 		Assert.assertEquals("john", user.getName());
 	}
 
+	@Test(expected = IllegalArgumentException.class)
+	public void testDisallowUnknownInclusionsByDefault() throws IOException {
+		InputStream rawData = IOUtils.getResource("unknown-inclusions.json");
+		converter.readDocument(rawData, User.class).get();
+	}
+
+	@Test
+	public void testEnableAllowUnknownInclusions() throws IOException {
+		converter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS);
+
+		InputStream rawData = IOUtils.getResource("unknown-inclusions.json");
+		Status status = converter.readDocument(rawData, Status.class).get();
+
+		Assert.assertNotNull(status);
+		Assert.assertEquals("content", status.getContent());
+		Assert.assertEquals("john", status.getUser().getName());
+	}
+
 	@Test
 	public void testNullDataNodeObject() {
 		JSONAPIDocument<User> nullObject = converter.readDocument("{\"data\" : null}".getBytes(), User.class);
