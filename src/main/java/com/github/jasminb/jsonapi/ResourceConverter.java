@@ -394,9 +394,8 @@ public class ResourceConverter {
 					if (object != null) {
 						result.add(new Resource(createIdentifier(jsonNode), object));
 					}
-				} else {
-					throw new IllegalArgumentException("Included section contains unknown resource type: " +
-							String.valueOf(true));
+				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
+					throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
 				}
 			}
 		}

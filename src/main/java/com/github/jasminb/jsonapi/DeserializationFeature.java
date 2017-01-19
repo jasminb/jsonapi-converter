@@ -13,12 +13,18 @@ public enum DeserializationFeature {
 	/**
 	 * This option enforces presence of the 'id' attribute in resources being parsed.
 	 */
-	REQUIRE_RESOURCE_ID(true);
+	REQUIRE_RESOURCE_ID(true),
 
-	final boolean enabled;
+	/**
+	 * This option determines whether encountering unknown types results in {@link IllegalArgumentException} being
+	 * thrown, or if parsing continues and the unknown field is ignored.
+	 */
+	ALLOW_UNKNOWN_INCLUSIONS(false);
 
-	DeserializationFeature(boolean enabled) {
-		this.enabled = enabled;
+	private final boolean enabledByDefault;
+
+	DeserializationFeature(boolean enabledByDefault) {
+		this.enabledByDefault = enabledByDefault;
 	}
 
 	/**
@@ -29,7 +35,7 @@ public enum DeserializationFeature {
 		Set<DeserializationFeature> result = new HashSet<>();
 
 		for (DeserializationFeature deserializationFeature : values()) {
-			if (deserializationFeature.enabled) {
+			if (deserializationFeature.enabledByDefault) {
 				result.add(deserializationFeature);
 			}
 		}
