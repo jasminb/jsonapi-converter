@@ -178,6 +178,17 @@ public class SerializationTest {
 		Assert.assertNotNull(convertedBack.get().getMeta());
 		Assert.assertNotNull(convertedBack.get().links);
 	}
+	
+	@Test
+	public void testSerializeWithoutId() throws DocumentSerializationException {
+		User user = new User();
+		user.setName("Name");
+		
+		byte [] data = converter.writeDocument(new JSONAPIDocument<>(user));
+		
+		Assert.assertTrue(new String(data).contains(user.getName()));
+		Assert.assertFalse(new String(data).contains("id"));
+	}
 
 	private JSONAPIDocument<User> createDocument(User user) {
 		JSONAPIDocument<User> document = new JSONAPIDocument<>(user);

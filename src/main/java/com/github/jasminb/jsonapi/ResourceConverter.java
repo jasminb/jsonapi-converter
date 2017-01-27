@@ -736,9 +736,8 @@ public class ResourceConverter {
 		}
 
 		// Handle links
-		JsonNode jsonLinks = getResourceLinks(object, attributesNode, id.textValue(), settings);
 		String selfHref = null;
-		
+		JsonNode jsonLinks = getResourceLinks(object, attributesNode, id, settings);
 		if (jsonLinks != null) {
 			dataNode.set(LINKS, jsonLinks);
 			
@@ -746,7 +745,7 @@ public class ResourceConverter {
 				selfHref = jsonLinks.get(SELF).get(HREF).asText();
 			}
 		}
-
+		
 		// Handle resource identifier
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
 
@@ -1071,7 +1070,7 @@ public class ResourceConverter {
 		return null;
 	}
 	
-	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId,
+	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, JsonNode idNode,
 									  SerializationSettings settings) throws IllegalAccessException {
 		Type type = configuration.getType(resource.getClass());
 		
@@ -1097,8 +1096,8 @@ public class ResourceConverter {
 			}
 			
 			// If link path is defined in type and id is not null and user did not explicitly set link value, create it
-			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && resourceId != null) {
-				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", resourceId))));
+			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && idNode != null) {
+				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", idNode.asText()))));
 			}
 			
 			// If there is at least one link generated, serialize and return
