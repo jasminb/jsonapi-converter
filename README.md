@@ -519,3 +519,13 @@ public interface MyBooksService {
 }
 
 ```
+
+#### Tips
+
+If you need a `String` as an output when serializing objects, you can do the following:
+
+
+```
+byte [] serializedObject = resourceConverter.writeObject(...);
+String serializedAsString = new String(serializedObject);
+```
