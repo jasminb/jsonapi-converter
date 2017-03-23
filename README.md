@@ -529,3 +529,18 @@ If you need a `String` as an output when serializing objects, you can do the fol
 byte [] serializedObject = resourceConverter.writeObject(...);
 String serializedAsString = new String(serializedObject);
 ```
+
+#### Note for kotlin users
+
+Have in mind that using `open` classes as type parameters in relationship collections will not work, for instance:
+
+```
+@Type("base")
+open class MyClass {
+
+    @Relationship("my-relationship")
+    var bases: List<MyClass>? = null
+}
+```
+
+Removing the `open` modifier will solve the issue.
