@@ -565,11 +565,25 @@ public class ResourceConverter {
 	 */
 	private void setIdValue(Object target, JsonNode idValue) throws IllegalAccessException {
 		Field idField = configuration.getIdField(target.getClass());
-
-		// By specification, id value is always a String type
+		ResourceIdHandler idHandler = configuration.getIdHandler(target.getClass());
+		
 		if (idValue != null) {
-			idField.set(target, idValue.asText());
+			idField.set(target, idHandler.fromString(idValue.asText()));
 		}
+	}
+	
+	/**
+	 * Reads @Id value from provided source object.
+	 *
+	 * @param source object to read @Id value from
+	 * @return {@link String} id or <code>null</code>
+	 * @throws IllegalAccessException
+	 */
+	private String getIdValue(Object source) throws IllegalAccessException {
+		Field idField = configuration.getIdField(source.getClass());
+		ResourceIdHandler handler = configuration.getIdHandler(source.getClass());
+		
+		return handler.asString(idField.get(source));
 	}
 
 	/**
@@ -723,8 +737,10 @@ public class ResourceConverter {
 		ObjectNode attributesNode = objectMapper.valueToTree(object);
 
 		// Handle id, meta and relationship fields
-		Field idField = configuration.getIdField(object.getClass());
-		JsonNode id = attributesNode.remove(idField.getName());
+		String resourceId = getIdValue(object);
+		
+		// Remove id field from resulting attribute node
+		attributesNode.remove(configuration.getIdField(object.getClass()).getName());
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
@@ -737,7 +753,7 @@ public class ResourceConverter {
 
 		// Handle links
 		String selfHref = null;
-		JsonNode jsonLinks = getResourceLinks(object, attributesNode, id, settings);
+		JsonNode jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
 		if (jsonLinks != null) {
 			dataNode.set(LINKS, jsonLinks);
 			
@@ -748,8 +764,6 @@ public class ResourceConverter {
 		
 		// Handle resource identifier
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
-
-		String resourceId = (String) idField.get(object);
 		if (resourceId != null) {
 			dataNode.put(ID, resourceId);
 
@@ -811,7 +825,8 @@ public class ResourceConverter {
 
 						for (Object element : (Collection<?>) relationshipObject) {
 							String relationshipType = configuration.getTypeName(element.getClass());
-							String idValue = (String) configuration.getIdField(element.getClass()).get(element);
+							
+							String idValue = getIdValue(element);
 
 							ObjectNode identifierNode = objectMapper.createObjectNode();
 							identifierNode.put(TYPE, relationshipType);
@@ -831,8 +846,8 @@ public class ResourceConverter {
 
 					} else {
 						String relationshipType = configuration.getTypeName(relationshipObject.getClass());
-						String idValue = (String) configuration.getIdField(relationshipObject.getClass())
-								.get(relationshipObject);
+						
+						String idValue = getIdValue(relationshipObject);
 
 						ObjectNode identifierNode = objectMapper.createObjectNode();
 						identifierNode.put(TYPE, relationshipType);
@@ -1070,7 +1085,7 @@ public class ResourceConverter {
 		return null;
 	}
 	
-	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, JsonNode idNode,
+	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId,
 									  SerializationSettings settings) throws IllegalAccessException {
 		Type type = configuration.getType(resource.getClass());
 		
@@ -1096,8 +1111,8 @@ public class ResourceConverter {
 			}
 			
 			// If link path is defined in type and id is not null and user did not explicitly set link value, create it
-			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && idNode != null) {
-				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", idNode.asText()))));
+			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && resourceId != null) {
+				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", resourceId))));
 			}
 			
 			// If there is at least one link generated, serialize and return

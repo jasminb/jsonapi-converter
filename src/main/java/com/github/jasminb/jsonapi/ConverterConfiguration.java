@@ -26,6 +26,7 @@ public class ConverterConfiguration {
 	private final Map<String, Class<?>> typeToClassMapping = new HashMap<>();
 	private final Map<Class<?>, Type> typeAnnotations = new HashMap<>();
 	private final Map<Class<?>, Field> idMap = new HashMap<>();
+	private final Map<Class<?>, ResourceIdHandler> idHandlerMap = new HashMap<>();
 	private final Map<Class<?>, List<Field>> relationshipMap = new HashMap<>();
 	private final Map<Class<?>, Map<String, Class<?>>> relationshipTypeMap = new HashMap<>();
 	private final Map<Class<?>, Map<String, Field>> relationshipFieldMap = new HashMap<>();
@@ -114,6 +115,11 @@ public class ConverterConfiguration {
 				Field idField = idAnnotatedFields.get(0);
 				idField.setAccessible(true);
 				idMap.put(clazz, idField);
+				try {
+					idHandlerMap.put(clazz, idField.getAnnotation(Id.class).value().newInstance());
+				} catch (Exception e) {
+					throw new IllegalArgumentException("Unable to construct handler instance by using no-arg constructor", e);
+				}
 			} else {
 				if (idAnnotatedFields.isEmpty()) {
 					throw new IllegalArgumentException("All resource classes must have a field annotated with the " +
@@ -160,7 +166,7 @@ public class ConverterConfiguration {
 			}
 
 		} else {
-			throw new IllegalArgumentException("Class " + clazz.getName() + 
+			throw new IllegalArgumentException("Class " + clazz.getName() +
 					" don't have Type annotation. All resource classes must be annotated with Type annotation!");
 		}
 	}
@@ -208,6 +214,16 @@ public class ConverterConfiguration {
 	 */
 	public Field getIdField(Class<?> clazz) {
 		return idMap.get(clazz);
+	}
+	
+	/**
+	 * Returns handler registered for given type's id field.
+	 *
+	 * @param clazz {@link Class} type to resolve id handler for
+	 * @return handler
+	 */
+	public ResourceIdHandler getIdHandler(Class<?> clazz) {
+		return idHandlerMap.get(clazz);
 	}
 
 	/**
