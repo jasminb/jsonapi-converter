@@ -15,14 +15,14 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.6</version>
+  <version>0.7</version>
 </dependency>
 ```
 
 SBT:
 
 ```
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.6"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.7"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -46,7 +46,7 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.7-SNAPSHOT</version>
+  <version>0.8-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -76,11 +76,11 @@ Note that `@Type` annotation is not inherited from supperclasses.
 
 #### Id annotation
 
-Id annotation is used to flag an attribute of a class as an `id` attribute. Each resource class must have an id field and it must be of type `String` (defined by the JSON API specification).
+Id annotation is used to flag an attribute of a class as an `id` attribute. Each resource class must have an id field.
+
+In case field annotated by the `@Id` annotation is not a `String` field, `@Id` annotation needs to be configured with proper `ResourceIdHandler`. Lirary provides handlers for `Long` and `Integer` types, in case types other than those mentioned are used, user must implement and provide proper id handler.
 
 Id is a special attribute that is, together with type, used to uniquely identify an resource.
-
-Id annotation has no attributes.
 
 Id annotation is inheritable, one can define a base model class that contains a field with `@Id` annotation and than extend it to create a new type.
 
@@ -108,6 +108,20 @@ public class BaseModel {
 public class Book extends BaseModel {
   # Your custom member variables
 }
+```
+
+Example using `Long` as id
+
+```java
+@Type("book")
+public class Book {
+  
+  @Id(LongIdHandler.class)
+  private Long id;
+  ...
+}
+
+
 ```
 
 #### Relationship annotation
