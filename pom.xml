@@ -6,7 +6,7 @@
 
 	<groupId>com.github.jasminb</groupId>
 	<artifactId>jsonapi-converter</artifactId>
-	<version>0.7-SNAPSHOT</version>
+	<version>0.7</version>
 
 	<name>JSONAPI Converter</name>
 	<description>
