@@ -117,7 +117,7 @@ public class ConverterConfiguration {
 				idMap.put(clazz, idField);
 				try {
 					idHandlerMap.put(clazz, idField.getAnnotation(Id.class).value().newInstance());
-				} catch (Exception e) {
+				} catch (InstantiationException | IllegalAccessException e) {
 					throw new IllegalArgumentException("Unable to construct handler instance by using no-arg constructor", e);
 				}
 			} else {

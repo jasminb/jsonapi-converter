@@ -6,6 +6,15 @@ package com.github.jasminb.jsonapi;
  * @author jbegic
  */
 public class LongIdHandler implements ResourceIdHandler {
+	
+	/**
+	 * Creates new LongIdHandler.
+	 *
+	 */
+	public LongIdHandler() {
+		// Default constructor
+	}
+	
 	@Override
 	public String asString(Object identifier) {
 		if (identifier != null) {

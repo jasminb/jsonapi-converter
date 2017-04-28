@@ -6,6 +6,15 @@ package com.github.jasminb.jsonapi;
  * @author jbegic
  */
 public class IntegerIdHandler implements ResourceIdHandler {
+	
+	/**
+	 * Creates new IntegerIdHandler.
+	 *
+	 */
+	public IntegerIdHandler() {
+		// Default constructor
+	}
+	
 	@Override
 	public String asString(Object identifier) {
 		if (identifier != null) {
