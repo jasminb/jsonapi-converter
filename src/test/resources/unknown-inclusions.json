@@ -43,7 +43,7 @@
           "data": [
             {
               "type": "statuses",
-              "id": "id"
+              "id": "myid"
             },
             {
               "type": "statuses",
@@ -52,6 +52,24 @@
           ]
         }
       }
+    },
+    {
+       "type": "statuses",
+       "id": "anotherid",
+       "attributes": {
+          "content": "anotherContent",
+           "commentCount": 2,
+           "likeCount": 20
+        }
+    },
+    {
+       "type": "statuses",
+       "id": "myid",
+       "attributes": {
+          "content": "myContent",
+           "commentCount": 3,
+           "likeCount": 30
+        }
     }
   ]
 }
