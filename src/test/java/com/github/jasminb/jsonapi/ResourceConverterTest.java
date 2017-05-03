@@ -453,6 +453,21 @@ public class ResourceConverterTest {
 		Assert.assertNotNull(status);
 		Assert.assertEquals("content", status.getContent());
 		Assert.assertEquals("john", status.getUser().getName());
+
+		// Get and check the related statuses for the user
+		List<Status> statuses = status.getUser().getStatuses();
+		Assert.assertNotNull(statuses);
+		Assert.assertEquals(2, statuses.size());
+
+		for (Status relatedStatus : statuses) {
+			if (relatedStatus.getId().equals("myid")) {
+				Assert.assertEquals("myContent", relatedStatus.getContent());
+			} else if (relatedStatus.getId().equals("anotherid")) {
+				Assert.assertEquals("anotherContent", relatedStatus.getContent());
+			} else {
+				Assert.fail("Related status contain unexpected id: " + relatedStatus.getId());
+			}
+		}
 	}
 
 	@Test

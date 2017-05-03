@@ -349,21 +349,22 @@ public class ResourceConverter {
 
 		if (parent.has(INCLUDED)) {
 			// Get resources
-			List<Resource> includedResources = getIncludedResources(parent);
+			Map<String, Object> includedResources = getIncludedResources(parent);
 
 			if (!includedResources.isEmpty()) {
 				// Add to result
-				for (Resource includedResource : includedResources) {
-					result.put(includedResource.getIdentifier(), includedResource.getObject());
+				for (String identifier : includedResources.keySet()) {
+					result.put(identifier, includedResources.get(identifier));
 				}
 
 				ArrayNode includedArray = (ArrayNode) parent.get(INCLUDED);
-				for (int i = 0; i < includedResources.size(); i++) {
-					Resource resource = includedResources.get(i);
-
+				for (int i = 0; i < includedArray.size(); i++) {
 					// Handle relationships
 					JsonNode node = includedArray.get(i);
-					handleRelationships(node, resource.getObject());
+					Object resourceObject = includedResources.get(createIdentifier(node));
+						if (resourceObject != null){
+							handleRelationships(node, resourceObject);
+						}
 				}
 			}
 		}
@@ -379,9 +380,9 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	private List<Resource> getIncludedResources(JsonNode parent)
+	private Map<String, Object> getIncludedResources(JsonNode parent)
 			throws IOException, IllegalAccessException, InstantiationException {
-		List<Resource> result = new ArrayList<>();
+		Map<String, Object> result = new HashMap<>();
 
 		if (parent.has(INCLUDED)) {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
@@ -392,7 +393,7 @@ public class ResourceConverter {
 				if (clazz != null) {
 					Object object = readObject(jsonNode, clazz, false);
 					if (object != null) {
-						result.add(new Resource(createIdentifier(jsonNode), object));
+						result.put(createIdentifier(jsonNode), object);
 					}
 				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
 					throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
@@ -915,24 +916,6 @@ public class ResourceConverter {
 	private RelationshipResolver getResolver(Class<?> type) {
 		RelationshipResolver resolver = typedResolvers.get(type);
 		return resolver != null ? resolver : globalResolver;
-	}
-
-	private static class Resource {
-		private String identifier;
-		private Object object;
-
-		public Resource(String identifier, Object resource) {
-			this.identifier = identifier;
-			this.object = resource;
-		}
-
-		public String getIdentifier() {
-			return identifier;
-		}
-
-		public Object getObject() {
-			return object;
-		}
 	}
 
 	/**
