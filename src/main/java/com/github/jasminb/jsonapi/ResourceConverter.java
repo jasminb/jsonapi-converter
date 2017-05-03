@@ -362,12 +362,12 @@ public class ResourceConverter {
 					// Handle relationships
 					JsonNode node = includedArray.get(i);
 					Object resourceObject = includedResources.get(createIdentifier(node));
-						if ( resourceObject != null ){
+						if (resourceObject != null){
 							handleRelationships(node, resourceObject);
 						}
 				}
 			}
-                }
+		}
 
 		return result;
 	}
@@ -916,24 +916,6 @@ public class ResourceConverter {
 	private RelationshipResolver getResolver(Class<?> type) {
 		RelationshipResolver resolver = typedResolvers.get(type);
 		return resolver != null ? resolver : globalResolver;
-	}
-
-	private static class Resource {
-		private String identifier;
-		private Object object;
-
-		public Resource(String identifier, Object resource) {
-			this.identifier = identifier;
-			this.object = resource;
-		}
-
-		public String getIdentifier() {
-			return identifier;
-		}
-
-		public Object getObject() {
-			return object;
-		}
 	}
 
 	/**
