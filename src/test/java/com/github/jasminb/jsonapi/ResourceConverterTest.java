@@ -1,5 +1,6 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
@@ -7,6 +8,8 @@ import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
+import com.github.jasminb.jsonapi.models.IntegerIdResource;
+import com.github.jasminb.jsonapi.models.LongIdResource;
 import com.github.jasminb.jsonapi.models.NoDefaultConstructorClass;
 import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
 import com.github.jasminb.jsonapi.models.RecursingNode;
@@ -43,6 +46,7 @@ public class ResourceConverterTest {
 	public void setup() {
 		converter = new ResourceConverter("https://api.example.com", Status.class, User.class, Author.class,
 				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
+				IntegerIdResource.class, LongIdResource.class,
 				NoDefaultConstructorClass.class);
 	}
 
@@ -527,7 +531,33 @@ public class ResourceConverterTest {
 
 		Assert.assertNull(deserialized.get().getComments().iterator().next().getBody());
 		Assert.assertNull(deserialized.get().getAuthor().getFirstName());
+	}
 
+	@Test
+	public void testWriteWithKebabCaseRelationships() throws DocumentSerializationException, JsonProcessingException, IOException {
+		final ObjectMapper kebabMapper = new ObjectMapper();
+		kebabMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+		ResourceConverter kebabConverter = new ResourceConverter(kebabMapper, "https://api.example.com", Status.class, User.class, Author.class,
+				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
+				IntegerIdResource.class, LongIdResource.class,
+				NoDefaultConstructorClass.class);
+		IntegerIdResource integerId = new IntegerIdResource();
+		integerId.setId(1);
+		integerId.setValue("integer value");
+
+		LongIdResource longId = new LongIdResource();
+		longId.setId(2L);
+		longId.setIntegerIdResource(integerId);
+		longId.setValue("long value");
+
+		byte[] kebabSerialized = kebabConverter.writeDocument(new JSONAPIDocument<>(longId));
+		byte[] normalSerialized = converter.writeDocument(new JSONAPIDocument<>(longId));
+
+		// Validate that the relationship attribute got removed in the Kebab case
+		final JsonNode readBack = kebabMapper.readTree(kebabSerialized);
+		Assert.assertNull(readBack.get("data").get("attributes").get("integer-id-resource"));
+		// So the two serializations should be exactly the same
+		Assert.assertEquals(new String(normalSerialized), new String(kebabSerialized));
 	}
 
 	@Test
