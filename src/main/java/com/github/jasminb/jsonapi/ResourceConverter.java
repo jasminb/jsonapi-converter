@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
@@ -773,6 +774,13 @@ public class ResourceConverter {
 		}
 		dataNode.set(ATTRIBUTES, attributesNode);
 
+		final PropertyNamingStrategy namingStrategy;
+		if (objectMapper.getPropertyNamingStrategy() != null) {
+			namingStrategy = objectMapper.getPropertyNamingStrategy();
+		}
+		else {
+			namingStrategy = new PropertyNamingStrategy();
+		}
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
@@ -784,7 +792,7 @@ public class ResourceConverter {
 				Object relationshipObject = relationshipField.get(object);
 
 				if (relationshipObject != null) {
-					attributesNode.remove(relationshipField.getName());
+					attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
 
 					Relationship relationship = configuration.getFieldRelationship(relationshipField);
 
