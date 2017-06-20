@@ -1,0 +1,37 @@
+{
+  "data": {
+    "type": "people",
+    "id": "author-id",
+    "attributes": {
+      "firstName": "Test",
+      "lastName": "Author"
+    },
+    "relationships": {
+      "articles": {
+        "data": [
+          {
+            "type": "articles",
+            "id": "article-id"
+          }
+        ]
+      }
+    }
+  },
+  "included": [
+    {
+      "type": "articles",
+      "id": "article-id",
+      "attributes": {
+        "title": "Test Article"
+      },
+      "relationships": {
+        "author": {
+          "data": {
+            "type": "people",
+            "id": "author-id"
+          }
+        }
+      }
+    }
+  ]
+}
