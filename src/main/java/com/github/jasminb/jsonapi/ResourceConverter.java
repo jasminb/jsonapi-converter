@@ -41,6 +41,7 @@ import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
 public class ResourceConverter {
 	private final ConverterConfiguration configuration;
 	private final ObjectMapper objectMapper;
+	private final PropertyNamingStrategy namingStrategy;
 	private final Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
 	private final ResourceCache resourceCache;
 	private final Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
@@ -94,6 +95,13 @@ public class ResourceConverter {
 			objectMapper = mapper;
 		} else {
 			objectMapper = new ObjectMapper();
+		}
+
+		// Object mapper's naming strategy is used if it is set
+		if (objectMapper.getPropertyNamingStrategy() != null) {
+			namingStrategy = objectMapper.getPropertyNamingStrategy();
+		} else {
+			namingStrategy = new PropertyNamingStrategy();
 		}
 
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -773,14 +781,6 @@ public class ResourceConverter {
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
 		dataNode.set(ATTRIBUTES, attributesNode);
-
-		final PropertyNamingStrategy namingStrategy;
-		if (objectMapper.getPropertyNamingStrategy() != null) {
-			namingStrategy = objectMapper.getPropertyNamingStrategy();
-		}
-		else {
-			namingStrategy = new PropertyNamingStrategy();
-		}
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
