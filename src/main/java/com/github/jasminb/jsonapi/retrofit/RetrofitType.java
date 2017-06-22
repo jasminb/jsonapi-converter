@@ -33,8 +33,12 @@ public class RetrofitType {
         if (type instanceof ParameterizedType) {
             Type[] typeArgs = ((ParameterizedType) type).getActualTypeArguments();
             if (typeArgs != null && typeArgs.length > 0) {
-                this.type = (Class<?>) typeArgs[0];
-                this.collection = true;
+                if (typeArgs[0] instanceof Class<?>) {
+                    this.type = (Class<?>) typeArgs[0];
+                    this.collection = true;
+                } else {
+                    valid = false;
+                }
             } else {
                 valid = false;
             }
