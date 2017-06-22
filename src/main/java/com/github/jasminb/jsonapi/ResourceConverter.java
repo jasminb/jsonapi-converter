@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
@@ -40,6 +41,7 @@ import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
 public class ResourceConverter {
 	private final ConverterConfiguration configuration;
 	private final ObjectMapper objectMapper;
+	private final PropertyNamingStrategy namingStrategy;
 	private final Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
 	private final ResourceCache resourceCache;
 	private final Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
@@ -93,6 +95,13 @@ public class ResourceConverter {
 			objectMapper = mapper;
 		} else {
 			objectMapper = new ObjectMapper();
+		}
+
+		// Object mapper's naming strategy is used if it is set
+		if (objectMapper.getPropertyNamingStrategy() != null) {
+			namingStrategy = objectMapper.getPropertyNamingStrategy();
+		} else {
+			namingStrategy = new PropertyNamingStrategy();
 		}
 
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
@@ -773,7 +782,6 @@ public class ResourceConverter {
 		}
 		dataNode.set(ATTRIBUTES, attributesNode);
 
-
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
 
@@ -784,7 +792,7 @@ public class ResourceConverter {
 				Object relationshipObject = relationshipField.get(object);
 
 				if (relationshipObject != null) {
-					attributesNode.remove(relationshipField.getName());
+					attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
 
 					Relationship relationship = configuration.getFieldRelationship(relationshipField);
 
