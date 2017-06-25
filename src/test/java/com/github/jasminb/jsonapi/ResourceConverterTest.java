@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
-import com.github.jasminb.jsonapi.exceptions.UnregisteredClassForType;
+import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
@@ -651,7 +651,7 @@ public class ResourceConverterTest {
 	public void testUnregisteredType() throws IOException {
 		InputStream apiResponse = IOUtils.getResource("un-registered-type.json");
 
-		thrown.expect(UnregisteredClassForType.class);
+		thrown.expect(UnregisteredTypeException.class);
 		thrown.expectMessage("No class was registered for type 'unRegisteredType'.");
 
 		converter.readDocument(apiResponse, User.class);

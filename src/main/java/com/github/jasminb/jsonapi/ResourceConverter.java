@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
-import com.github.jasminb.jsonapi.exceptions.UnregisteredClassForType;
+import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.errors.Error;
 
 import java.io.ByteArrayInputStream;
@@ -1034,7 +1034,7 @@ public class ResourceConverter {
 			}
 		}
 
-		throw new UnregisteredClassForType(type);
+		throw new UnregisteredTypeException(type);
 	}
 
 
