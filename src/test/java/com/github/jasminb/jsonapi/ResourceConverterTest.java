@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
+import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
@@ -22,7 +23,9 @@ import com.github.jasminb.jsonapi.models.inheritance.Engineer;
 import com.github.jasminb.jsonapi.models.inheritance.EngineeringField;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -40,6 +43,10 @@ import java.util.Map;
  * @author jbegic
  */
 public class ResourceConverterTest {
+
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
+
 	private ResourceConverter converter;
 
 	@Before
@@ -668,6 +675,16 @@ public class ResourceConverterTest {
 				Status.class);
 		
 		Assert.assertNotNull(status.getMeta());
+	}
+
+	@Test
+	public void testUnregisteredType() throws IOException {
+		InputStream apiResponse = IOUtils.getResource("un-registered-type.json");
+
+		thrown.expect(UnregisteredTypeException.class);
+		thrown.expectMessage("No class was registered for type 'unRegisteredType'.");
+
+		converter.readDocument(apiResponse, User.class);
 	}
 
 	/**
