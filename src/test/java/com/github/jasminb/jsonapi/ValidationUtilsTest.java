@@ -3,6 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.NullNode;
+import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.ResourceParseException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -23,7 +24,7 @@ public class ValidationUtilsTest {
 		mapper = new ObjectMapper();
 	}
 	
-	@Test(expected = IllegalArgumentException.class)
+	@Test(expected = InvalidJsonApiResourceException.class)
 	public void testExpectData() throws IOException {
 		JsonNode node = mapper.readTree("{}");
 		ValidationUtils.ensureValidResource(node);

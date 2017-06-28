@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
+import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
@@ -269,7 +270,7 @@ public class ResourceConverterTest {
 		Assert.assertNotNull(user.getStatuses());
 	}
 	
-	@Test(expected = IllegalArgumentException.class)
+	@Test(expected = InvalidJsonApiResourceException.class)
 	public void testExpectData() throws UnsupportedEncodingException {
 		converter.readDocument(new ByteArrayInputStream("{}".getBytes()), User.class);
 	}
