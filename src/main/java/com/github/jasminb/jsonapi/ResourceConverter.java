@@ -507,9 +507,16 @@ public class ResourceConverter {
 							Collection elements = createCollectionInstance(relationshipField.getType());
 
 							for (JsonNode element : relationship.get(DATA)) {
-								Object relationshipObject = parseRelationship(element, type);
-								if (relationshipObject != null) {
-									elements.add(relationshipObject);
+								try {
+									Object relationshipObject = parseRelationship(element, type);
+									if (relationshipObject != null) {
+										elements.add(relationshipObject);
+									}
+								} catch (Exception ex) {
+									if(relationshipField.getType().isInterface() &&
+											!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP)) {
+										throw ex;
+									}
 								}
 							}
 							relationshipField.set(object, elements);
