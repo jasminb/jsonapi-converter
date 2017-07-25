@@ -56,6 +56,9 @@
     "relationships": {
       "author": {
         "data": { "type": "people", "id": "2" }
+      },
+      "about": {
+        "data": { "type": "articles", "id": "1" }
       }
     },
     "links": {
@@ -70,6 +73,9 @@
     "relationships": {
       "author": {
         "data": { "type": "people", "id": "9" }
+      },
+      "about": {
+        "data": { "type": "articles", "id": "1" }
       }
     },
     "links": {
