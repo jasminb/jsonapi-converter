@@ -52,10 +52,6 @@ public class ConverterConfiguration {
 	}
 
 	private void processClass(Class<?> clazz) {
-		if (clazz.isInterface()) {
-			return;
-		}
-
 		if (clazz.isAnnotationPresent(Type.class)) {
 			Type annotation = clazz.getAnnotation(Type.class);
 			typeToClassMapping.put(annotation.value(), clazz);

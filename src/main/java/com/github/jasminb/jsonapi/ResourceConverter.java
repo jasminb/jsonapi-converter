@@ -30,18 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.ATTRIBUTES;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.DATA;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.ERRORS;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.HREF;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.ID;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.INCLUDED;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.LINKS;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.META;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.RELATED;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.RELATIONSHIPS;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.SELF;
-import static com.github.jasminb.jsonapi.JSONAPISpecConstants.TYPE;
+import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
 
 /**
  * JSON API data converter. <br />
@@ -578,10 +567,6 @@ public class ResourceConverter {
 				resourceCache.lock();
 				try {
                     return readObject(relationshipDataNode, type, true);
-                } catch(RuntimeException ex) {
-                    if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
-                        throw ex;
-                    }
 				} finally {
 					resourceCache.unlock();
 				}
