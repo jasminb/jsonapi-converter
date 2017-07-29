@@ -9,17 +9,20 @@ package com.github.jasminb.jsonapi.exceptions;
 public class RepeatedRelationshipsException extends RuntimeException {
 
     private final String relationshipName;
+    private final Class clazz;
 
     /**
      * Constructor.
      *
      * @param relationshipName The relationship name that is registered more than once.
+     * @param clazz The class being parsed when the error was thrown.
      */
-    public RepeatedRelationshipsException(String relationshipName) {
-        super("@Relationship(" + relationshipName + ") set on multiple fields. " +
+    public RepeatedRelationshipsException(String relationshipName, Class clazz) {
+        super("@Relationship(" + relationshipName + ") set on multiple fields in " + clazz + ". " +
                 "If the json returned for this relationship can be of multiple types (polymorphic), " +
                 "please use @PolymorphicRelationship.");
         this.relationshipName = relationshipName;
+        this.clazz = clazz;
     }
 
     /**
@@ -30,4 +33,14 @@ public class RepeatedRelationshipsException extends RuntimeException {
     public String getType() {
         return relationshipName;
     }
+
+    /**
+     * Returns the class which caused the exception.
+     *
+     * @return
+     */
+    public String getClazz() {
+        return relationshipName;
+    }
+
 }

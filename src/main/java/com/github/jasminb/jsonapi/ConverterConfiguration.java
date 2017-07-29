@@ -92,7 +92,7 @@ public class ConverterConfiguration {
 				Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
 				relationshipTypeMap.get(clazz).put(relationship.value(), targetType);
 				if (relationshipFieldMap.get(clazz).get(relationship.value()) != null) {
-					throw new RepeatedRelationshipsException(relationship.value());
+					throw new RepeatedRelationshipsException(relationship.value(), clazz);
 				}
 				relationshipFieldMap.get(clazz).put(relationship.value(), relationshipField);
 				fieldRelationshipMap.put(relationshipField, relationship);
@@ -145,7 +145,7 @@ public class ConverterConfiguration {
 				if (targetField == null) {
 					targetTypePolymorphRelationshipMap.get(clazz).get(relationship.value()).put(targetType, polymorphRelationshipField);
 				} else {
-					throw new RepeatedPolymorphRelationshipsException(relationship.value(), ReflectionUtils.getTypeName(targetType));
+					throw new RepeatedPolymorphRelationshipsException(relationship.value(), ReflectionUtils.getTypeName(targetType), clazz);
 				}
 			}
 
