@@ -46,8 +46,9 @@ public class ResourceConverterTest {
 	public void setup() {
 		converter = new ResourceConverter("https://api.example.com", Status.class, User.class, Author.class,
 				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
+				PolymorphParent.class, StatusPolymorph.class, ArticlePolymorph.class,
 				IntegerIdResource.class, LongIdResource.class,
-				NoDefaultConstructorClass.class, PolymorphParent.class);
+				NoDefaultConstructorClass.class);
 	}
 
 	@Test
@@ -154,6 +155,51 @@ public class ResourceConverterTest {
 		Assert.assertEquals("https://api.example.com/statuses/id/user",
 				converted.getUserRelationshipLinks().getRelated().getHref());
 		
+	}
+
+
+	@Test
+	public void testReadWriteObjectWithPolymorph() throws Exception {
+		StatusPolymorph status = new StatusPolymorph();
+		status.setContent("content");
+		status.setCommentCount(1);
+		status.setLikeCount(10);
+		status.setId("id");
+		status.setUser(new User());
+		status.getUser().setId("userid");
+		status.setRelatedUser(status.getUser());
+
+		byte [] rawData = converter.writeDocument(new JSONAPIDocument<>(status));
+
+		Assert.assertNotNull(rawData);
+		Assert.assertFalse(rawData.length == 0);
+
+		JSONAPIDocument<StatusPolymorph> convertedDocument = converter.readDocument(new ByteArrayInputStream(rawData), StatusPolymorph.class);
+		StatusPolymorph converted = convertedDocument.get();
+		// Make sure relationship with disabled serialisation is not present
+		Assert.assertNull(converted.getRelatedUser());
+
+		Assert.assertEquals(status.getId(), converted.getId());
+		Assert.assertEquals(status.getLikeCount(), converted.getLikeCount());
+		Assert.assertEquals(status.getCommentCount(), converted.getCommentCount());
+		Assert.assertEquals(status.getContent(), converted.getContent());
+
+
+		Assert.assertNotNull(converted.getUser());
+		Assert.assertEquals(status.getUser().getId(), converted.getUser().getId());
+
+		// Make sure type link is present
+		Assert.assertNotNull(converted.getLinks());
+		Assert.assertEquals("https://api.example.com/statuses/id",
+				converted.getLinks().getSelf().getHref());
+
+		// Make sure relationship links are present
+		Assert.assertNotNull(converted.getUserRelationshipLinks());
+		Assert.assertEquals("https://api.example.com/statuses/id/relationships/user",
+				converted.getUserRelationshipLinks().getSelf().getHref());
+		Assert.assertEquals("https://api.example.com/statuses/id/user",
+				converted.getUserRelationshipLinks().getRelated().getHref());
+
 	}
 
 	@Test
@@ -346,6 +392,51 @@ public class ResourceConverterTest {
 		Assert.assertEquals(1, articles.size());
 
 		Article article = articles.get(0);
+
+		Assert.assertEquals("JSON API paints my bikeshed!", article.getTitle());
+		Assert.assertEquals("1", article.getId());
+
+		Assert.assertNotNull(article.getAuthor());
+
+		Author author = article.getAuthor();
+
+		Assert.assertEquals("9", author.getId());
+		Assert.assertEquals("Dan", author.getFirstName());
+
+		Assert.assertNotNull(article.getComments());
+
+		List<Comment> comments = article.getComments();
+
+		Assert.assertEquals(2, comments.size());
+
+		Comment commentWithAuthor = comments.get(1);
+
+		Assert.assertEquals("12", commentWithAuthor.getId());
+		Assert.assertEquals("I like XML better", commentWithAuthor.getBody());
+
+		Assert.assertNotNull(commentWithAuthor.getAuthor());
+		Assert.assertEquals("9", commentWithAuthor.getAuthor().getId());
+		Assert.assertEquals("dgeb", commentWithAuthor.getAuthor().getTwitter());
+	}
+
+
+	@Test
+	public void testIncludedFullRelationshipsPolymorph() throws IOException { //TODO: make polymorph
+		InputStream apiResponse = IOUtils.getResource("articles-polymorph.json");
+
+		ObjectMapper articlesMapper = new ObjectMapper();
+		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+
+		ResourceConverter articlesConverter = new ResourceConverter(articlesMapper, ArticlePolymorph.class, Author.class,
+				Comment.class);
+
+		JSONAPIDocument<List<ArticlePolymorph>> articlesDocument = articlesConverter.readDocumentCollection(apiResponse, ArticlePolymorph.class);
+		List<ArticlePolymorph> articles = articlesDocument.get();
+
+		Assert.assertNotNull(articles);
+		Assert.assertEquals(1, articles.size());
+
+		ArticlePolymorph article = articles.get(0);
 
 		Assert.assertEquals("JSON API paints my bikeshed!", article.getTitle());
 		Assert.assertEquals("1", article.getId());
@@ -720,6 +811,27 @@ public class ResourceConverterTest {
 		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
 		
 		Status status = converter.readDocument(serialized, Status.class).get();
+		Assert.assertNotNull(status.getUserRelationshipLinks());
+		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
+	}
+
+	@Test
+	public void testReadPolymorphRelationshipLinks() throws IOException {
+		InputStream statusStream = IOUtils.getResource("status-polymorph.json");
+		StatusPolymorph status = converter.readDocument(statusStream, StatusPolymorph.class).get();
+
+		Assert.assertNotNull(status.getUserRelationshipLinks());
+		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
+	}
+
+	@Test
+	public void testWritePolymorphRelationshipLinks() throws IOException, DocumentSerializationException {
+		InputStream statusStream = IOUtils.getResource("status-polymorph.json");
+		JSONAPIDocument<StatusPolymorph> statusJSONAPIDocument = converter.readDocument(statusStream, StatusPolymorph.class);
+
+		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
+
+		StatusPolymorph status = converter.readDocument(serialized, StatusPolymorph.class).get();
 		Assert.assertNotNull(status.getUserRelationshipLinks());
 		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
 	}
