@@ -6,18 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
+import com.github.jasminb.jsonapi.exceptions.RepeatedPolymorphRelationshipsException;
+import com.github.jasminb.jsonapi.exceptions.RepeatedRelationshipsException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
-import com.github.jasminb.jsonapi.models.Article;
-import com.github.jasminb.jsonapi.models.Author;
-import com.github.jasminb.jsonapi.models.Comment;
-import com.github.jasminb.jsonapi.models.IntegerIdResource;
-import com.github.jasminb.jsonapi.models.LongIdResource;
-import com.github.jasminb.jsonapi.models.NoDefaultConstructorClass;
-import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
-import com.github.jasminb.jsonapi.models.RecursingNode;
-import com.github.jasminb.jsonapi.models.SimpleMeta;
-import com.github.jasminb.jsonapi.models.Status;
-import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.*;
 import com.github.jasminb.jsonapi.models.inheritance.BaseModel;
 import com.github.jasminb.jsonapi.models.inheritance.City;
 import com.github.jasminb.jsonapi.models.inheritance.Engineer;
@@ -55,7 +47,69 @@ public class ResourceConverterTest {
 		converter = new ResourceConverter("https://api.example.com", Status.class, User.class, Author.class,
 				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
 				IntegerIdResource.class, LongIdResource.class,
-				NoDefaultConstructorClass.class);
+				NoDefaultConstructorClass.class, PolymorphParent.class);
+	}
+
+	@Test
+	public void testReadPolymorphicRelationshipUser() throws IOException {
+		InputStream parentStream = IOUtils.getResource("polymorph-relationship-user.json");
+
+		JSONAPIDocument<PolymorphParent> parentDoc = converter.readDocument(parentStream, PolymorphParent.class);
+		PolymorphParent parent = parentDoc.get();
+
+		Assert.assertNotNull(parentDoc);
+		Assert.assertNotNull(parent);
+		if (parent.user != null) {
+			Assert.assertEquals("1", parent.user.id);
+			Assert.assertEquals("sam_i_am", parent.user.getName());
+		} else {
+			Assert.fail();
+		}
+	}
+
+	@Test
+	public void testReadPolymorphicRelationshipAuthor() throws IOException {
+		InputStream parentStream = IOUtils.getResource("polymorph-relationship-author.json");
+
+		JSONAPIDocument<PolymorphParent> parentDoc = converter.readDocument(parentStream, PolymorphParent.class);
+		PolymorphParent parent = parentDoc.get();
+
+		Assert.assertNotNull(parentDoc);
+		Assert.assertNotNull(parent);
+		if (parent.author != null) {
+			Assert.assertEquals("1", parent.author.getId());
+			Assert.assertEquals("sam_i_am", parent.author.getFirstName());
+		} else {
+			Assert.fail();
+		}
+	}
+
+	@Test
+	public void testReadPolymorphicRelationshipOther() throws IOException {
+		InputStream parentStream = IOUtils.getResource("polymorph-relationship-other.json");
+
+		converter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS);
+		JSONAPIDocument<PolymorphParent> parentDoc = converter.readDocument(parentStream, PolymorphParent.class);
+		PolymorphParent parent = parentDoc.get();
+
+		Assert.assertNotNull(parentDoc);
+		Assert.assertNotNull(parent);
+		Assert.assertNull(parent.user);
+		Assert.assertNull(parent.author);
+	}
+
+	@Test(expected = RepeatedRelationshipsException.class)
+	public void testRepeatedRelationshipsException() throws IOException {
+		ResourceConverter converter = new ResourceConverter("https://api.example.com", RepeatedRelationships.class);
+		InputStream parentStream = IOUtils.getResource("polymorph-relationship-user.json");
+		converter.readDocument(parentStream, RepeatedRelationships.class);
+	}
+
+	@Test(expected = RepeatedPolymorphRelationshipsException.class)
+	public void testRepeatedPoylmorphRelationshipsException() throws IOException {
+		ResourceConverter converter = new ResourceConverter("https://api.example.com", RepeatedPolymorphRelationships.class);
+		InputStream parentStream = IOUtils.getResource("polymorph-relationship-user.json");
+		converter.readDocument(parentStream, RepeatedPolymorphRelationships.class);
 	}
 
 	@Test

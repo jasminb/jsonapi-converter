@@ -1,0 +1,27 @@
+{
+  "data":{
+    "id":"someId",
+    "type":"polymorph-parent",
+    "relationships":{
+      "arbitraryRelationship":{
+        "links":{
+          "self":"https://api.com/w/e",
+          "related":"https://api.com/w/e"
+        },
+        "data":{
+          "type":"users",
+          "id":"1"
+        }
+      }
+    }
+  },
+  "included":[
+    {
+      "type": "users",
+      "id": "1",
+      "attributes": {
+        "name": "sam_i_am"
+      }
+    }
+  ]
+}

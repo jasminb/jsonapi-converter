@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.github.jasminb.jsonapi.annotations.PolymorphRelationship;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
@@ -21,14 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
 
@@ -446,20 +440,43 @@ public class ResourceConverter {
 
 				JsonNode relationship = relationships.get(field);
 				Field relationshipField = configuration.getRelationshipField(object.getClass(), field);
+				// target type
+				Class<?> type = null;
+				// if there is no @Relationship defined for this particular relationship name, check for @PolymorphRelationships
+				if (relationshipField == null) {
+					// Get list of possible target types
+					List<Class<?>> possibleRelationshipTypes = configuration.getPolymorphRelationshipType(object.getClass(), field);
+
+					// if there are no fields to map the json object to (field is not set as name of any relationships in the class) cannot parse
+					if (possibleRelationshipTypes == null || possibleRelationshipTypes.isEmpty()) continue;
+					// if there aren't data and type attributes set we can't parse
+					if (!relationship.has(DATA) || !relationship.get(DATA).has(TYPE)) continue;
+					// check if the field is one we can convert to
+					String jsonType = relationship.get(DATA).get(TYPE).asText();
+					for (Class<?> clash : possibleRelationshipTypes) {
+						// if the type is one we have defined
+						if (Objects.equals(ReflectionUtils.getTypeName(clash), jsonType)) {
+							// set the targetType
+							type = clash;
+							// get the correct field
+							relationshipField = configuration.getPolymorphRelationshipField(object.getClass(), field, type);
+						}
+					}
+				}
 
 				if (relationshipField != null) {
-					// Get target type
-					Class<?> type = configuration.getRelationshipType(object.getClass(), field);
-
+					// Get target type if it wasn't already set a polymorph relationship
+ 					if (type == null) {
+						type = configuration.getRelationshipType(object.getClass(), field);
+					}
 					// In case type is not defined, relationship object cannot be processed
 					if (type == null) {
 						continue;
 					}
-					
 					// Handle meta if present
 					if (relationship.has(META)) {
 						Field relationshipMetaField = configuration.getRelationshipMetaField(object.getClass(), field);
-						
+
 						if (relationshipMetaField != null) {
 							relationshipMetaField.set(object, objectMapper.treeToValue(relationship.get(META),
 									configuration.getRelationshipMetaType(object.getClass(), field)));
@@ -476,7 +493,14 @@ public class ResourceConverter {
 					}
 
 					// Get resolve flag
-					boolean resolveRelationship = configuration.getFieldRelationship(relationshipField).resolve();
+					//TODO: add to fieldRelationship regardless of polymorph or not (getFieldRelationship needs to be used for either)
+					Relationship classRelationship = configuration.getFieldRelationship(relationshipField);
+					boolean resolveRelationship;
+ 					if (classRelationship == null) {
+						resolveRelationship = configuration.getFieldPolymorphRelationship(relationshipField).resolve();
+					} else {
+						resolveRelationship = configuration.getFieldRelationship(relationshipField).resolve();
+					}
 					RelationshipResolver resolver = getResolver(type);
 
 					// Use resolver if possible
@@ -803,10 +827,16 @@ public class ResourceConverter {
 		}
 		dataNode.set(ATTRIBUTES, attributesNode);
 
-		// Handle relationships (remove from base type and add as relationships)
+		// Handle Relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
+		// Get the PolymorphRelationship fields
+		List<Field> polymorphRelationshipFields = configuration.getPolymorphRelationshipFields(object.getClass());
+		//Combine the two lists
+		List<Field> allRelationshipFields = new ArrayList<>(relationshipFields.size() + polymorphRelationshipFields.size());
+		allRelationshipFields.addAll(relationshipFields);
+		allRelationshipFields.addAll(polymorphRelationshipFields);
 
-		if (relationshipFields != null) {
+		if (!allRelationshipFields.isEmpty()) {
 			ObjectNode relationshipsNode = objectMapper.createObjectNode();
 
 			for (Field relationshipField : relationshipFields) {
@@ -816,14 +846,30 @@ public class ResourceConverter {
 					attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
 
 					Relationship relationship = configuration.getFieldRelationship(relationshipField);
+					PolymorphRelationship polymorphRelationship = configuration.getFieldPolymorphRelationship(relationshipField);
 
 					// In case serialisation is disabled for a given relationship, skip it
-					if (!relationship.serialise()) {
+					if ((relationship != null && !relationship.serialise())
+							|| (polymorphRelationship != null && !polymorphRelationship.serialise())) {
 						continue;
 					}
 
-					String relationshipName = relationship.value();
-					
+					String relationshipName = null;
+					String relationshipPath = null;
+					String relationshipRelatedPath = null;
+					if (relationship != null) {
+						relationshipName = relationship.value();
+						relationshipPath = relationship.path();
+						relationshipRelatedPath = relationship.relatedPath();
+					} else if (polymorphRelationship != null) {
+						relationshipName = polymorphRelationship.value();
+						relationshipPath = polymorphRelationship.path();
+						relationshipRelatedPath = polymorphRelationship.relatedPath();
+					}
+					// set to null to explicitly declare that the rest of the method does not need to concern the two relationship types
+					relationship = null;
+					polymorphRelationship = null;
+
 					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
 					relationshipsNode.set(relationshipName, relationshipDataNode);
 					
@@ -836,7 +882,7 @@ public class ResourceConverter {
 					}
 					
 					// Serialize relationship links
-					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
+					JsonNode relationshipLinks = getRelationshipLinks(object, relationshipName, relationshipPath, relationshipRelatedPath, selfHref, settings);
 					
 					if (relationshipLinks != null) {
 						relationshipDataNode.set(LINKS, relationshipLinks);
@@ -1134,13 +1180,14 @@ public class ResourceConverter {
 		return null;
 	}
 	
-	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
-										  SerializationSettings settings) throws IllegalAccessException {
+	private JsonNode getRelationshipLinks(Object source, String relationshipValue,
+										  String relationshipPath, String relationshipRelatedPath,
+										  String ownerLink, SerializationSettings settings) throws IllegalAccessException {
 		if (shouldSerializeLinks(settings)) {
 			Links links = null;
 			
 			Field relationshipLinksField = configuration
-					.getRelationshipLinksField(source.getClass(), relationship.value());
+					.getRelationshipLinksField(source.getClass(), relationshipValue);
 			
 			if (relationshipLinksField != null) {
 				links = (Links) relationshipLinksField.get(source);
@@ -1152,12 +1199,12 @@ public class ResourceConverter {
 				linkMap.putAll(links.getLinks());
 			}
 			
-			if (!relationship.path().trim().isEmpty() && !linkMap.containsKey(SELF)) {
-				linkMap.put(SELF, new Link(createURL(ownerLink, relationship.path())));
+			if (!relationshipPath.trim().isEmpty() && !linkMap.containsKey(SELF)) {
+				linkMap.put(SELF, new Link(createURL(ownerLink, relationshipPath)));
 			}
 			
-			if (!relationship.relatedPath().trim().isEmpty() && !linkMap.containsKey(RELATED)) {
-				linkMap.put(RELATED, new Link(createURL(ownerLink, relationship.relatedPath())));
+			if (!relationshipRelatedPath.trim().isEmpty() && !linkMap.containsKey(RELATED)) {
+				linkMap.put(RELATED, new Link(createURL(ownerLink, relationshipRelatedPath)));
 			}
 			
 			if (!linkMap.isEmpty()) {
