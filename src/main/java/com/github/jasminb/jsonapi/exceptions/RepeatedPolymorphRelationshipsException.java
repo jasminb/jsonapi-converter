@@ -22,8 +22,6 @@ public class RepeatedPolymorphRelationshipsException extends RuntimeException {
                 ". Fields annotated with @PolymorphRelationship must have unique types defined.");
         this.relationshipName = relationshipName;
         this.targetType = targetType;
-        System.out.println("relationshipName: " + relationshipName);
-        System.out.println("targetType: " + targetType);
     }
 
     /**
