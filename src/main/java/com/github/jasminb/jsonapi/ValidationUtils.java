@@ -3,6 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.ResourceParseException;
 import com.github.jasminb.jsonapi.models.errors.Errors;
 
@@ -16,14 +17,14 @@ public class ValidationUtils {
 	private ValidationUtils() {
 		// Private CTOR
 	}
-	
+
 	/**
 	 * Asserts that provided resource has required 'data' or 'meta' node.
 	 * @param resource resource
 	 */
 	public static void ensureValidResource(JsonNode resource) {
 		if (!resource.has(JSONAPISpecConstants.DATA) && !resource.has(JSONAPISpecConstants.META)) {
-			throw new IllegalArgumentException("Resource must contain at least one of 'data', 'error' or 'meta' nodes");
+			throw new InvalidJsonApiResourceException();
 		}
 	}
 
