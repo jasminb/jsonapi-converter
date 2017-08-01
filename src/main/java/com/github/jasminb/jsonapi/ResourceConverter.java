@@ -190,18 +190,25 @@ public class ResourceConverter {
 			ValidationUtils.ensureNotError(objectMapper, rootNode);
 			ValidationUtils.ensureValidResource(rootNode);
 
-			resourceCache.cache(parseIncluded(rootNode));
-
 			JsonNode dataNode = rootNode.get(DATA);
 
-			JSONAPIDocument<T> result;
-
+			// Parse data node without handling relationships
+			T resourceObject;
 			if (dataNode != null && dataNode.isObject()) {
-				T resourceObject = readObject(dataNode, clazz, true);
-				result = new JSONAPIDocument<>(resourceObject, objectMapper);
+				resourceObject = readObject(dataNode, clazz, false);
 			} else {
-				result = new JSONAPIDocument<>(null, objectMapper);
+				resourceObject = null;
 			}
+
+			// Parse all included resources
+			resourceCache.cache(parseIncluded(rootNode));
+
+			// Connect data node's relationships now that all resources have been parsed
+			if (resourceObject != null) {
+				handleRelationships(dataNode, resourceObject);
+			}
+
+			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -250,14 +257,27 @@ public class ResourceConverter {
 			ValidationUtils.ensureNotError(objectMapper, rootNode);
 			ValidationUtils.ensureValidResource(rootNode);
 
-			resourceCache.cache(parseIncluded(rootNode));
+			JsonNode dataNode = rootNode.get(DATA);
 
+			// Parse data node without handling relationships
 			List<T> resourceList = new ArrayList<>();
 
-			if (rootNode.has(DATA) && rootNode.get(DATA).isArray()) {
-				for (JsonNode element : rootNode.get(DATA)) {
-					T pojo = readObject(element, clazz, true);
+			if (dataNode != null && dataNode.isArray()) {
+				for (JsonNode element : dataNode) {
+					T pojo = readObject(element, clazz, false);
 					resourceList.add(pojo);
+				}
+			}
+
+			// Parse all included resources
+			resourceCache.cache(parseIncluded(rootNode));
+
+			// Connect data node's relationships now that all resources have been parsed
+			for (int i = 0; i < resourceList.size(); i++) {
+				JsonNode source = dataNode != null && dataNode.isArray() ? dataNode.get(i) : null;
+				T resourceObject = resourceList.get(i);
+				if (source != null && resourceObject != null) {
+					handleRelationships(source, resourceObject);
 				}
 			}
 			
