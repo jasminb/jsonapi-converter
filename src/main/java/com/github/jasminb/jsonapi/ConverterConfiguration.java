@@ -22,7 +22,7 @@ import java.util.Map;
  */
 public class ConverterConfiguration {
 
-	private final Map<String, Class<?>> typeToClassMapping = new HashMap<>();
+	private final Map<String, List<Class<?>>> typeToClassesMapping = new HashMap<>();
 	private final Map<Class<?>, Type> typeAnnotations = new HashMap<>();
 	private final Map<Class<?>, Field> idMap = new HashMap<>();
 	private final Map<Class<?>, ResourceIdHandler> idHandlerMap = new HashMap<>();
@@ -58,7 +58,14 @@ public class ConverterConfiguration {
 	private void processClass(Class<?> clazz) {
 		if (clazz.isAnnotationPresent(Type.class)) {
 			Type annotation = clazz.getAnnotation(Type.class);
-			typeToClassMapping.put(annotation.value(), clazz);
+
+			List<Class<?>> listOfClassesForType = typeToClassesMapping.get(annotation.value());
+			if (listOfClassesForType == null) {
+				listOfClassesForType = new ArrayList<>();
+			}
+			listOfClassesForType.add(clazz);
+			typeToClassesMapping.put(annotation.value(), listOfClassesForType);
+
 			typeAnnotations.put(clazz, annotation);
 			relationshipTypeMap.put(clazz, new HashMap<String, Class<?>>());
 			relationshipFieldMap.put(clazz, new HashMap<String, Field>());
@@ -108,6 +115,7 @@ public class ConverterConfiguration {
 			//handle polymorphic relationships
 			for (Field polymorphRelationshipField : polymorphRelationshipFields) {
 				polymorphRelationshipField.setAccessible(true);
+
 				PolymorphRelationship relationship = polymorphRelationshipField.getAnnotation(PolymorphRelationship.class);
 				Class<?> targetType = ReflectionUtils.getFieldType(polymorphRelationshipField);
 
@@ -265,12 +273,12 @@ public class ConverterConfiguration {
 	}
 
 	/**
-	 * Resolves a type for given type name.
+	 * Resolves the possible types for given a type name.
 	 * @param typeName {@link String} type name
 	 * @return {@link Class} resolved type
 	 */
-	public Class<?> getTypeClass(String typeName) {
-		return typeToClassMapping.get(typeName);
+	public List<Class<?>> getTypeClass(String typeName) {
+		return typeToClassesMapping.get(typeName);
 	}
 
 	/**

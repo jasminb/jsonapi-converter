@@ -412,15 +412,18 @@ public class ResourceConverter {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
 				String type = jsonNode.get(TYPE).asText();
 				
-				Class<?> clazz = configuration.getTypeClass(type);
-				
-				if (clazz != null) {
-					Object object = readObject(jsonNode, clazz, false);
-					if (object != null) {
-						result.put(createIdentifier(jsonNode), object);
+				List<Class<?>> classes = configuration.getTypeClass(type);
+				if (classes != null) {
+					for (Class<?> clazz : classes) {
+						if (clazz != null) {
+							Object object = readObject(jsonNode, clazz, false);
+							if (object != null) {
+								result.put(createIdentifier(jsonNode), object);
+							}
+						} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
+							throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
+						}
 					}
-				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
-					throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
 				}
 			}
 		}
@@ -1099,12 +1102,18 @@ public class ResourceConverter {
 		String definedTypeName = configuration.getTypeName(userType);
 
 		if (definedTypeName != null && definedTypeName.equals(type)) {
+			System.out.println("first branch " + type);
 			return userType;
 		} else {
-			Class<?> actualType = configuration.getTypeClass(type);
-
-			if (actualType != null && userType.isAssignableFrom(actualType)) {
-				return actualType;
+			System.out.println("second branch " + type);
+			List<Class<?>> actualTypes = configuration.getTypeClass(type);
+			if (actualTypes != null) {
+				for (Class<?> actualType : actualTypes) {
+					if (actualType != null && userType.isAssignableFrom(actualType)) {
+						System.out.println("third branch " + type);
+						return actualType;
+					}
+				}
 			}
 		}
 
