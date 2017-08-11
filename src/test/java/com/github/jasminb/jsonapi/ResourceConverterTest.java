@@ -25,10 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Testing functionality of JSON API converter.
@@ -169,6 +166,10 @@ public class ResourceConverterTest {
 		status.getUser().setId("userid");
 		status.setRelatedUser(status.getUser());
 
+		Map<String, Link> userRelationshipLinks = new HashMap<>();
+		userRelationshipLinks.put("first", new Link("test.com"));
+		status.setUserRelationshipLinks(new Links(userRelationshipLinks));
+
 		byte [] rawData = converter.writeDocument(new JSONAPIDocument<>(status));
 
 		Assert.assertNotNull(rawData);
@@ -176,6 +177,7 @@ public class ResourceConverterTest {
 
 		JSONAPIDocument<StatusPolymorph> convertedDocument = converter.readDocument(new ByteArrayInputStream(rawData), StatusPolymorph.class);
 		StatusPolymorph converted = convertedDocument.get();
+
 		// Make sure relationship with disabled serialisation is not present
 		Assert.assertNull(converted.getRelatedUser());
 

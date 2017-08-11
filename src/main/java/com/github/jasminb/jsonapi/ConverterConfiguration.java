@@ -201,7 +201,6 @@ public class ConverterConfiguration {
 				} else {
 					throw new IllegalArgumentException("Only single @Id annotation is allowed per defined type!");
 				}
-
 			}
 
 			// Collecting Meta fields

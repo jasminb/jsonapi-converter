@@ -496,7 +496,6 @@ public class ResourceConverter {
 					}
 
 					// Get resolve flag
-					//TODO: add to fieldRelationship regardless of polymorph or not (getFieldRelationship needs to be used for either)
 					Relationship classRelationship = configuration.getFieldRelationship(relationshipField);
 					boolean resolveRelationship;
  					if (classRelationship == null) {
@@ -509,6 +508,9 @@ public class ResourceConverter {
 					// Use resolver if possible
 					if (resolveRelationship && resolver != null && relationship.has(LINKS)) {
 						String relType = configuration.getFieldRelationship(relationshipField).relType().getRelName();
+						//if the relType was not defined using @Relationship annotations, check for @PolymorphRelationship
+						if (relType == null) relType = configuration.getFieldPolymorphRelationship(relationshipField).relType().getRelName();
+
 						JsonNode linkNode = relationship.get(LINKS).get(relType);
 
 						String link;
