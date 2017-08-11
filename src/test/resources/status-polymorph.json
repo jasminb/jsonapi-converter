@@ -1,0 +1,48 @@
+{
+  "data": {
+    "type": "statuses-p",
+    "id": "id",
+    "attributes": {
+      "content": "content",
+      "commentCount": 1,
+      "likeCount": 10
+    },
+    "relationships": {
+      "user": {
+        "links": {
+          "self": "users/userid"
+        },
+        "data": {
+          "type": "users",
+          "id": "userid"
+        },
+        "meta" : {
+          "token" : "token"
+        }
+      }
+    }
+  },
+  "included": [
+    {
+      "type": "users",
+      "id": "userid",
+      "attributes": {
+        "name": "john"
+      },
+      "relationships": {
+        "statuses-p": {
+          "data": [
+            {
+              "type": "statuses-p",
+              "id": "id"
+            },
+            {
+              "type": "statuses-p",
+              "id": "anotherid"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

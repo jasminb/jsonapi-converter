@@ -1,13 +1,12 @@
 package com.github.jasminb.jsonapi;
 
-import com.github.jasminb.jsonapi.annotations.Id;
-import com.github.jasminb.jsonapi.annotations.Meta;
-import com.github.jasminb.jsonapi.annotations.Relationship;
-import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
-import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
-import com.github.jasminb.jsonapi.annotations.Type;
+import com.github.jasminb.jsonapi.annotations.*;
+import com.github.jasminb.jsonapi.exceptions.RepeatedPolymorphRelationshipsException;
+import com.github.jasminb.jsonapi.exceptions.RepeatedRelationshipsException;
+import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +22,7 @@ import java.util.Map;
  */
 public class ConverterConfiguration {
 
-	private final Map<String, Class<?>> typeToClassMapping = new HashMap<>();
+	private final Map<String, List<Class<?>>> typeToClassesMapping = new HashMap<>();
 	private final Map<Class<?>, Type> typeAnnotations = new HashMap<>();
 	private final Map<Class<?>, Field> idMap = new HashMap<>();
 	private final Map<Class<?>, ResourceIdHandler> idHandlerMap = new HashMap<>();
@@ -37,7 +36,12 @@ public class ConverterConfiguration {
 	private final Map<Class<?>, Class<?>> metaTypeMap = new HashMap<>();
 	private final Map<Class<?>, Field> metaFieldMap = new HashMap<>();
 	private final Map<Class<?>, Field> linkFieldMap = new HashMap<>();
-	
+	private final Map<Class<?>, List<Field>> polymorphRelationshipMap = new HashMap<>();
+	private final Map<Class<?>, Map<String, List<Class<?>>>> polymorphRelationshipTypeMap = new HashMap<>();
+	private final Map<Class<?>, Map<String, List<Field>>> polymorphRelationshipFieldMap = new HashMap<>();
+	private final Map<Field, PolymorphRelationship> fieldPolymorphRelationshipMap = new HashMap<>();
+	private final Map<Class<?>, Map<String, Map<Class<?>, Field>>> targetTypePolymorphRelationshipMap = new HashMap<>();
+
 	// Relationship links lookups
 	private final Map<Class<?>, Map<String, Field>> relationshipLinksFieldMap = new HashMap<>();
 
@@ -54,23 +58,49 @@ public class ConverterConfiguration {
 	private void processClass(Class<?> clazz) {
 		if (clazz.isAnnotationPresent(Type.class)) {
 			Type annotation = clazz.getAnnotation(Type.class);
-			typeToClassMapping.put(annotation.value(), clazz);
+
+			List<Class<?>> listOfClassesForType = typeToClassesMapping.get(annotation.value());
+			if (listOfClassesForType == null) {
+				listOfClassesForType = new ArrayList<>();
+			}
+			listOfClassesForType.add(clazz);
+			typeToClassesMapping.put(annotation.value(), listOfClassesForType);
+
 			typeAnnotations.put(clazz, annotation);
 			relationshipTypeMap.put(clazz, new HashMap<String, Class<?>>());
 			relationshipFieldMap.put(clazz, new HashMap<String, Field>());
+			polymorphRelationshipTypeMap.put(clazz, new HashMap<String, List<Class<?>>>());
+			polymorphRelationshipFieldMap.put(clazz, new HashMap<String, List<Field>>());
 			relationshipMetaFieldMap.put(clazz, new HashMap<String, Field>());
 			relationshipMetaTypeMap.put(clazz, new HashMap<String, Class<?>>());
 			relationshipLinksFieldMap.put(clazz, new HashMap<String, Field>());
+			targetTypePolymorphRelationshipMap.put(clazz, new HashMap<String, Map<Class<?>, Field>>());
 
 			// collecting Relationship fields
 			List<Field> relationshipFields = ReflectionUtils.getAnnotatedFields(clazz, Relationship.class, true);
+			// collecting PolymorphRelationship fields
+			List<Field> polymorphRelationshipFields = ReflectionUtils.getAnnotatedFields(clazz, PolymorphRelationship.class, true);
+			// list of all relationship fields
+			List<Field> allRelationshipFields = new ArrayList<>(relationshipFields.size() + polymorphRelationshipFields.size());
+			allRelationshipFields.addAll(relationshipFields);
+			allRelationshipFields.addAll(polymorphRelationshipFields);
 
+			//handle relationship actions that are applicable to either type of relationship
+			for (Field relationshipField : allRelationshipFields) {
+				Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
+				registerType(targetType);
+			}
+
+			// handle relationships
 			for (Field relationshipField : relationshipFields) {
 				relationshipField.setAccessible(true);
 
 				Relationship relationship = relationshipField.getAnnotation(Relationship.class);
 				Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
 				relationshipTypeMap.get(clazz).put(relationship.value(), targetType);
+				if (relationshipFieldMap.get(clazz).get(relationship.value()) != null) {
+					throw new RepeatedRelationshipsException(relationship.value(), clazz);
+				}
 				relationshipFieldMap.get(clazz).put(relationship.value(), relationshipField);
 				fieldRelationshipMap.put(relationshipField, relationship);
 
@@ -79,12 +109,56 @@ public class ConverterConfiguration {
 							relationshipField.getName() + " with 'resolve = true' must have a relType attribute " +
 							"set." );
 				}
+			}
+			relationshipMap.put(clazz, relationshipFields);
 
-				registerType(targetType);
+			//handle polymorphic relationships
+			for (Field polymorphRelationshipField : polymorphRelationshipFields) {
+				polymorphRelationshipField.setAccessible(true);
+
+				PolymorphRelationship relationship = polymorphRelationshipField.getAnnotation(PolymorphRelationship.class);
+				Class<?> targetType = ReflectionUtils.getFieldType(polymorphRelationshipField);
+
+				List<Class<?>> listOfTypesForRelationship = polymorphRelationshipTypeMap.get(clazz).get(relationship.value());
+				if (listOfTypesForRelationship == null) {
+					// Start with two because an @PolymorphRelationship would only be used if >= 2 types could be returned for a relationship
+					listOfTypesForRelationship = new ArrayList(2);
+				}
+				listOfTypesForRelationship.add(targetType);
+				polymorphRelationshipTypeMap.get(clazz).put(relationship.value(), listOfTypesForRelationship);
+
+				List<Field> listOfFieldsForRelationship = polymorphRelationshipFieldMap.get(clazz).get(relationship.value());
+				if (listOfFieldsForRelationship == null) {
+					// Start with two because an @PolymorphRelationship would only be used if >= 2 fields could be returned for a relationship
+					listOfFieldsForRelationship = new ArrayList(2);
+				}
+				listOfFieldsForRelationship.add(polymorphRelationshipField);
+				polymorphRelationshipFieldMap.get(clazz).put(relationship.value(), listOfFieldsForRelationship);
+
+				fieldPolymorphRelationshipMap.put(polymorphRelationshipField, relationship);
+
+				if (relationship.resolve() && relationship.relType() == null) {
+					throw new IllegalArgumentException("@PolymorphRelationship on " + clazz.getName() + "#" +
+							polymorphRelationshipField.getName() + " with 'resolve = true' must have a relType attribute " +
+							"set." );
+				}
+
+				Map<Class<?>, Field>  targetTypesToFieldsMap =  targetTypePolymorphRelationshipMap.get(clazz).get(relationship.value());
+				if (targetTypesToFieldsMap == null) {
+					// initialisation
+					targetTypesToFieldsMap = new HashMap();
+					targetTypePolymorphRelationshipMap.get(clazz).put(relationship.value(), targetTypesToFieldsMap);
+				}
+				Field targetField = targetTypesToFieldsMap.get(targetType);
+				if (targetField == null) {
+					targetTypePolymorphRelationshipMap.get(clazz).get(relationship.value()).put(targetType, polymorphRelationshipField);
+				} else {
+					throw new RepeatedPolymorphRelationshipsException(relationship.value(), ReflectionUtils.getTypeName(targetType), clazz);
+				}
 			}
 
-			relationshipMap.put(clazz, relationshipFields);
-			
+			polymorphRelationshipMap.put(clazz, polymorphRelationshipFields);
+
 			// collecting RelationshipMeta fields
 			List<Field> relMetaFields = ReflectionUtils.getAnnotatedFields(clazz, RelationshipMeta.class, true);
 			
@@ -127,7 +201,6 @@ public class ConverterConfiguration {
 				} else {
 					throw new IllegalArgumentException("Only single @Id annotation is allowed per defined type!");
 				}
-
 			}
 
 			// Collecting Meta fields
@@ -199,12 +272,12 @@ public class ConverterConfiguration {
 	}
 
 	/**
-	 * Resolves a type for given type name.
+	 * Resolves the possible types for given a type name.
 	 * @param typeName {@link String} type name
 	 * @return {@link Class} resolved type
 	 */
-	public Class<?> getTypeClass(String typeName) {
-		return typeToClassMapping.get(typeName);
+	public List<Class<?>> getTypeClass(String typeName) {
+		return typeToClassesMapping.get(typeName);
 	}
 
 	/**
@@ -266,6 +339,61 @@ public class ConverterConfiguration {
 	 */
 	public List<Field> getRelationshipFields(Class<?> clazz) {
 		return relationshipMap.get(clazz);
+	}
+
+	/**
+	 * Returns all polymorphic relationship fields for a specific relationship name.
+	 * @param clazz {@link Class} class holding the polymorphic relationship
+	 * @param fieldName {@link String} name of the relationship
+	 * @return {@link Field} field
+	 */
+	public List<Field> getPolymorphRelationshipFields(Class<?> clazz, String fieldName) {
+		return polymorphRelationshipFieldMap.get(clazz).get(fieldName);
+	}
+
+	/**
+	 * Returns the types a polymorphic relationship can have.
+	 * @param clazz {@link Class} owning the field with {@link PolymorphRelationship} annotation
+	 * @param fieldName {@link String} name of the relationship
+	 * @return {@link Class} field type
+	 */
+	public List<Class<?>> getPolymorphRelationshipType(Class<?> clazz, String fieldName) {
+		return polymorphRelationshipTypeMap.get(clazz).get(fieldName);
+	}
+
+	/**
+	 * Resolves {@link PolymorphRelationship} instance for given field.
+	 *
+	 * <p>
+	 *     This works for fields that were found to be annotated with {@link PolymorphRelationship} annotation.
+	 * </p>
+	 * @param field {@link Field} to get the polymorphic relationship for
+	 * @return {@link PolymorphRelationship} anotation or <code>null</code>
+	 */
+	public PolymorphRelationship getFieldPolymorphRelationship(Field field) {
+		return fieldPolymorphRelationshipMap.get(field);
+	}
+
+	/**
+	 * Returns list of all fields annotated with {@link PolymorphRelationship} annotation for given class.
+	 * @param clazz {@link Class} to get relationship fields for
+	 * @return list of relationship fields
+	 */
+	public List<Field> getPolymorphRelationshipFields(Class<?> clazz) {
+		return polymorphRelationshipMap.get(clazz);
+	}
+
+	/**
+	 * Returns the field for a specific polymorphic relationship.
+	 * @param clazz {@link Class} to get relationship fields for
+	 * @param fieldName the name of the relationship
+	 * @param targetType the type the object should be parsed to
+	 * @return list of relationship fields
+	 */
+	public Field getPolymorphRelationshipField(Class<?> clazz, String fieldName, Class<?> targetType) {
+		Field field = targetTypePolymorphRelationshipMap.get(clazz).get(fieldName).get(targetType);
+		if (field != null) return field;
+		throw new UnregisteredTypeException("No type specified for polymorphic relationship \"" + fieldName + "\".");
 	}
 
 	/**

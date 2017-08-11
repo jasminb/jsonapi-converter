@@ -1,0 +1,27 @@
+{
+  "data":{
+    "id":"someId",
+    "type":"polymorph-parent",
+    "relationships":{
+      "arbitraryRelationship":{
+        "links":{
+          "self":"https://api.com/w/e",
+          "related":"https://api.com/w/e"
+        },
+        "data":{
+          "type":"other",
+          "id":"1"
+        }
+      }
+    }
+  },
+  "included":[
+    {
+      "type": "other",
+      "id": "1",
+      "attributes": {
+        "alien": "ALIENS!!!"
+      }
+    }
+  ]
+}
