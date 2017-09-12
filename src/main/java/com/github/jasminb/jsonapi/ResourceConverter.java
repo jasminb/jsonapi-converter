@@ -49,7 +49,7 @@ public class ResourceConverter {
 	private final Set<SerializationFeature> serializationFeatures = SerializationFeature.getDefaultFeatures();
 
 	private RelationshipResolver globalResolver;
-	
+
 	private String baseURL;
 
 	/**
@@ -63,7 +63,7 @@ public class ResourceConverter {
 	public ResourceConverter(Class<?>... classes) {
 		this(null, null, classes);
 	}
-	
+
 	/**
 	 * Creates new ResourceConverter.
 	 * <p>
@@ -76,7 +76,7 @@ public class ResourceConverter {
 	public ResourceConverter(String baseURL, Class<?>... classes) {
 		this(null, baseURL, classes);
 	}
-	
+
 	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
 		this(mapper, null, classes);
 	}
@@ -194,8 +194,16 @@ public class ResourceConverter {
 
 			// Parse data node without handling relationships
 			T resourceObject;
+			boolean cached = false;
 			if (dataNode != null && dataNode.isObject()) {
-				resourceObject = readObject(dataNode, clazz, false);
+				String identifier = createIdentifier(dataNode);
+				cached = identifier != null && resourceCache.contains(identifier);
+
+				if (cached) {
+					resourceObject = (T) resourceCache.get(identifier);
+				} else {
+					resourceObject = readObject(dataNode, clazz, false);
+				}
 			} else {
 				resourceObject = null;
 			}
@@ -204,7 +212,7 @@ public class ResourceConverter {
 			resourceCache.cache(parseIncluded(rootNode));
 
 			// Connect data node's relationships now that all resources have been parsed
-			if (resourceObject != null) {
+			if (resourceObject != null && !cached) {
 				handleRelationships(dataNode, resourceObject);
 			}
 
@@ -280,7 +288,7 @@ public class ResourceConverter {
 					handleRelationships(source, resourceObject);
 				}
 			}
-			
+
 			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, objectMapper);
 
 			// Handle top-level meta
@@ -417,9 +425,9 @@ public class ResourceConverter {
 		if (parent.has(INCLUDED)) {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
 				String type = jsonNode.get(TYPE).asText();
-				
+
 				Class<?> clazz = configuration.getTypeClass(type);
-				
+
 				if (clazz != null) {
 					Object object = readObject(jsonNode, clazz, false);
 					if (object != null) {
@@ -455,17 +463,17 @@ public class ResourceConverter {
 					if (type == null) {
 						continue;
 					}
-					
+
 					// Handle meta if present
 					if (relationship.has(META)) {
 						Field relationshipMetaField = configuration.getRelationshipMetaField(object.getClass(), field);
-						
+
 						if (relationshipMetaField != null) {
 							relationshipMetaField.set(object, objectMapper.treeToValue(relationship.get(META),
 									configuration.getRelationshipMetaType(object.getClass(), field)));
 						}
 					}
-					
+
 					// Handle links if present
 					if (relationship.has(LINKS)) {
 						Field relationshipLinksField = configuration.getRelationshipLinksField(object.getClass(), field);
@@ -597,12 +605,12 @@ public class ResourceConverter {
 	private void setIdValue(Object target, JsonNode idValue) throws IllegalAccessException {
 		Field idField = configuration.getIdField(target.getClass());
 		ResourceIdHandler idHandler = configuration.getIdHandler(target.getClass());
-		
+
 		if (idValue != null) {
 			idField.set(target, idHandler.fromString(idValue.asText()));
 		}
 	}
-	
+
 	/**
 	 * Reads @Id value from provided source object.
 	 *
@@ -613,7 +621,7 @@ public class ResourceConverter {
 	private String getIdValue(Object source) throws IllegalAccessException {
 		Field idField = configuration.getIdField(source.getClass());
 		ResourceIdHandler handler = configuration.getIdHandler(source.getClass());
-		
+
 		return handler.asString(idField.get(source));
 	}
 
@@ -643,7 +651,7 @@ public class ResourceConverter {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
 	 * @param document {@link JSONAPIDocument} document to serialize
@@ -653,7 +661,7 @@ public class ResourceConverter {
 	public byte [] writeDocument(JSONAPIDocument<?> document) throws DocumentSerializationException {
 		return writeDocument(document, null);
 	}
-	
+
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
 	 * @param document {@link JSONAPIDocument} document to serialize
@@ -667,26 +675,26 @@ public class ResourceConverter {
 			resourceCache.init();
 
 			Map<String, ObjectNode> includedDataMap = new HashMap<>();
-			
+
 			ObjectNode result = objectMapper.createObjectNode();
-			
+
 			// Serialize data if present
 			if (document.get() != null) {
 				ObjectNode dataNode = getDataNode(document.get(), includedDataMap, settings);
 				result.set(DATA, dataNode);
 				result = addIncludedSection(result, includedDataMap);
 			}
-			
+
 			// Serialize errors if present
 			if (document.getErrors() != null) {
 				ArrayNode errorsNode = objectMapper.createArrayNode();
 				for (Error error : document.getErrors()) {
 					errorsNode.add(objectMapper.valueToTree(error));
 				}
-				
+
 				result.set(ERRORS, errorsNode);
 			}
-			
+
 			// Serialize global links and meta
 			serializeMeta(document, result, settings);
 			serializeLinks(document, result, settings);
@@ -711,7 +719,7 @@ public class ResourceConverter {
 			resultNode.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
 		}
 	}
-	
+
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
 	 * @param documentCollection {@link JSONAPIDocument} document collection to serialize
@@ -722,7 +730,7 @@ public class ResourceConverter {
 			throws DocumentSerializationException {
 		return writeDocumentCollection(documentCollection, null);
 	}
-	
+
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
 	 * @param documentCollection {@link JSONAPIDocument} document collection to serialize
@@ -769,7 +777,7 @@ public class ResourceConverter {
 
 		// Handle id, meta and relationship fields
 		String resourceId = getIdValue(object);
-		
+
 		// Remove id field from resulting attribute node
 		attributesNode.remove(configuration.getIdField(object.getClass()).getName());
 
@@ -787,12 +795,12 @@ public class ResourceConverter {
 		JsonNode jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
 		if (jsonLinks != null) {
 			dataNode.set(LINKS, jsonLinks);
-			
+
 			if (jsonLinks.has(SELF)) {
 				selfHref = jsonLinks.get(SELF).get(HREF).asText();
 			}
 		}
-		
+
 		// Handle resource identifier
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
 		if (resourceId != null) {
@@ -823,10 +831,10 @@ public class ResourceConverter {
 					}
 
 					String relationshipName = relationship.value();
-					
+
 					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
 					relationshipsNode.set(relationshipName, relationshipDataNode);
-					
+
 					// Serialize relationship meta
 					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
 					if (relationshipMeta != null) {
@@ -834,28 +842,28 @@ public class ResourceConverter {
 						attributesNode.remove(configuration
 								.getRelationshipMetaField(object.getClass(), relationshipName).getName());
 					}
-					
+
 					// Serialize relationship links
 					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
-					
+
 					if (relationshipLinks != null) {
 						relationshipDataNode.set(LINKS, relationshipLinks);
-						
+
 						// Remove link object from serialized JSON
 						Field refField = configuration
 								.getRelationshipLinksField(object.getClass(), relationshipName);
-						
+
 						if (refField != null) {
 							attributesNode.remove(refField.getName());
 						}
 					}
-					
+
 					if (relationshipObject instanceof Collection) {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
 
 						for (Object element : (Collection<?>) relationshipObject) {
 							String relationshipType = configuration.getTypeName(element.getClass());
-							
+
 							String idValue = getIdValue(element);
 
 							ObjectNode identifierNode = objectMapper.createObjectNode();
@@ -876,15 +884,15 @@ public class ResourceConverter {
 
 					} else {
 						String relationshipType = configuration.getTypeName(relationshipObject.getClass());
-						
+
 						String idValue = getIdValue(relationshipObject);
 
 						ObjectNode identifierNode = objectMapper.createObjectNode();
 						identifierNode.put(TYPE, relationshipType);
 						identifierNode.put(ID, idValue);
-						
+
 						relationshipDataNode.set(DATA, identifierNode);
-						
+
 						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
 							String identifier = idValue.concat(relationshipType);
 							if (!includedContainer.containsKey(identifier)) {
@@ -1082,50 +1090,50 @@ public class ResourceConverter {
 
 		throw new RuntimeException("Unable to create appropriate instance for type: " + type.getSimpleName());
 	}
-	
+
 	private JsonNode getRelationshipMeta(Object source, String relationshipName, SerializationSettings settings)
 			throws IllegalAccessException {
 		if (shouldSerializeMeta(settings)) {
 			Field relationshipMetaField = configuration
 					.getRelationshipMetaField(source.getClass(), relationshipName);
-			
+
 			if (relationshipMetaField != null && relationshipMetaField.get(source) != null) {
 				return objectMapper.valueToTree(relationshipMetaField.get(source));
 			}
 		}
 		return null;
 	}
-	
+
 	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId,
 									  SerializationSettings settings) throws IllegalAccessException {
 		Type type = configuration.getType(resource.getClass());
-		
+
 		// Check if there are user-provided links
 		Links links = null;
 		Field linksField = configuration.getLinksField(resource.getClass());
 		if (linksField != null) {
 			links = (Links) linksField.get(resource);
-			
+
 			// Remove links from attributes object
 			//TODO: this state change needs to be removed from here
 			if (links != null) {
 				serializedResource.remove(linksField.getName());
 			}
 		}
-		
+
 		// If enabled, handle links
 		if (shouldSerializeLinks(settings)) {
 			Map<String, Link> linkMap = new HashMap<>();
-			
+
 			if (links != null) {
 				linkMap.putAll(links.getLinks());
 			}
-			
+
 			// If link path is defined in type and id is not null and user did not explicitly set link value, create it
 			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && resourceId != null) {
 				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", resourceId))));
 			}
-			
+
 			// If there is at least one link generated, serialize and return
 			if (!linkMap.isEmpty()) {
 				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
@@ -1133,82 +1141,82 @@ public class ResourceConverter {
 		}
 		return null;
 	}
-	
+
 	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
 										  SerializationSettings settings) throws IllegalAccessException {
 		if (shouldSerializeLinks(settings)) {
 			Links links = null;
-			
+
 			Field relationshipLinksField = configuration
 					.getRelationshipLinksField(source.getClass(), relationship.value());
-			
+
 			if (relationshipLinksField != null) {
 				links = (Links) relationshipLinksField.get(source);
 			}
-			
+
 			Map<String, Link> linkMap = new HashMap<>();
-			
+
 			if (links != null) {
 				linkMap.putAll(links.getLinks());
 			}
-			
+
 			if (!relationship.path().trim().isEmpty() && !linkMap.containsKey(SELF)) {
 				linkMap.put(SELF, new Link(createURL(ownerLink, relationship.path())));
 			}
-			
+
 			if (!relationship.relatedPath().trim().isEmpty() && !linkMap.containsKey(RELATED)) {
 				linkMap.put(RELATED, new Link(createURL(ownerLink, relationship.relatedPath())));
 			}
-			
+
 			if (!linkMap.isEmpty()) {
 				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
 			}
 		}
 		return null;
 	}
-	
+
 	private String createURL(String base, String path) {
 		String result = base;
 		if (!result.endsWith("/")) {
 			result = result.concat("/");
 		}
-		
+
 		if (path.startsWith("/")) {
 			result = result.concat(path.substring(1));
 		} else {
 			result = result.concat(path);
 		}
-		
+
 		return result;
 	}
-	
+
 	private boolean shouldSerializeRelationship(String relationshipName, SerializationSettings settings) {
 		if (settings != null) {
 			if (settings.isRelationshipIncluded(relationshipName) && !settings.isRelationshipExcluded(relationshipName)) {
 				return true;
 			}
-			
+
 			if (settings.isRelationshipExcluded(relationshipName)) {
 				return false;
 			}
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
 	}
-	
+
 	private boolean shouldSerializeLinks(SerializationSettings settings) {
 		if (settings != null && settings.serializeLinks() != null) {
 			return settings.serializeLinks();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS);
 	}
-	
+
 	private boolean shouldSerializeMeta(SerializationSettings settings) {
 		if (settings != null && settings.serializeMeta() != null) {
 			return settings.serializeMeta();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_META);
 	}
-	
+
 	/**
 	 * Registers new type to be used with this converter instance.
 	 * @param type {@link Class} type to register

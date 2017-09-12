@@ -375,7 +375,7 @@ public class ResourceConverterTest {
 	}
 
 
-	//@Test Temp ignored
+	@Test
 	public void testRelationshipResolutionRecursionLoop() throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
