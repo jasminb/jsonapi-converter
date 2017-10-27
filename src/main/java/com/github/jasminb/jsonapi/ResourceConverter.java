@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
+import com.github.jasminb.jsonapi.exceptions.InvalidMetaDataTypeException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.errors.Error;
 
@@ -1026,10 +1027,9 @@ public class ResourceConverter {
 		try {
 			return objectMapper.readValue(p, mapType);
 		} catch (IOException e) {
-			// TODO: log? No recovery.
+			e.printStackTrace();
+			throw new InvalidMetaDataTypeException();
 		}
-
-		return null;
 	}
 
 	private ObjectNode addIncludedSection(ObjectNode rootNode, Map<String, ObjectNode> includedDataMap) {
