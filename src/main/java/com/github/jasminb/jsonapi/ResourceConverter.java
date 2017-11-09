@@ -810,7 +810,9 @@ public class ResourceConverter {
 			// Cache the object for recursion breaking purposes
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
-		dataNode.set(ATTRIBUTES, attributesNode);
+		if (attributesNode.size() > 0) {
+			dataNode.set(ATTRIBUTES, attributesNode);
+		}
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
