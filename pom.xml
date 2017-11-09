@@ -4,7 +4,7 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.github.jasminb</groupId>
+	<groupId>com.nbcuni.external</groupId>
 	<artifactId>jsonapi-converter</artifactId>
 	<version>0.9-SNAPSHOT</version>
 
@@ -44,9 +44,13 @@
 	</dependencies>
 
 	<distributionManagement>
+		<repository>
+			<id>releases</id>
+			<url>http://nexus.nbcuext.com:8081/nexus/content/repositories/releases</url>
+		</repository>
 		<snapshotRepository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
+			<id>snapshots</id>
+			<url>http://nexus.nbcuext.com:8081/nexus/content/repositories/snapshots</url>
 		</snapshotRepository>
 	</distributionManagement>
 
@@ -135,9 +139,10 @@
 	</licenses>
 
 	<scm>
-		<connection>scm:git:https://github.com/jasminb/jsonapi-converter</connection>
-		<developerConnection>scm:git:ssh://git@github.com:jasminb/jsonapi-converter.git</developerConnection>
-		<url>https://github.com/jasminb/jsonapi-converter</url>
+		<connection>scm:git:git@github.com:NBCUOTS/concerto_dc_jsonapi-converter.git</connection>
+		<developerConnection>scm:git:git@github.com:NBCUOTS/concerto_dc_jsonapi-converter.git</developerConnection>
+		<url>scm:git:git@github.com:NBCUOTS/concerto_dc_jsonapi-converter/.git</url>
+		<tag>HEAD</tag>
 	</scm>
 
 	<developers>
