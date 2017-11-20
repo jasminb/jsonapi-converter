@@ -6,7 +6,7 @@
 
 	<groupId>com.nbcuni.concerto</groupId>
 	<artifactId>dc_jsonapi-converter</artifactId>
-	<version>0.9.1-SNAPSHOT</version>
+	<version>0.9.0-SNAPSHOT</version>
 
 	<name>JSONAPI Converter</name>
 	<description>
