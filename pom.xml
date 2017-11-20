@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.nbcuni.external</groupId>
@@ -8,9 +10,23 @@
 
 	<name>JSONAPI Converter</name>
 	<description>
-		JSONAPI-Converter is a library that provides means for integrating with services using JSON API specification.
+		This is a fork of jsonapi-converter to meet Concerto api's link as string and other needs for consistency
 	</description>
-	<url>https://github.com/jasminb/jsonapi-converter</url>
+	<url>https://github.com/NBCUOTS/concerto_dc_jsonapi-converter</url>
+
+	<properties>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss.SSSZ</maven.build.timestamp.format>
+		<slf4j.version>1.7.21</slf4j.version>
+		<logback.version>1.1.7</logback.version>
+		<groovy.version>2.4.7</groovy.version>
+		<spock.version>1.1-groovy-2.4-rc-3</spock.version>
+		<sonar.coverage.exclusions>
+			**/concerto/**/model/**/*.java
+		</sonar.coverage.exclusions>
+	</properties>
 
 	<dependencies>
 		<dependency>
@@ -58,8 +74,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>1.8</source>
+					<target>1.8</target>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -142,14 +158,4 @@
 		<url>scm:git:git@github.com:NBCUOTS/concerto_dc_jsonapi-converter/.git</url>
 		<tag>HEAD</tag>
 	</scm>
-
-	<developers>
-		<developer>
-			<id>jasminb</id>
-			<name>Jasmin Begic</name>
-			<roles>
-				<role>Owner</role>
-			</roles>
-		</developer>
-	</developers>
 </project>
