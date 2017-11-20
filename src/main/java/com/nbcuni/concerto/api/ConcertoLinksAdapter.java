@@ -25,9 +25,7 @@ public class ConcertoLinksAdapter implements Serializable {
         Map<String, String> selfLinks = new HashMap<>();
         linkMap.entrySet()
                 .stream()
-                .forEach(entry -> {
-                    selfLinks.put(entry.getKey(), entry.getValue().getHref());
-                });
+                .forEach(entry -> selfLinks.put(entry.getKey(), entry.getValue().getHref()));
 
         links = selfLinks;
     }
