@@ -119,6 +119,8 @@ public class ResourceConverterTest {
 	public void testWriteCollection() throws IOException, IllegalAccessException {
 		InputStream usersRequest = IOUtils.getResource("users.json");
 
+		converter.disableDeserializationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
+
 		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
 		List<User> users = usersDocument.get();
 		byte[] convertedData = converter.writeObjectCollection(users);
