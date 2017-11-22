@@ -96,6 +96,7 @@ public class ResourceConverter {
 			objectMapper = mapper;
 		} else {
 			objectMapper = new ObjectMapper();
+			objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 		}
 
 		// Object mapper's naming strategy is used if it is set
@@ -104,8 +105,6 @@ public class ResourceConverter {
 		} else {
 			namingStrategy = new PropertyNamingStrategy();
 		}
-
-		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
 		resourceCache = new ResourceCache();
 	}
