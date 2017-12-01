@@ -1117,8 +1117,13 @@ public class ResourceConverter {
 
 			// Remove links from attributes object
 			//TODO: this state change needs to be removed from here
+			//the code below will remove model 'links' attribute as shadowing
 			if (links != null) {
-				serializedResource.remove(linksField.getName());
+                String linksFieldName = linksField.getName();
+                JsonNode removedLinks = serializedResource.remove(linksFieldName);
+				if (removedLinks != null && removedLinks.isArray()) {
+                    serializedResource.set(linksFieldName, removedLinks);
+                }
 			}
 		}
 
