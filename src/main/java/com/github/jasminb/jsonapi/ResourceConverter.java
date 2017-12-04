@@ -1121,9 +1121,7 @@ public class ResourceConverter {
 			if (links != null) {
                 String linksFieldName = linksField.getName();
                 JsonNode removedLinks = serializedResource.remove(linksFieldName);
-				if (removedLinks != null && removedLinks.isArray()) {
-                    serializedResource.set(linksFieldName, removedLinks);
-                }
+				addLinksBackIfItsCustomized(serializedResource, linksFieldName, removedLinks);
 			}
 		}
 
@@ -1146,6 +1144,12 @@ public class ResourceConverter {
 			}
 		}
 		return null;
+	}
+
+	private void addLinksBackIfItsCustomized(ObjectNode serializedResource, String linksFieldName, JsonNode removedLinks) {
+		if (removedLinks != null && removedLinks.isArray()) {  // List<Link> links; is Concertoapi internal customized Link
+			serializedResource.set(linksFieldName, removedLinks);
+		}
 	}
 
 	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
