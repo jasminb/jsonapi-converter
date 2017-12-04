@@ -15,6 +15,7 @@ import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.errors.Error;
+import com.nbcuni.concerto.api.ConcertoLinksAdapter;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -136,13 +137,13 @@ public class ResourceConverter {
 		}
 	}
 	/**
-	* Converts raw data input into requested target type.
-	* @param data raw data
-	* @param clazz target object
-	* @param <T> type
-	* @return converted object
-	* @throws RuntimeException in case conversion fails
-	*/
+	 * Converts raw data input into requested target type.
+	 * @param data raw data
+	 * @param clazz target object
+	 * @param <T> type
+	 * @return converted object
+	 * @throws RuntimeException in case conversion fails
+	 */
 	@Deprecated
 	public <T> T readObject(byte [] data, Class<T> clazz) {
 		return readDocument(data, clazz).get();
@@ -399,9 +400,9 @@ public class ResourceConverter {
 					// Handle relationships
 					JsonNode node = includedArray.get(i);
 					Object resourceObject = includedResources.get(createIdentifier(node));
-						if (resourceObject != null){
-							handleRelationships(node, resourceObject);
-						}
+					if (resourceObject != null){
+						handleRelationships(node, resourceObject);
+					}
 				}
 			}
 		}
@@ -796,7 +797,7 @@ public class ResourceConverter {
 			dataNode.set(LINKS, jsonLinks);
 
 			if (jsonLinks.has(SELF)) {
-				selfHref = jsonLinks.get(SELF).get(HREF).asText();
+				selfHref = jsonLinks.get(SELF).asText();
 			}
 		}
 
@@ -1115,8 +1116,11 @@ public class ResourceConverter {
 
 			// Remove links from attributes object
 			//TODO: this state change needs to be removed from here
+			//the code below will remove model 'links' attribute as shadowing
 			if (links != null) {
-				serializedResource.remove(linksField.getName());
+                String linksFieldName = linksField.getName();
+                JsonNode removedLinks = serializedResource.remove(linksFieldName);
+				addLinksBackIfItsCustomized(serializedResource, linksFieldName, removedLinks);
 			}
 		}
 
@@ -1135,10 +1139,16 @@ public class ResourceConverter {
 
 			// If there is at least one link generated, serialize and return
 			if (!linkMap.isEmpty()) {
-				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+				return objectMapper.valueToTree(new ConcertoLinksAdapter(linkMap)).get(LINKS);
 			}
 		}
 		return null;
+	}
+
+	private void addLinksBackIfItsCustomized(ObjectNode serializedResource, String linksFieldName, JsonNode removedLinks) {
+		if (removedLinks != null && removedLinks.isArray()) {  // List<Link> links; is Concertoapi internal customized Link
+			serializedResource.set(linksFieldName, removedLinks);
+		}
 	}
 
 	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
@@ -1168,7 +1178,7 @@ public class ResourceConverter {
 			}
 
 			if (!linkMap.isEmpty()) {
-				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+				return objectMapper.valueToTree(new ConcertoLinksAdapter(linkMap)).get(LINKS);
 			}
 		}
 		return null;
