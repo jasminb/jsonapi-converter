@@ -861,54 +861,7 @@ public class ResourceConverter {
 					}
 				}
 			//
-				if (relationshipObject != null) {
-
-					if (relationshipObject instanceof Collection) {
-						ArrayNode dataArrayNode = objectMapper.createArrayNode();
-
-						for (Object element : (Collection<?>) relationshipObject) {
-							String relationshipType = configuration.getTypeName(element.getClass());
-
-							String idValue = getIdValue(element);
-
-							ObjectNode identifierNode = objectMapper.createObjectNode();
-							identifierNode.put(TYPE, relationshipType);
-							identifierNode.put(ID, idValue);
-							dataArrayNode.add(identifierNode);
-
-							// Handle included data
-							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-								String identifier = idValue.concat(relationshipType);
-								if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
-									includedContainer.put(identifier,
-											getDataNode(element, includedContainer, settings));
-								}
-							}
-						}
-						relationshipDataNode.set(DATA, dataArrayNode);
-
-					} else {
-						String relationshipType = configuration.getTypeName(relationshipObject.getClass());
-
-						String idValue = getIdValue(relationshipObject);
-
-						ObjectNode identifierNode = objectMapper.createObjectNode();
-						identifierNode.put(TYPE, relationshipType);
-						identifierNode.put(ID, idValue);
-
-						relationshipDataNode.set(DATA, identifierNode);
-
-						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-							String identifier = idValue.concat(relationshipType);
-							if (!includedContainer.containsKey(identifier)) {
-								includedContainer.put(identifier,
-										getDataNode(relationshipObject, includedContainer, settings));
-							}
-						}
-					}
-				} else {
-					relationshipDataNode.set(DATA, null);
-				}
+				new RelationshipSerializationProcessor(relationshipDataNode, relationshipObject, relationshipName, includedContainer, settings).invoke();
 
 			}
 
@@ -1206,19 +1159,6 @@ public class ResourceConverter {
 		return result;
 	}
 
-	private boolean shouldSerializeRelationship(String relationshipName, SerializationSettings settings) {
-		if (settings != null) {
-			if (settings.isRelationshipIncluded(relationshipName) && !settings.isRelationshipExcluded(relationshipName)) {
-				return true;
-			}
-
-			if (settings.isRelationshipExcluded(relationshipName)) {
-				return false;
-			}
-		}
-		return serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
-	}
-
 	private boolean shouldSerializeLinks(SerializationSettings settings) {
 		if (settings != null && settings.serializeLinks() != null) {
 			return settings.serializeLinks();
@@ -1276,5 +1216,85 @@ public class ResourceConverter {
 	 */
 	public void disableSerializationOption(SerializationFeature option) {
 		this.serializationFeatures.remove(option);
+	}
+
+	private class RelationshipSerializationProcessor {
+		private ObjectNode relationshipDataNode;
+		private Object relationshipObject;
+		private String relationshipName;
+		private Map<String, ObjectNode> includedContainer;
+		private SerializationSettings settings;
+
+		public RelationshipSerializationProcessor(ObjectNode relationshipDataNode, Object relationshipObject, String relationshipName, Map<String, ObjectNode> includedContainer, SerializationSettings settings) {
+			this.relationshipDataNode = relationshipDataNode;
+			this.relationshipObject = relationshipObject;
+			this.relationshipName = relationshipName;
+			this.includedContainer = includedContainer;
+			this.settings = settings;
+		}
+
+		public void invoke() throws IllegalAccessException {
+			if (relationshipObject != null) {
+
+                if (relationshipObject instanceof Collection) {
+                    ArrayNode dataArrayNode = objectMapper.createArrayNode();
+
+                    for (Object element : (Collection<?>) relationshipObject) {
+                        String relationshipType = configuration.getTypeName(element.getClass());
+
+                        String idValue = getIdValue(element);
+
+                        ObjectNode identifierNode = objectMapper.createObjectNode();
+                        identifierNode.put(TYPE, relationshipType);
+                        identifierNode.put(ID, idValue);
+                        dataArrayNode.add(identifierNode);
+
+                        // Handle included data
+                        if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
+                            String identifier = idValue.concat(relationshipType);
+                            if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
+                                includedContainer.put(identifier,
+                                        getDataNode(element, includedContainer, settings));
+                            }
+                        }
+                    }
+                    relationshipDataNode.set(DATA, dataArrayNode);
+
+                } else {
+                    String relationshipType = configuration.getTypeName(relationshipObject.getClass());
+
+                    String idValue = getIdValue(relationshipObject);
+
+                    ObjectNode identifierNode = objectMapper.createObjectNode();
+                    identifierNode.put(TYPE, relationshipType);
+                    identifierNode.put(ID, idValue);
+
+                    relationshipDataNode.set(DATA, identifierNode);
+
+                    if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
+                        String identifier = idValue.concat(relationshipType);
+                        if (!includedContainer.containsKey(identifier)) {
+                            includedContainer.put(identifier,
+                                    getDataNode(relationshipObject, includedContainer, settings));
+                        }
+                    }
+                }
+            } else {
+                relationshipDataNode.set(DATA, null);
+            }
+		}
+
+		private boolean shouldSerializeRelationship(String relationshipName, SerializationSettings settings) {
+            if (settings != null) {
+                if (settings.isRelationshipIncluded(relationshipName) && !settings.isRelationshipExcluded(relationshipName)) {
+                    return true;
+                }
+
+                if (settings.isRelationshipExcluded(relationshipName)) {
+                    return false;
+                }
+            }
+            return serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+        }
 	}
 }
