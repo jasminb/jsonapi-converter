@@ -2,7 +2,7 @@
   "data": [
     {
       "type": "users",
-      "id": "",
+      "id": "1",
       "attributes": {
         "name": "liz"
       },
