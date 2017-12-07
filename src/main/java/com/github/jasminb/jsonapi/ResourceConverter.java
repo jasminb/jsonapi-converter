@@ -810,7 +810,9 @@ public class ResourceConverter {
 			// Cache the object for recursion breaking purposes
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
-		dataNode.set(ATTRIBUTES, attributesNode);
+		if (attributesNode.size() > 0) {
+			dataNode.set(ATTRIBUTES, attributesNode);
+		}
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
@@ -821,43 +823,45 @@ public class ResourceConverter {
 			for (Field relationshipField : relationshipFields) {
 				Object relationshipObject = relationshipField.get(object);
 
+			//  Want to create the related object node even it's null
+				attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
+
+				Relationship relationship = configuration.getFieldRelationship(relationshipField);
+
+				// In case serialisation is disabled for a given relationship, skip it
+				if (!relationship.serialise()) {
+					continue;
+				}
+
+				String relationshipName = relationship.value();
+
+				ObjectNode relationshipDataNode = objectMapper.createObjectNode();
+				relationshipsNode.set(relationshipName, relationshipDataNode);
+
+				// Serialize relationship meta
+				JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
+				if (relationshipMeta != null) {
+					relationshipDataNode.set(META, relationshipMeta);
+					attributesNode.remove(configuration
+							.getRelationshipMetaField(object.getClass(), relationshipName).getName());
+				}
+
+				// Serialize relationship links
+				JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
+
+				if (relationshipLinks != null) {
+					relationshipDataNode.set(LINKS, relationshipLinks);
+
+					// Remove link object from serialized JSON
+					Field refField = configuration
+							.getRelationshipLinksField(object.getClass(), relationshipName);
+
+					if (refField != null) {
+						attributesNode.remove(refField.getName());
+					}
+				}
+			//
 				if (relationshipObject != null) {
-					attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
-
-					Relationship relationship = configuration.getFieldRelationship(relationshipField);
-
-					// In case serialisation is disabled for a given relationship, skip it
-					if (!relationship.serialise()) {
-						continue;
-					}
-
-					String relationshipName = relationship.value();
-
-					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
-					relationshipsNode.set(relationshipName, relationshipDataNode);
-
-					// Serialize relationship meta
-					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
-					if (relationshipMeta != null) {
-						relationshipDataNode.set(META, relationshipMeta);
-						attributesNode.remove(configuration
-								.getRelationshipMetaField(object.getClass(), relationshipName).getName());
-					}
-
-					// Serialize relationship links
-					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
-
-					if (relationshipLinks != null) {
-						relationshipDataNode.set(LINKS, relationshipLinks);
-
-						// Remove link object from serialized JSON
-						Field refField = configuration
-								.getRelationshipLinksField(object.getClass(), relationshipName);
-
-						if (refField != null) {
-							attributesNode.remove(refField.getName());
-						}
-					}
 
 					if (relationshipObject instanceof Collection) {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
@@ -902,6 +906,8 @@ public class ResourceConverter {
 							}
 						}
 					}
+				} else {
+					relationshipDataNode.set(DATA, null);
 				}
 
 			}

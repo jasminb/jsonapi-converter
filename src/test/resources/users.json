@@ -2,17 +2,19 @@
   "data": [
     {
       "type": "users",
-      "id": "1",
+      "id": "",
       "attributes": {
         "name": "liz"
-      }
+      },
+    "relationships":{"statuses":{"data":null}}
     },
     {
       "type": "users",
       "id": "2",
       "attributes": {
         "name": "john"
-      }
+      },
+      "relationships":{"statuses":{"data":null}}
     }
   ]
 }
