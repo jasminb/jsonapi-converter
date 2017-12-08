@@ -877,12 +877,14 @@ public class ResourceConverter {
 							dataArrayNode.add(identifierNode);
 
 							// Handle included data
-							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-								String identifier = idValue.concat(relationshipType);
-								if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
+							String identifier = getIdentifierInIncludedContainer(relationshipType, idValue);
+
+							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null
+									&& (wasnotIncludedInContainerNorCache(includedContainer, identifier))) {
+
 									includedContainer.put(identifier,
 											getDataNode(element, includedContainer, settings));
-								}
+
 							}
 						}
 						relationshipDataNode.set(DATA, dataArrayNode);
@@ -898,12 +900,14 @@ public class ResourceConverter {
 
 						relationshipDataNode.set(DATA, identifierNode);
 
-						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-							String identifier = idValue.concat(relationshipType);
-							if (!includedContainer.containsKey(identifier)) {
+						String identifier = getIdentifierInIncludedContainer(relationshipType, idValue);
+
+						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null
+								&& (wasnotIncludedInContainer(includedContainer, identifier))) {
+
 								includedContainer.put(identifier,
 										getDataNode(relationshipObject, includedContainer, settings));
-							}
+
 						}
 					}
 				} else {
@@ -917,6 +921,22 @@ public class ResourceConverter {
 			}
 		}
 		return dataNode;
+	}
+
+	private String getIdentifierInIncludedContainer(String relationshipType, String idValue) {
+		return idValue != null ? idValue.concat(relationshipType) : null;
+	}
+
+	private boolean wasnotIncludedInContainerNorCache(Map<String, ObjectNode> includedContainer, String identifier) {
+		return wasnotIncludedInContainer(includedContainer, identifier) && notIncludedInCache(identifier);
+	}
+
+	private boolean wasnotIncludedInContainer(Map<String, ObjectNode> includedContainer, String identifier) {
+		return !includedContainer.containsKey(identifier);
+	}
+
+	private boolean notIncludedInCache(String identifier) {
+		return !resourceCache.contains(identifier);
 	}
 
 	/**
