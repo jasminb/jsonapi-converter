@@ -15,6 +15,7 @@ import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.errors.Error;
+import com.nbcuni.concerto.api.ConcertoLinksAdapter;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -136,13 +137,13 @@ public class ResourceConverter {
 		}
 	}
 	/**
-	* Converts raw data input into requested target type.
-	* @param data raw data
-	* @param clazz target object
-	* @param <T> type
-	* @return converted object
-	* @throws RuntimeException in case conversion fails
-	*/
+	 * Converts raw data input into requested target type.
+	 * @param data raw data
+	 * @param clazz target object
+	 * @param <T> type
+	 * @return converted object
+	 * @throws RuntimeException in case conversion fails
+	 */
 	@Deprecated
 	public <T> T readObject(byte [] data, Class<T> clazz) {
 		return readDocument(data, clazz).get();
@@ -399,9 +400,9 @@ public class ResourceConverter {
 					// Handle relationships
 					JsonNode node = includedArray.get(i);
 					Object resourceObject = includedResources.get(createIdentifier(node));
-						if (resourceObject != null){
-							handleRelationships(node, resourceObject);
-						}
+					if (resourceObject != null){
+						handleRelationships(node, resourceObject);
+					}
 				}
 			}
 		}
@@ -796,7 +797,7 @@ public class ResourceConverter {
 			dataNode.set(LINKS, jsonLinks);
 
 			if (jsonLinks.has(SELF)) {
-				selfHref = jsonLinks.get(SELF).get(HREF).asText();
+				selfHref = jsonLinks.get(SELF).asText();
 			}
 		}
 
@@ -808,7 +809,9 @@ public class ResourceConverter {
 			// Cache the object for recursion breaking purposes
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
-		dataNode.set(ATTRIBUTES, attributesNode);
+		if (attributesNode.size() > 0) {
+			dataNode.set(ATTRIBUTES, attributesNode);
+		}
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
@@ -819,43 +822,45 @@ public class ResourceConverter {
 			for (Field relationshipField : relationshipFields) {
 				Object relationshipObject = relationshipField.get(object);
 
+			//  Want to create the related object node even it's null
+				attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
+
+				Relationship relationship = configuration.getFieldRelationship(relationshipField);
+
+				// In case serialisation is disabled for a given relationship, skip it
+				if (!relationship.serialise()) {
+					continue;
+				}
+
+				String relationshipName = relationship.value();
+
+				ObjectNode relationshipDataNode = objectMapper.createObjectNode();
+				relationshipsNode.set(relationshipName, relationshipDataNode);
+
+				// Serialize relationship meta
+				JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
+				if (relationshipMeta != null) {
+					relationshipDataNode.set(META, relationshipMeta);
+					attributesNode.remove(configuration
+							.getRelationshipMetaField(object.getClass(), relationshipName).getName());
+				}
+
+				// Serialize relationship links
+				JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
+
+				if (relationshipLinks != null) {
+					relationshipDataNode.set(LINKS, relationshipLinks);
+
+					// Remove link object from serialized JSON
+					Field refField = configuration
+							.getRelationshipLinksField(object.getClass(), relationshipName);
+
+					if (refField != null) {
+						attributesNode.remove(refField.getName());
+					}
+				}
+			//
 				if (relationshipObject != null) {
-					attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
-
-					Relationship relationship = configuration.getFieldRelationship(relationshipField);
-
-					// In case serialisation is disabled for a given relationship, skip it
-					if (!relationship.serialise()) {
-						continue;
-					}
-
-					String relationshipName = relationship.value();
-
-					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
-					relationshipsNode.set(relationshipName, relationshipDataNode);
-
-					// Serialize relationship meta
-					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
-					if (relationshipMeta != null) {
-						relationshipDataNode.set(META, relationshipMeta);
-						attributesNode.remove(configuration
-								.getRelationshipMetaField(object.getClass(), relationshipName).getName());
-					}
-
-					// Serialize relationship links
-					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
-
-					if (relationshipLinks != null) {
-						relationshipDataNode.set(LINKS, relationshipLinks);
-
-						// Remove link object from serialized JSON
-						Field refField = configuration
-								.getRelationshipLinksField(object.getClass(), relationshipName);
-
-						if (refField != null) {
-							attributesNode.remove(refField.getName());
-						}
-					}
 
 					if (relationshipObject instanceof Collection) {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
@@ -871,12 +876,14 @@ public class ResourceConverter {
 							dataArrayNode.add(identifierNode);
 
 							// Handle included data
-							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-								String identifier = idValue.concat(relationshipType);
-								if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
+							String identifier = getIdentifierInIncludedContainer(relationshipType, idValue);
+
+							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null
+									&& (wasnotIncludedInContainerNorCache(includedContainer, identifier))) {
+
 									includedContainer.put(identifier,
 											getDataNode(element, includedContainer, settings));
-								}
+
 							}
 						}
 						relationshipDataNode.set(DATA, dataArrayNode);
@@ -892,14 +899,18 @@ public class ResourceConverter {
 
 						relationshipDataNode.set(DATA, identifierNode);
 
-						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-							String identifier = idValue.concat(relationshipType);
-							if (!includedContainer.containsKey(identifier)) {
+						String identifier = getIdentifierInIncludedContainer(relationshipType, idValue);
+
+						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null
+								&& (wasnotIncludedInContainer(includedContainer, identifier))) {
+
 								includedContainer.put(identifier,
 										getDataNode(relationshipObject, includedContainer, settings));
-							}
+
 						}
 					}
+				} else {
+					relationshipDataNode.set(DATA, null);
 				}
 
 			}
@@ -909,6 +920,22 @@ public class ResourceConverter {
 			}
 		}
 		return dataNode;
+	}
+
+	private String getIdentifierInIncludedContainer(String relationshipType, String idValue) {
+		return idValue != null ? idValue.concat(relationshipType) : null;
+	}
+
+	private boolean wasnotIncludedInContainerNorCache(Map<String, ObjectNode> includedContainer, String identifier) {
+		return wasnotIncludedInContainer(includedContainer, identifier) && notIncludedInCache(identifier);
+	}
+
+	private boolean wasnotIncludedInContainer(Map<String, ObjectNode> includedContainer, String identifier) {
+		return !includedContainer.containsKey(identifier);
+	}
+
+	private boolean notIncludedInCache(String identifier) {
+		return !resourceCache.contains(identifier);
 	}
 
 	/**
@@ -1115,8 +1142,11 @@ public class ResourceConverter {
 
 			// Remove links from attributes object
 			//TODO: this state change needs to be removed from here
+			//the code below will remove model 'links' attribute as shadowing
 			if (links != null) {
-				serializedResource.remove(linksField.getName());
+                String linksFieldName = linksField.getName();
+                JsonNode removedLinks = serializedResource.remove(linksFieldName);
+				addLinksBackIfItsCustomized(serializedResource, linksFieldName, removedLinks);
 			}
 		}
 
@@ -1135,10 +1165,16 @@ public class ResourceConverter {
 
 			// If there is at least one link generated, serialize and return
 			if (!linkMap.isEmpty()) {
-				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+				return objectMapper.valueToTree(new ConcertoLinksAdapter(linkMap)).get(LINKS);
 			}
 		}
 		return null;
+	}
+
+	private void addLinksBackIfItsCustomized(ObjectNode serializedResource, String linksFieldName, JsonNode removedLinks) {
+		if (removedLinks != null && removedLinks.isArray()) {  // List<Link> links; is Concertoapi internal customized Link
+			serializedResource.set(linksFieldName, removedLinks);
+		}
 	}
 
 	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
@@ -1168,7 +1204,7 @@ public class ResourceConverter {
 			}
 
 			if (!linkMap.isEmpty()) {
-				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+				return objectMapper.valueToTree(new ConcertoLinksAdapter(linkMap)).get(LINKS);
 			}
 		}
 		return null;
