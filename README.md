@@ -11,7 +11,7 @@ Library is using Jackson (https://github.com/FasterXML/jackson-databind) for JSO
 
 Maven:
 
-```
+```xml
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
@@ -21,13 +21,13 @@ Maven:
 
 SBT:
 
-```
+```groovy
 libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.8"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
 
-```
+```xml
 <repositories>
     <repository>
         <id>oss-sonatype</id>
@@ -42,7 +42,7 @@ In case you want to use current `SNAPSHOT` version of the project, make sure to 
 
 Than to add dependency:
 
-```
+```xml
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
@@ -539,7 +539,7 @@ public interface MyBooksService {
 If you need a `String` as an output when serializing objects, you can do the following:
 
 
-```
+```java
 byte [] serializedObject = resourceConverter.writeObject(...);
 String serializedAsString = new String(serializedObject);
 ```
@@ -548,7 +548,7 @@ String serializedAsString = new String(serializedObject);
 
 Have in mind that using `open` classes as type parameters in relationship collections will not work, for instance:
 
-```
+```java
 @Type("base")
 open class MyClass {
 
