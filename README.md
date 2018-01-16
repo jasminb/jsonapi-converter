@@ -61,7 +61,7 @@ When writing models that will be used to represent requests and responses, one n
 #### Type annotation
 
 Type annotation is used to instruct the serialisation/deserialisation library on how to process the given model class.
-Annotation has single property `value` which is required and it should be set to to whatever is the designated JSON API SPEC name for that type.
+Annotation has single property `value` which is required and it should be set to whatever is the designated JSON API SPEC name for that type.
 
 Example:
 
@@ -82,7 +82,7 @@ In case field annotated by the `@Id` annotation is not a `String` field, `@Id` a
 
 Id is a special attribute that is, together with type, used to uniquely identify an resource.
 
-Id annotation is inheritable, one can define a base model class that contains a field with `@Id` annotation and than extend it to create a new type.
+Id annotation is inheritable, one can define a base model class that contains a field with `@Id` annotation and then extend it to create a new type.
 
 Example:
 
@@ -130,7 +130,7 @@ Relationship annotation is used to designate other resource types as a relations
 
 Imagine modeling a simple library application, you would end up having a `Book` resource and another logical resource would be `Author`.
 
-You can model this as two different classes where `Book` resource would have an relationship to an `Author`:
+You can model this as two different classes where `Book` resource would have a relationship to an `Author`:
 
 ```java
 @Type("book")
@@ -155,7 +155,7 @@ Value attribute is required and each relationship must have it set (value attrib
 
 Resolve attribute is used to instruct the library on how to handle server responses where resource relationships are not provided in `included` section but are rather returned as `type` and `id` combination.
 
-Library has a support for registering global and typed relationship resloves which are used to resolve unresolved relationships.
+Library has a support for registering global and typed relationship resolves which are used to resolve unresolved relationships.
 Resolving a relationship means using provided `links` attribute to perform additional `HTTP` request and get the related object using the link provided.
 
 Relationship resolver interface has a single method:
@@ -203,7 +203,7 @@ In order to gain access to returned relationship meta and links or ability to se
  - `RelationshipMeta`
  - `RelationshipLinks`
  
- Here is an version of the `Book` class with relationship meta/links added:
+ Here is a version of the `Book` class with relationship meta/links added:
  
  ```java
 @Type("book")
@@ -299,7 +299,7 @@ Links are inheritable.
 
 #### Full example
 
-Define simple POJO, please pay attention to added annotations:
+Define simple POJO, please pay attention to the added annotations:
 
 ```java
 # Meta is optional, one does not have to define or use it
@@ -380,7 +380,7 @@ Thrown exception has a method (`getErrorResponse()`) that returns parsed `errors
 
 Besides having links and meta information on resource level, by JSON API spec it is also possible to have meta, links or both as top level objects in server responses.
 
-To gain access to top level meta/links, this library provides convinience methods available in `JSONAPIDocument`, namely:
+To gain access to top level meta/links, this library provides convenience methods available in `JSONAPIDocument`, namely:
  
  - `getMeta()`
  - `getLinks()`
@@ -393,7 +393,7 @@ Following are available serialization options that can be enabled/disabled on `R
 
  - `INCLUDE_META` enabled by default, if enabled, meta data will be serialized
  - `INCLUDE_LINKS` enabled by default, if enabled links will be serialized
- - `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled by default, if enabled, relationship objects will be serialized fully, this means that besides generating `relationship` objects for each relationship, `included` section will be created that contains actuall relationship attributes
+ - `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled by default, if enabled, relationship objects will be serialized fully, this means that besides generating `relationship` objects for each relationship, `included` section will be created that contains actual relationship attributes
 
 To enable or disable serialization options:
 
@@ -463,7 +463,7 @@ Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` enabled:
 
 #### Example usage with retrofit
 
-As as first step, define your model classes and annotate them using annotations described above.
+As a first step, define your model classes and annotate them using annotations described above.
 
 After defining models, define your service interfaces as you would usually do with 'standard' JSON/XML APIs.
 
