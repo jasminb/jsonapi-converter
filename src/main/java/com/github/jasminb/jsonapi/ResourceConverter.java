@@ -778,12 +778,12 @@ public class ResourceConverter {
 		String resourceId = getIdValue(object);
 
 		// Remove id field from resulting attribute node
-		attributesNode.remove(configuration.getIdField(object.getClass()).getName());
+		removeField(attributesNode, configuration.getIdField(object.getClass()));
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
 		if (metaField != null) {
-			JsonNode meta = attributesNode.remove(metaField.getName());
+			JsonNode meta = removeField(attributesNode, metaField);
 			if (meta != null && shouldSerializeMeta(settings)) {
 				dataNode.set(META, meta);
 			}
@@ -820,7 +820,7 @@ public class ResourceConverter {
 				Object relationshipObject = relationshipField.get(object);
 
 				if (relationshipObject != null) {
-					attributesNode.remove(namingStrategy.nameForField(null, null, relationshipField.getName()));
+					removeField(attributesNode, relationshipField);
 
 					Relationship relationship = configuration.getFieldRelationship(relationshipField);
 
@@ -838,8 +838,12 @@ public class ResourceConverter {
 					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
 					if (relationshipMeta != null) {
 						relationshipDataNode.set(META, relationshipMeta);
-						attributesNode.remove(configuration
-								.getRelationshipMetaField(object.getClass(), relationshipName).getName());
+
+						// Remove meta object from serialized JSON
+						Field refField = configuration
+								.getRelationshipMetaField(object.getClass(), relationshipName);
+
+						removeField(attributesNode, refField);
 					}
 
 					// Serialize relationship links
@@ -852,9 +856,7 @@ public class ResourceConverter {
 						Field refField = configuration
 								.getRelationshipLinksField(object.getClass(), relationshipName);
 
-						if (refField != null) {
-							attributesNode.remove(refField.getName());
-						}
+						removeField(attributesNode, refField);
 					}
 
 					if (relationshipObject instanceof Collection) {
@@ -1116,7 +1118,7 @@ public class ResourceConverter {
 			// Remove links from attributes object
 			//TODO: this state change needs to be removed from here
 			if (links != null) {
-				serializedResource.remove(linksField.getName());
+				removeField(serializedResource, linksField);
 			}
 		}
 
@@ -1214,6 +1216,13 @@ public class ResourceConverter {
 			return settings.serializeMeta();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_META);
+	}
+
+	private JsonNode removeField(ObjectNode node, Field field) {
+		if (field != null) {
+			return node.remove(namingStrategy.nameForField(null, null, field.getName()));
+		}
+		return null;
 	}
 
 	/**

@@ -1,8 +1,14 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
+import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
+import com.github.jasminb.jsonapi.models.SimpleMeta;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
 import com.github.jasminb.jsonapi.models.errors.Error;
@@ -188,6 +194,41 @@ public class SerializationTest {
 		
 		Assert.assertTrue(new String(data).contains(user.getName()));
 		Assert.assertFalse(new String(data).contains("id"));
+	}
+
+	@Test
+	public void testSnakeCaseRelationshipMetaAndLinks() throws DocumentSerializationException {
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+		converter = new ResourceConverter(mapper, Status.class, User.class, Article.class, Author.class);
+		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+		User user = new User();
+		user.setId("id");
+		user.setName("name");
+
+		SimpleMeta userRelationshipMeta = new SimpleMeta();
+		userRelationshipMeta.setToken("token");
+
+		Map<String, Link> userRelationshipLinkMap = new HashMap<>();
+		userRelationshipLinkMap.put(JSONAPISpecConstants.SELF, new Link("link"));
+		Links userRelationshipLink = new Links(userRelationshipLinkMap);
+
+		Status status = new Status();
+		status.setId("id");
+		status.setContent("content");
+		status.setCommentCount(5);
+		status.setLikeCount(0);
+		status.setUser(user);
+		status.setUserRelationshipMeta(userRelationshipMeta);
+		status.setUserRelationshipLinks(userRelationshipLink);
+
+		byte [] data = converter.writeDocument(new JSONAPIDocument<>(status));
+
+		System.out.println(new String(data));
+
+		Assert.assertFalse(new String(data).contains("user_relationship_meta"));
+		Assert.assertFalse(new String(data).contains("user_relationship_links"));
 	}
 
 	private JSONAPIDocument<User> createDocument(User user) {
