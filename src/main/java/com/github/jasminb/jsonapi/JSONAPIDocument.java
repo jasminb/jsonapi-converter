@@ -26,7 +26,7 @@ public class JSONAPIDocument<T> {
 	/**
 	 * A map of meta fields, keyed by the meta field name
 	 */
-	private Map<String, ?> meta;
+	private Map<String, Object> meta;
 
 
 	/**
@@ -84,7 +84,7 @@ public class JSONAPIDocument<T> {
 	 *
 	 * @return {@link Map} meta
 	 */
-	public Map<String, ?> getMeta() {
+	public Map<String, Object> getMeta() {
 		return meta;
 	}
 
@@ -93,8 +93,15 @@ public class JSONAPIDocument<T> {
 	 *
 	 * @param meta {@link Map} meta
 	 */
-	public void setMeta(Map<String, ?> meta) {
+	public void setMeta(Map<String, Object> meta) {
 		this.meta = new HashMap<>(meta);
+	}
+
+	public void addMeta(String key, Object value) {
+		if (meta == null) {
+			meta = new HashMap<>();
+		}
+		meta.put(key, value);
 	}
 
 	/**
@@ -104,6 +111,19 @@ public class JSONAPIDocument<T> {
 	 */
 	public Links getLinks() {
 		return links;
+	}
+
+	/**
+	 * Adds a named link.
+	 *
+	 * @param linkName the named link to add
+	 * @param link the link to add
+	 */
+	public void addLink(String linkName, Link link) {
+		if (links == null) {
+			links = new Links(new HashMap<String, Link>());
+		}
+		links.addLink(linkName, link);
 	}
 
 	/**

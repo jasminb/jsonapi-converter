@@ -1020,7 +1020,7 @@ public class ResourceConverter {
 	 * @param metaNode a JsonNode representing a meta object
 	 * @return a Map of the meta information, keyed by member name.
 	 */
-	private Map<String, ?> mapMeta(JsonNode metaNode) {
+	private Map<String, Object> mapMeta(JsonNode metaNode) {
 		JsonParser p = objectMapper.treeAsTokens(metaNode);
 		MapType mapType = TypeFactory.defaultInstance()
 				.constructMapType(HashMap.class, String.class, Object.class);

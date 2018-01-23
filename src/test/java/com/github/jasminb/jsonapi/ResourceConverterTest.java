@@ -603,7 +603,7 @@ public class ResourceConverterTest {
 
 		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
 
-		Map<String, String> meta = new HashMap<>();
+		Map<String, Object> meta = new HashMap<>();
 		meta.put("meta", "abc");
 
 		usersDocument.setMeta(meta);
