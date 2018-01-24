@@ -84,7 +84,7 @@ public class JSONAPIDocument<T> {
 	 *
 	 * @return {@link Map} meta
 	 */
-	public Map<String, Object> getMeta() {
+	public Map<String, ?> getMeta() {
 		return meta;
 	}
 
@@ -93,7 +93,7 @@ public class JSONAPIDocument<T> {
 	 *
 	 * @param meta {@link Map} meta
 	 */
-	public void setMeta(Map<String, Object> meta) {
+	public void setMeta(Map<String, ?> meta) {
 		this.meta = new HashMap<>(meta);
 	}
 
