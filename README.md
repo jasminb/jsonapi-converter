@@ -1,4 +1,7 @@
 ### jsonapi-converter
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/jbegic)
+
 JSONAPI-Converter is a library that provides means for integrating with services using JSON API specification.
 
 For information on JSON API specification please see: http://jsonapi.org/format/
