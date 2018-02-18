@@ -104,4 +104,13 @@ public class Links implements Serializable {
 		return new HashMap<>(links);
 	}
 
+	/**
+	 * Adds a named link.
+	 *
+	 * @param linkName name of the link to add
+	 * @param link the link to add
+	 */
+	public void addLink(String linkName, Link link) {
+		links.put(linkName, link);
+	}
 }

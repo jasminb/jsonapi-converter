@@ -236,7 +236,7 @@ public class SerializationTest {
 
 		document.setLinks(user.links);
 
-		Map<String, String> globalMeta = new HashMap<>();
+		Map<String, Object> globalMeta = new HashMap<>();
 		globalMeta.put("key", "value");
 		document.setMeta(globalMeta);
 
@@ -268,7 +268,7 @@ public class SerializationTest {
 
 		document.setLinks(user.links);
 
-		Map<String, String> globalMeta = new HashMap<>();
+		Map<String, Object> globalMeta = new HashMap<>();
 		globalMeta.put("key", "value");
 		document.setMeta(globalMeta);
 
