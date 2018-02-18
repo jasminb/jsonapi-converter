@@ -1,5 +1,7 @@
 package com.github.jasminb.jsonapi.models;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Links;
 import com.github.jasminb.jsonapi.annotations.Meta;
@@ -9,6 +11,7 @@ import com.github.jasminb.jsonapi.annotations.Type;
 import java.util.List;
 
 @Type("users")
+@JsonIdentityInfo(generator = ObjectIdGenerators.StringIdGenerator.class, property = "id")
 public class User {
 
 	public static class UserMeta {

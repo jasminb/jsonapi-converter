@@ -20,4 +20,14 @@ public @interface Relationship {
 	boolean resolve() default false;
 	boolean serialise() default true;
 	RelType relType() default RelType.SELF;
+	
+	/**
+	 * Resource path, used to generate <code>self</code> link.
+	 */
+	String path() default "";
+	
+	/**
+	 * Resource path, used to generate <code>related</code> link.
+	 */
+	String relatedPath() default "";
 }

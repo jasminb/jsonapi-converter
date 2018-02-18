@@ -3,6 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.NullNode;
+import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.ResourceParseException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -22,31 +23,13 @@ public class ValidationUtilsTest {
 	public void setup() {
 		mapper = new ObjectMapper();
 	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testExpectCollection() throws IOException {
-		JsonNode node = mapper.readTree(IOUtils.getResourceAsString("user-with-statuses.json"));
-		ValidationUtils.ensureCollection(node);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testExpectObject() throws IOException {
-		JsonNode node = mapper.readTree(IOUtils.getResourceAsString("users.json"));
-		ValidationUtils.ensureObject(node);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
+	
+	@Test(expected = InvalidJsonApiResourceException.class)
 	public void testExpectData() throws IOException {
 		JsonNode node = mapper.readTree("{}");
-		ValidationUtils.ensureCollection(node);
+		ValidationUtils.ensureValidResource(node);
 	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testDataNodeMustBeAnObject() throws IOException {
-		JsonNode node = mapper.readTree("{\"data\" : \"attribute\"}");
-		ValidationUtils.ensureCollection(node);
-	}
-
+	
 	@Test(expected = ResourceParseException.class)
 	public void testNodeIsError() throws IOException {
 		JsonNode node = mapper.readTree(IOUtils.getResourceAsString("errors.json"));
@@ -85,12 +68,12 @@ public class ValidationUtilsTest {
 	}
 
 	@Test
-	public void nullCollectionNode() throws IOException {
-		ValidationUtils.ensureCollection(mapper.readTree("{\"data\" : null}"));
-	}
-
-	@Test
 	public void nullObjectNode() throws IOException {
-		ValidationUtils.ensureObject(mapper.readTree("{\"data\" : null}"));
+		ValidationUtils.ensureValidResource(mapper.readTree("{\"data\" : null}"));
+	}
+	
+	@Test
+	public void metaResource() throws IOException {
+		ValidationUtils.ensureValidResource(mapper.readTree("{\"meta\": {}}"));
 	}
 }

@@ -1,19 +1,31 @@
 package com.github.jasminb.jsonapi.models;
 
+import com.github.jasminb.jsonapi.Links;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
+import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
 import com.github.jasminb.jsonapi.annotations.Type;
 
-@Type("statuses")
+@Type(value = "statuses", path = "/statuses/{id}")
 public class Status {
 	@Id
 	private String id;
 	private String content;
 	private Integer commentCount;
 	private Integer likeCount;
+	
+	@com.github.jasminb.jsonapi.annotations.Links
+	private Links links;
 
-	@Relationship(value = "user", resolve = true)
+	@Relationship(value = "user", resolve = true, path = "/relationships/user", relatedPath = "user")
 	private User user;
+	
+	@RelationshipMeta("user")
+	private SimpleMeta userRelationshipMeta;
+	
+	@RelationshipLinks("user")
+	private Links userRelationshipLinks;
 
 	@Relationship(value = "related-user", resolve = true, serialise = false)
 	private User relatedUser;
@@ -65,7 +77,31 @@ public class Status {
 	public void setRelatedUser(User relatedUser) {
 		this.relatedUser = relatedUser;
 	}
-
+	
+	public SimpleMeta getUserRelationshipMeta() {
+		return userRelationshipMeta;
+	}
+	
+	public void setUserRelationshipMeta(SimpleMeta userRelationshipMeta) {
+		this.userRelationshipMeta = userRelationshipMeta;
+	}
+	
+	public Links getUserRelationshipLinks() {
+		return userRelationshipLinks;
+	}
+	
+	public void setUserRelationshipLinks(Links userRelationshipLinks) {
+		this.userRelationshipLinks = userRelationshipLinks;
+	}
+	
+	public Links getLinks() {
+		return links;
+	}
+	
+	public void setLinks(Links links) {
+		this.links = links;
+	}
+	
 	@Override
 	public String toString() {
 		return "Status{" +

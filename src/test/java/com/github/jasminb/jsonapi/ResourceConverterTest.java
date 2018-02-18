@@ -1,12 +1,17 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
+import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
+import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.Comment;
+import com.github.jasminb.jsonapi.models.IntegerIdResource;
+import com.github.jasminb.jsonapi.models.LongIdResource;
 import com.github.jasminb.jsonapi.models.NoDefaultConstructorClass;
 import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
 import com.github.jasminb.jsonapi.models.RecursingNode;
@@ -19,12 +24,15 @@ import com.github.jasminb.jsonapi.models.inheritance.Engineer;
 import com.github.jasminb.jsonapi.models.inheritance.EngineeringField;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,12 +44,18 @@ import java.util.Map;
  * @author jbegic
  */
 public class ResourceConverterTest {
+
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
+
 	private ResourceConverter converter;
 
 	@Before
 	public void setup() {
-		converter = new ResourceConverter(Status.class, User.class, Author.class, Article.class, Comment.class,
-				Engineer.class, EngineeringField.class, City.class, NoDefaultConstructorClass.class);
+		converter = new ResourceConverter("https://api.example.com", Status.class, User.class, Author.class,
+				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
+				IntegerIdResource.class, LongIdResource.class,
+				NoDefaultConstructorClass.class);
 	}
 
 	@Test
@@ -55,7 +69,7 @@ public class ResourceConverterTest {
 		status.getUser().setId("userid");
 		status.setRelatedUser(status.getUser());
 
-		byte [] rawData = converter.writeObject(status);
+		byte [] rawData = converter.writeDocument(new JSONAPIDocument<>(status));
 
 		Assert.assertNotNull(rawData);
 		Assert.assertFalse(rawData.length == 0);
@@ -73,6 +87,19 @@ public class ResourceConverterTest {
 
 		Assert.assertNotNull(converted.getUser());
 		Assert.assertEquals(status.getUser().getId(), converted.getUser().getId());
+
+		// Make sure type link is present
+		Assert.assertNotNull(converted.getLinks());
+		Assert.assertEquals("https://api.example.com/statuses/id",
+				converted.getLinks().getSelf().getHref());
+
+		// Make sure relationship links are present
+		Assert.assertNotNull(converted.getUserRelationshipLinks());
+		Assert.assertEquals("https://api.example.com/statuses/id/relationships/user",
+				converted.getUserRelationshipLinks().getSelf().getHref());
+		Assert.assertEquals("https://api.example.com/statuses/id/user",
+				converted.getUserRelationshipLinks().getRelated().getHref());
+
 	}
 
 	@Test
@@ -152,6 +179,8 @@ public class ResourceConverterTest {
 		initialUser.id = "123";
 		initialUser.name = "John Nash";
 
+
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_META);
 		byte [] rawData = converter.writeObject(initialUser);
 
 		Assert.assertNotNull(rawData);
@@ -241,24 +270,9 @@ public class ResourceConverterTest {
 		Assert.assertNotNull(user.getStatuses());
 	}
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testExpectCollection() throws IOException {
-		converter.readDocumentCollection(IOUtils.getResource("user-with-statuses.json"), User.class);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testExpectObject() throws IOException {
-		converter.readDocument(IOUtils.getResource("users.json"), User.class);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
+	@Test(expected = InvalidJsonApiResourceException.class)
 	public void testExpectData() throws UnsupportedEncodingException {
 		converter.readDocument(new ByteArrayInputStream("{}".getBytes()), User.class);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void testDataNodeMustBeAnObject() {
-		converter.readDocument(new ByteArrayInputStream("{\"data\" : \"attribute\"}".getBytes()), User.class);
 	}
 
 	@Test
@@ -435,6 +449,39 @@ public class ResourceConverterTest {
 		Assert.assertEquals("john", user.getName());
 	}
 
+	@Test(expected = UnregisteredTypeException.class)
+	public void testDisallowUnknownInclusionsByDefault() throws IOException {
+		InputStream rawData = IOUtils.getResource("unknown-inclusions.json");
+		converter.readDocument(rawData, User.class).get();
+	}
+
+	@Test
+	public void testEnableAllowUnknownInclusions() throws IOException {
+		converter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS);
+
+		InputStream rawData = IOUtils.getResource("unknown-inclusions.json");
+		Status status = converter.readDocument(rawData, Status.class).get();
+
+		Assert.assertNotNull(status);
+		Assert.assertEquals("content", status.getContent());
+		Assert.assertEquals("john", status.getUser().getName());
+
+		// Get and check the related statuses for the user
+		List<Status> statuses = status.getUser().getStatuses();
+		Assert.assertNotNull(statuses);
+		Assert.assertEquals(2, statuses.size());
+
+		for (Status relatedStatus : statuses) {
+			if (relatedStatus.getId().equals("myid")) {
+				Assert.assertEquals("myContent", relatedStatus.getContent());
+			} else if (relatedStatus.getId().equals("anotherid")) {
+				Assert.assertEquals("anotherContent", relatedStatus.getContent());
+			} else {
+				Assert.fail("Related status contain unexpected id: " + relatedStatus.getId());
+			}
+		}
+	}
+
 	@Test
 	public void testNullDataNodeObject() {
 		JSONAPIDocument<User> nullObject = converter.readDocument("{\"data\" : null}".getBytes(), User.class);
@@ -444,7 +491,7 @@ public class ResourceConverterTest {
 	@Test
 	public void testNullDataNodeCollection() {
 		JSONAPIDocument<List<User>> nullObjectCollection = converter
-				.readDocumentCollection("{\"data\" : null}".getBytes(), User.class);
+				.readDocumentCollection("{\"data\" : null, \"meta\": {}}".getBytes(), User.class);
 		Assert.assertTrue(nullObjectCollection.get().isEmpty());
 	}
 
@@ -468,6 +515,8 @@ public class ResourceConverterTest {
 		article.setComments(comments);
 
 		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+		converter.enableSerializationOption(SerializationFeature.INCLUDE_LINKS);
+
 
 		byte [] serialized = converter.writeDocument(new JSONAPIDocument<>(article));
 
@@ -490,7 +539,33 @@ public class ResourceConverterTest {
 
 		Assert.assertNull(deserialized.get().getComments().iterator().next().getBody());
 		Assert.assertNull(deserialized.get().getAuthor().getFirstName());
+	}
 
+	@Test
+	public void testWriteWithKebabCaseRelationships() throws DocumentSerializationException, JsonProcessingException, IOException {
+		final ObjectMapper kebabMapper = new ObjectMapper();
+		kebabMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+		ResourceConverter kebabConverter = new ResourceConverter(kebabMapper, "https://api.example.com", Status.class, User.class, Author.class,
+				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
+				IntegerIdResource.class, LongIdResource.class,
+				NoDefaultConstructorClass.class);
+		IntegerIdResource integerId = new IntegerIdResource();
+		integerId.setId(1);
+		integerId.setValue("integer value");
+
+		LongIdResource longId = new LongIdResource();
+		longId.setId(2L);
+		longId.setIntegerIdResource(integerId);
+		longId.setValue("long value");
+
+		byte[] kebabSerialized = kebabConverter.writeDocument(new JSONAPIDocument<>(longId));
+		byte[] normalSerialized = converter.writeDocument(new JSONAPIDocument<>(longId));
+
+		// Validate that the relationship attribute got removed in the Kebab case
+		final JsonNode readBack = kebabMapper.readTree(kebabSerialized);
+		Assert.assertNull(readBack.get("data").get("attributes").get("integer-id-resource"));
+		// So the two serializations should be exactly the same
+		Assert.assertEquals(new String(normalSerialized), new String(kebabSerialized));
 	}
 
 	@Test
@@ -528,7 +603,7 @@ public class ResourceConverterTest {
 
 		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
 
-		Map<String, String> meta = new HashMap<>();
+		Map<String, Object> meta = new HashMap<>();
 		meta.put("meta", "abc");
 
 		usersDocument.setMeta(meta);
@@ -550,6 +625,67 @@ public class ResourceConverterTest {
 
 		Assert.assertEquals("abc", checkDocument.getLinks().getSelf().toString());
 		Assert.assertEquals("abc", checkDocument.getMeta().get("meta"));
+	}
+
+	@Test
+	public void testReadRelationshipMeta() throws IOException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+
+		Status status = converter.readDocument(statusStream, Status.class).get();
+
+		Assert.assertNotNull(status.getUserRelationshipMeta());
+		Assert.assertEquals("token", status.getUserRelationshipMeta().getToken());
+	}
+
+	@Test
+	public void testWriteRelationshipMeta() throws IOException, DocumentSerializationException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		JSONAPIDocument<Status> statusJSONAPIDocument = converter.readDocument(statusStream, Status.class);
+
+		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
+
+		Status status = converter.readDocument(serialized, Status.class).get();
+		Assert.assertNotNull(status.getUserRelationshipMeta());
+		Assert.assertEquals("token", status.getUserRelationshipMeta().getToken());
+	}
+
+	@Test
+	public void testReadRelationshipLinks() throws IOException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		Status status = converter.readDocument(statusStream, Status.class).get();
+
+		Assert.assertNotNull(status.getUserRelationshipLinks());
+		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
+	}
+
+	@Test
+	public void testWriteRelationshipLinks() throws IOException, DocumentSerializationException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		JSONAPIDocument<Status> statusJSONAPIDocument = converter.readDocument(statusStream, Status.class);
+
+		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
+
+		Status status = converter.readDocument(serialized, Status.class).get();
+		Assert.assertNotNull(status.getUserRelationshipLinks());
+		Assert.assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
+	}
+
+	@Test
+	public void testReadMetaOnly() {
+		JSONAPIDocument<Status> status = converter.readDocument("{\"meta\" : {}}".getBytes(StandardCharsets.UTF_8),
+				Status.class);
+
+		Assert.assertNotNull(status.getMeta());
+	}
+
+	@Test
+	public void testUnregisteredType() throws IOException {
+		InputStream apiResponse = IOUtils.getResource("un-registered-type.json");
+
+		thrown.expect(UnregisteredTypeException.class);
+		thrown.expectMessage("No class was registered for type 'unRegisteredType'.");
+
+		converter.readDocument(apiResponse, User.class);
 	}
 
 	/**

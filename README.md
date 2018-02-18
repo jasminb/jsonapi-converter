@@ -1,4 +1,7 @@
-#### jsonapi-converter
+### jsonapi-converter
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/jbegic)
+
 JSONAPI-Converter is a library that provides means for integrating with services using JSON API specification.
 
 For information on JSON API specification please see: http://jsonapi.org/format/
@@ -7,27 +10,27 @@ Besides providing support for request/response parsing, library provides a retro
 
 Library is using Jackson (https://github.com/FasterXML/jackson-databind) for JSON data parsing.
 
-##### Including the library in your project
+#### Including the library in your project
 
 Maven:
 
-```
+```xml
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.4</version>
+  <version>0.8</version>
 </dependency>
 ```
 
 SBT:
 
-```
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.4"
+```groovy
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.8"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
 
-```
+```xml
 <repositories>
     <repository>
         <id>oss-sonatype</id>
@@ -42,15 +45,15 @@ In case you want to use current `SNAPSHOT` version of the project, make sure to 
 
 Than to add dependency:
 
-```
+```xml
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.5-SNAPSHOT</version>
+  <version>0.9-SNAPSHOT</version>
 </dependency>
 ```
 
-##### Writing your model classes
+#### Writing your model classes
 
 When writing models that will be used to represent requests and responses, one needs to pay attention to following:
 
@@ -58,14 +61,14 @@ When writing models that will be used to represent requests and responses, one n
  - Each class must contain an `String` attribute annotated with `com.github.jasminb.jsonapi.annotations.Id` annotation
  - All relationships must be annotated with `com.github.jasminb.jsonapi.annotations.Relationship` annotation
 
-###### Type annotation
+#### Type annotation
 
 Type annotation is used to instruct the serialisation/deserialisation library on how to process the given model class.
-Annotation has single property `value` which is required and it should be set to to whatever is the designated JSON API SPEC name for that type.
+Annotation has single property `value` which is required and it should be set to whatever is the designated JSON API SPEC name for that type.
 
 Example:
 
-```
+```java
 @Type("book")
 public class Book {
  ...
@@ -74,19 +77,19 @@ public class Book {
 
 Note that `@Type` annotation is not inherited from supperclasses.
 
-###### Id annotation
+#### Id annotation
 
-Id annotation is used to flag an attribute of a class as an `id` attribute. Each resource class must have an id field and it must be of type `String` (defined by the JSON API specification).
+Id annotation is used to flag an attribute of a class as an `id` attribute. Each resource class must have an id field.
+
+In case field annotated by the `@Id` annotation is not a `String` field, `@Id` annotation needs to be configured with proper `ResourceIdHandler`. Lirary provides handlers for `Long` and `Integer` types, in case types other than those mentioned are used, user must implement and provide proper id handler.
 
 Id is a special attribute that is, together with type, used to uniquely identify an resource.
 
-Id annotation has no attributes.
-
-Id annotation is inheritable, one can define a base model class that contains a field with `@Id` annotation and than extend it to create a new type.
+Id annotation is inheritable, one can define a base model class that contains a field with `@Id` annotation and then extend it to create a new type.
 
 Example:
 
-```
+```java
 @Type("book")
 public class Book {
   
@@ -98,7 +101,7 @@ public class Book {
 
 Example with inheritance:
 
-```
+```java
 public class BaseModel {
   @Id
   private String id;
@@ -110,15 +113,29 @@ public class Book extends BaseModel {
 }
 ```
 
-###### Relationship annotation
+Example using `Long` as id
+
+```java
+@Type("book")
+public class Book {
+  
+  @Id(LongIdHandler.class)
+  private Long id;
+  ...
+}
+
+
+```
+
+#### Relationship annotation
 
 Relationship annotation is used to designate other resource types as a relationships.
 
 Imagine modeling a simple library application, you would end up having a `Book` resource and another logical resource would be `Author`.
 
-You can model this as two different classes where `Book` resource would have an relationship to an `Author`:
+You can model this as two different classes where `Book` resource would have a relationship to an `Author`:
 
-```
+```java
 @Type("book")
 public class Book {
   @Id
@@ -141,12 +158,12 @@ Value attribute is required and each relationship must have it set (value attrib
 
 Resolve attribute is used to instruct the library on how to handle server responses where resource relationships are not provided in `included` section but are rather returned as `type` and `id` combination.
 
-Library has a support for registering global and typed relationship resloves which are used to resolve unresolved relationships.
+Library has a support for registering global and typed relationship resolves which are used to resolve unresolved relationships.
 Resolving a relationship means using provided `links` attribute to perform additional `HTTP` request and get the related object using the link provided.
 
 Relationship resolver interface has a single method:
 
-```
+```java
 byte [] resolve(String relationshipURL);
 ````
 
@@ -154,14 +171,14 @@ After implementing relationship resolver, in order to use it, one must register 
 
 Example:
 
-```
+```java
 ResourceConverter converter = new ResourceConverter(Book.class, Author.class);
 converter.setGlobalResolver(new CustomRelationshipResolverInstance());
 ```
 
 Besides support for global resolvers, there is an option to have different resolvers for different resource types:
 
-```
+```java
 ResourceConverter converter = new ResourceConverter(Book.class, Author.class);
 converter.setTypeResolver(new CustomBooksResolver(), Book.class);
 converter.setTypeResolver(new CustomAuthorResolver(), Author.class);
@@ -179,9 +196,39 @@ There two different relationship types:
  - `SELF` (`self` link will be followed to resolve relationship
  - `RELATED` (`related` link will be followed)
  
-Have in mind that relationship (same as id) is inheritable and can be defined in a base class. 
+Have in mind that relationship (same as id) is inheritable and can be defined in a base class.
 
-###### Meta annotation
+#### Relationship meta and links
+
+jsonapi-spec allows for having relationship-level metadata and links.
+
+In order to gain access to returned relationship meta and links or ability to serialize it, use following annotations:
+ - `RelationshipMeta`
+ - `RelationshipLinks`
+ 
+ Here is a version of the `Book` class with relationship meta/links added:
+ 
+ ```java
+@Type("book")
+public class Book {
+  @Id
+  private String isbn;
+  private String title;
+  
+  @Relationship("author")
+  private Author author;
+  
+  @RelationshipMeta("author")
+  private Meta authorMeta
+  
+  @RelationshipLinks("author")
+  private Links authorLinks
+}
+```
+
+Make sure not to confuse relationship meta and links with regular meta-data and link data explained below.
+
+#### Meta annotation
 
 By JSON API specification, each resource can hold `meta` attribute. Meta can be arbitrary object that is defined by the API implementation.
 
@@ -189,7 +236,7 @@ In order to map and make meta available trough resource conversion, one must cre
 
 Meta example:
 
-```
+```java
 # Meta model class
 
 public class MyCustomMetaClass {
@@ -223,7 +270,7 @@ public class Book {
 
 Meta annotation/attriubutes are inheritable.
 
-###### Links annotation
+#### Links annotation
 
 JSON API specification allows for `links` to be part of resources. Links usually cary information about the resource itself (eg. its URI on the server).
 
@@ -233,7 +280,7 @@ Library provides a `com.github.jasminb.jsonapi.Links` class that must be used in
 
 Example:
 
-```
+```java
 @Type("book")
 public class Book {
   @Id
@@ -253,11 +300,11 @@ public class Book {
 
 Links are inheritable.
 
-##### Full example
+#### Full example
 
-Define simple POJO, please pay attention to added annotations:
+Define simple POJO, please pay attention to the added annotations:
 
-```
+```java
 # Meta is optional, one does not have to define or use it
 public class Meta {
     private String myAttribute;
@@ -290,6 +337,12 @@ public class Book extends BaseResource {
   @Relationship("author")
   private Author author;
   
+  @RelationshipMeta("author")
+  private Meta authorMeta
+  
+  @RelationshipLinks("author")
+  private Links authorLinks
+  
   # getters and setters
 }
 
@@ -306,7 +359,7 @@ public class Author extends BaseResource {
 
 Create a converter instance:
 
-```
+```java
 ResourceConverter converter = new ResourceConverter(Book.class, Author.class);
 
 // Get response data
@@ -326,28 +379,28 @@ Note that calling `readDocument(...)` or `readDocumentCollection(...)` using con
 
 Thrown exception has a method (`getErrorResponse()`) that returns parsed `errors` content. Errors content is expected to comply to JSON API Spec.
 
-##### Top level links and meta
+#### Top level links and meta
 
 Besides having links and meta information on resource level, by JSON API spec it is also possible to have meta, links or both as top level objects in server responses.
 
-To gain access to top level meta/links, this library provides convinience methods available in `JSONAPIDocument`, namely:
+To gain access to top level meta/links, this library provides convenience methods available in `JSONAPIDocument`, namely:
  
  - `getMeta()`
  - `getLinks()`
  
-##### Resource serialization
+#### Resource serialization
 
 Besides providing options to deserialize json-api spec complaint resource representation, library also includes support for serializing resources.
 
 Following are available serialization options that can be enabled/disabled on `ResourceConverter` instance:
 
- - `INCLUDE_META` disabled by default, if enabled, meta data will be serialized
- - `INCLUDE_LINKS` disabled by default, if enabled links will be serialized
- - `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled by default, if enabled, relationship objects will be serialized fully, this means that besides generating `relationship` objects for each relationship, `included` section will be created that contains actuall relationship attributes
+ - `INCLUDE_META` enabled by default, if enabled, meta data will be serialized
+ - `INCLUDE_LINKS` enabled by default, if enabled links will be serialized
+ - `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled by default, if enabled, relationship objects will be serialized fully, this means that besides generating `relationship` objects for each relationship, `included` section will be created that contains actual relationship attributes
 
 To enable or disable serialization options:
 
-```
+```java
 ResourceConverter converter = ...
 # Enable generating included section
 converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
@@ -360,7 +413,7 @@ converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_A
 
 Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled:
 
-```
+```json
 {
   "data": {
     "type": "articles",
@@ -382,7 +435,7 @@ Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` disabled:
 
 Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` enabled:
 
-```
+```json
 {
   "data": {
     "type": "articles",
@@ -411,15 +464,15 @@ Example with `INCLUDE_RELATIONSHIP_ATTRIBUTES` enabled:
 }
 ```
 
-##### Example usage with retrofit
+#### Example usage with retrofit
 
-As as first step, define your model classes and annotate them using annotations described above.
+As a first step, define your model classes and annotate them using annotations described above.
 
 After defining models, define your service interfaces as you would usually do with 'standard' JSON/XML APIs.
 
 To create retrofit instance:
 
-```
+```java
 // Create object mapper
 ObjectMapper objectMapper = new ObjectMapper();
 
@@ -438,7 +491,7 @@ MyBooksService booksService = retrofit.create(MyBooksService.class);
 
 ###### Synchronous usage
 
-```
+```java
 Response<JSONAPIDocument<Book>> bookResponse = booksService.find("123").execute();
 
 if (bookResponse.isSuccess()) {
@@ -451,7 +504,7 @@ if (bookResponse.isSuccess()) {
 
 ###### Asynchronous usage
 
-```
+```java
 Call<JSONAPIDocument<Book>> bookServiceCall = service.getExampleResource();
 
 bookServiceCall.enqueue(new Callback<Book>() {
@@ -476,10 +529,35 @@ Notice that expected return types in `MyBookService` calls are all wrapped with 
 
 Example service interface:
 
-```
+```java
 public interface MyBooksService {
     @GET("books")
     Call<JSONAPIDocument<List<Book>> allBooks();
 }
 
 ```
+
+#### Tips
+
+If you need a `String` as an output when serializing objects, you can do the following:
+
+
+```java
+byte [] serializedObject = resourceConverter.writeObject(...);
+String serializedAsString = new String(serializedObject);
+```
+
+#### Note for kotlin users
+
+Have in mind that using `open` classes as type parameters in relationship collections will not work, for instance:
+
+```java
+@Type("base")
+open class MyClass {
+
+    @Relationship("my-relationship")
+    var bases: List<MyClass>? = null
+}
+```
+
+Removing the `open` modifier will solve the issue.

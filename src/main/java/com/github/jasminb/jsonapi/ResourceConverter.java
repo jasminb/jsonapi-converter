@@ -5,19 +5,26 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
+import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
+import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
+import com.github.jasminb.jsonapi.models.errors.Error;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -35,12 +42,15 @@ import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
 public class ResourceConverter {
 	private final ConverterConfiguration configuration;
 	private final ObjectMapper objectMapper;
+	private final PropertyNamingStrategy namingStrategy;
 	private final Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
 	private final ResourceCache resourceCache;
 	private final Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
 	private final Set<SerializationFeature> serializationFeatures = SerializationFeature.getDefaultFeatures();
 
 	private RelationshipResolver globalResolver;
+
+	private String baseURL;
 
 	/**
 	 * Creates new ResourceConverter.
@@ -51,25 +61,50 @@ public class ResourceConverter {
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
 	public ResourceConverter(Class<?>... classes) {
-		this(null, classes);
+		this(null, null, classes);
+	}
+
+	/**
+	 * Creates new ResourceConverter.
+	 * <p>
+	 *     All classes that should be handled by instance of {@link ResourceConverter} must be registered
+	 *     when creating a new instance of it.
+	 * </p>
+	 * @param baseURL {@link String} base URL, eg. https://api.mysite.com
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 */
+	public ResourceConverter(String baseURL, Class<?>... classes) {
+		this(null, baseURL, classes);
+	}
+
+	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
+		this(mapper, null, classes);
 	}
 
 	/**
 	 * Creates new ResourceConverter.
 	 * @param mapper {@link ObjectMapper} custom mapper to be used for resource parsing
+	 * @param baseURL {@link String} base URL, eg. https://api.mysite.com
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
-	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
+	public ResourceConverter(ObjectMapper mapper, String baseURL, Class<?>... classes) {
 		this.configuration = new ConverterConfiguration(classes);
+		this.baseURL = baseURL != null ? baseURL : "";
 
 		// Set custom mapper if provided
 		if (mapper != null) {
 			objectMapper = mapper;
 		} else {
 			objectMapper = new ObjectMapper();
+			objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 		}
 
-		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+		// Object mapper's naming strategy is used if it is set
+		if (objectMapper.getPropertyNamingStrategy() != null) {
+			namingStrategy = objectMapper.getPropertyNamingStrategy();
+		} else {
+			namingStrategy = new PropertyNamingStrategy();
+		}
 
 		resourceCache = new ResourceCache();
 	}
@@ -152,20 +187,35 @@ public class ResourceConverter {
 
 			// Validate
 			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureObject(rootNode);
-
-			resourceCache.cache(parseIncluded(rootNode));
+			ValidationUtils.ensureValidResource(rootNode);
 
 			JsonNode dataNode = rootNode.get(DATA);
 
-			JSONAPIDocument<T> result;
+			// Parse data node without handling relationships
+			T resourceObject;
+			boolean cached = false;
+			if (dataNode != null && dataNode.isObject()) {
+				String identifier = createIdentifier(dataNode);
+				cached = identifier != null && resourceCache.contains(identifier);
 
-			if (!dataNode.isNull()) {
-				T resourceObject = readObject(dataNode, clazz, true);
-				result = new JSONAPIDocument<>(resourceObject, objectMapper);
+				if (cached) {
+					resourceObject = (T) resourceCache.get(identifier);
+				} else {
+					resourceObject = readObject(dataNode, clazz, false);
+				}
 			} else {
-				result = new JSONAPIDocument<>();
+				resourceObject = null;
 			}
+
+			// Parse all included resources
+			resourceCache.cache(parseIncluded(rootNode));
+
+			// Connect data node's relationships now that all resources have been parsed
+			if (resourceObject != null && !cached) {
+				handleRelationships(dataNode, resourceObject);
+			}
+
+			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -212,15 +262,30 @@ public class ResourceConverter {
 
 			// Validate
 			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureCollection(rootNode);
+			ValidationUtils.ensureValidResource(rootNode);
 
-			resourceCache.cache(parseIncluded(rootNode));
+			JsonNode dataNode = rootNode.get(DATA);
 
+			// Parse data node without handling relationships
 			List<T> resourceList = new ArrayList<>();
 
-			for (JsonNode element : rootNode.get(DATA)) {
-				T pojo = readObject(element, clazz, true);
-				resourceList.add(pojo);
+			if (dataNode != null && dataNode.isArray()) {
+				for (JsonNode element : dataNode) {
+					T pojo = readObject(element, clazz, false);
+					resourceList.add(pojo);
+				}
+			}
+
+			// Parse all included resources
+			resourceCache.cache(parseIncluded(rootNode));
+
+			// Connect data node's relationships now that all resources have been parsed
+			for (int i = 0; i < resourceList.size(); i++) {
+				JsonNode source = dataNode != null && dataNode.isArray() ? dataNode.get(i) : null;
+				T resourceObject = resourceList.get(i);
+				if (source != null && resourceObject != null) {
+					handleRelationships(source, resourceObject);
+				}
 			}
 
 			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, objectMapper);
@@ -290,7 +355,7 @@ public class ResourceConverter {
 				}
 			}
 
-			if(result != null) {
+			if (result != null) {
 				// Add parsed object to cache
 				resourceCache.cache(identifier, result);
 
@@ -321,21 +386,22 @@ public class ResourceConverter {
 
 		if (parent.has(INCLUDED)) {
 			// Get resources
-			List<Resource> includedResources = getIncludedResources(parent);
+			Map<String, Object> includedResources = getIncludedResources(parent);
 
 			if (!includedResources.isEmpty()) {
 				// Add to result
-				for (Resource includedResource : includedResources) {
-					result.put(includedResource.getIdentifier(), includedResource.getObject());
+				for (String identifier : includedResources.keySet()) {
+					result.put(identifier, includedResources.get(identifier));
 				}
 
 				ArrayNode includedArray = (ArrayNode) parent.get(INCLUDED);
-				for (int i = 0; i < includedResources.size(); i++) {
-					Resource resource = includedResources.get(i);
-
+				for (int i = 0; i < includedArray.size(); i++) {
 					// Handle relationships
 					JsonNode node = includedArray.get(i);
-					handleRelationships(node, resource.getObject());
+					Object resourceObject = includedResources.get(createIdentifier(node));
+						if (resourceObject != null){
+							handleRelationships(node, resourceObject);
+						}
 				}
 			}
 		}
@@ -351,23 +417,23 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	private List<Resource> getIncludedResources(JsonNode parent)
+	private Map<String, Object> getIncludedResources(JsonNode parent)
 			throws IOException, IllegalAccessException, InstantiationException {
-		List<Resource> result = new ArrayList<>();
+		Map<String, Object> result = new HashMap<>();
 
 		if (parent.has(INCLUDED)) {
 			for (JsonNode jsonNode : parent.get(INCLUDED)) {
 				String type = jsonNode.get(TYPE).asText();
 
-				if (type != null) {
-					Class<?> clazz = configuration.getTypeClass(type);
+				Class<?> clazz = configuration.getTypeClass(type);
 
-					if (clazz != null) {
-						Object object = readObject(jsonNode, clazz, false);
-						if (object != null) {
-							result.add(new Resource(createIdentifier(jsonNode), object));
-						}
+				if (clazz != null) {
+					Object object = readObject(jsonNode, clazz, false);
+					if (object != null) {
+						result.put(createIdentifier(jsonNode), object);
 					}
+				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
+					throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
 				}
 			}
 		}
@@ -397,6 +463,25 @@ public class ResourceConverter {
 						continue;
 					}
 
+					// Handle meta if present
+					if (relationship.has(META)) {
+						Field relationshipMetaField = configuration.getRelationshipMetaField(object.getClass(), field);
+
+						if (relationshipMetaField != null) {
+							relationshipMetaField.set(object, objectMapper.treeToValue(relationship.get(META),
+									configuration.getRelationshipMetaType(object.getClass(), field)));
+						}
+					}
+
+					// Handle links if present
+					if (relationship.has(LINKS)) {
+						Field relationshipLinksField = configuration.getRelationshipLinksField(object.getClass(), field);
+						if (relationshipLinksField != null) {
+							Links links = new Links(mapLinks(relationship.get(LINKS)));
+							relationshipLinksField.set(object, links);
+						}
+					}
+
 					// Get resolve flag
 					boolean resolveRelationship = configuration.getFieldRelationship(relationshipField).resolve();
 					RelationshipResolver resolver = getResolver(type);
@@ -419,7 +504,7 @@ public class ResourceConverter {
 					} else {
 						if (isCollection(relationship)) {
 							@SuppressWarnings("rawtypes")
-							List elements = new ArrayList<>();
+							Collection elements = createCollectionInstance(relationshipField.getType());
 
 							for (JsonNode element : relationship.get(DATA)) {
 								Object relationshipObject = parseRelationship(element, type);
@@ -518,11 +603,25 @@ public class ResourceConverter {
 	 */
 	private void setIdValue(Object target, JsonNode idValue) throws IllegalAccessException {
 		Field idField = configuration.getIdField(target.getClass());
+		ResourceIdHandler idHandler = configuration.getIdHandler(target.getClass());
 
-		// By specification, id value is always a String type
 		if (idValue != null) {
-			idField.set(target, idValue.asText());
+			idField.set(target, idHandler.fromString(idValue.asText()));
 		}
+	}
+
+	/**
+	 * Reads @Id value from provided source object.
+	 *
+	 * @param source object to read @Id value from
+	 * @return {@link String} id or <code>null</code>
+	 * @throws IllegalAccessException
+	 */
+	private String getIdValue(Object source) throws IllegalAccessException {
+		Field idField = configuration.getIdField(source.getClass());
+		ResourceIdHandler handler = configuration.getIdHandler(source.getClass());
+
+		return handler.asString(idField.get(source));
 	}
 
 	/**
@@ -559,18 +658,45 @@ public class ResourceConverter {
 	 * @throws DocumentSerializationException thrown in case serialization fails
 	 */
 	public byte [] writeDocument(JSONAPIDocument<?> document) throws DocumentSerializationException {
+		return writeDocument(document, null);
+	}
+
+	/**
+	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 * @param document {@link JSONAPIDocument} document to serialize
+	 * @param settings {@link SerializationSettings} settings that override global serialization settings
+	 * @return serialized content in bytes
+	 * @throws DocumentSerializationException thrown in case serialization fails
+	 */
+	public byte [] writeDocument(JSONAPIDocument<?> document, SerializationSettings settings)
+			throws DocumentSerializationException {
 		try {
 			resourceCache.init();
 
 			Map<String, ObjectNode> includedDataMap = new HashMap<>();
-			ObjectNode dataNode = getDataNode(document.get(), includedDataMap);
-			ObjectNode result = objectMapper.createObjectNode();
-			result.set(DATA, dataNode);
-			result = addIncludedSection(result, includedDataMap);
 
-			// Handle global links and meta
-			serializeMeta(document, result);
-			serializeLinks(document, result);
+			ObjectNode result = objectMapper.createObjectNode();
+
+			// Serialize data if present
+			if (document.get() != null) {
+				ObjectNode dataNode = getDataNode(document.get(), includedDataMap, settings);
+				result.set(DATA, dataNode);
+				result = addIncludedSection(result, includedDataMap);
+			}
+
+			// Serialize errors if present
+			if (document.getErrors() != null) {
+				ArrayNode errorsNode = objectMapper.createArrayNode();
+				for (Error error : document.getErrors()) {
+					errorsNode.add(objectMapper.valueToTree(error));
+				}
+
+				result.set(ERRORS, errorsNode);
+			}
+
+			// Serialize global links and meta
+			serializeMeta(document, result, settings);
+			serializeLinks(document, result, settings);
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -579,17 +705,16 @@ public class ResourceConverter {
 		}
 	}
 
-	private void serializeMeta(JSONAPIDocument<?> document, ObjectNode resultNode) {
+	private void serializeMeta(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
 		// Handle global links and meta
-		if (document.getMeta() != null && !document.getMeta().isEmpty() &&
-				serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+		if (document.getMeta() != null && !document.getMeta().isEmpty() && shouldSerializeMeta(settings)) {
 			resultNode.set(META, objectMapper.valueToTree(document.getMeta()));
 		}
 	}
 
-	private void serializeLinks(JSONAPIDocument<?> document, ObjectNode resultNode) {
+	private void serializeLinks(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
 		if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() &&
-				serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
+				shouldSerializeLinks(settings)) {
 			resultNode.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
 		}
 	}
@@ -601,7 +726,20 @@ public class ResourceConverter {
 	 * @throws DocumentSerializationException thrown in case serialization fails
 	 */
 	public byte [] writeDocumentCollection(JSONAPIDocument<? extends Iterable<?>> documentCollection)
-			throws DocumentSerializationException{
+			throws DocumentSerializationException {
+		return writeDocumentCollection(documentCollection, null);
+	}
+
+	/**
+	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 * @param documentCollection {@link JSONAPIDocument} document collection to serialize
+	 * @param serializationSettings {@link SerializationSettings} settings that override global serialization settings
+	 * @return serialized content in bytes
+	 * @throws DocumentSerializationException thrown in case serialization fails
+	 */
+	public byte [] writeDocumentCollection(JSONAPIDocument<? extends Iterable<?>> documentCollection,
+										   SerializationSettings serializationSettings)
+			throws DocumentSerializationException {
 
 		try {
 			resourceCache.init();
@@ -609,7 +747,7 @@ public class ResourceConverter {
 			Map<String, ObjectNode> includedDataMap = new HashMap<>();
 
 			for (Object object : documentCollection.get()) {
-				results.add(getDataNode(object, includedDataMap));
+				results.add(getDataNode(object, includedDataMap, serializationSettings));
 			}
 
 			ObjectNode result = objectMapper.createObjectNode();
@@ -618,8 +756,8 @@ public class ResourceConverter {
 			result = addIncludedSection(result, includedDataMap);
 
 			// Handle global links and meta
-			serializeMeta(documentCollection, result);
-			serializeLinks(documentCollection, result);
+			serializeMeta(documentCollection, result, serializationSettings);
+			serializeLinks(documentCollection, result, serializationSettings);
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -629,40 +767,41 @@ public class ResourceConverter {
 	}
 
 
-	private ObjectNode getDataNode(Object object, Map<String, ObjectNode> includedContainer)
-			throws IllegalAccessException {
+	private ObjectNode getDataNode(Object object, Map<String, ObjectNode> includedContainer,
+								   SerializationSettings settings) throws IllegalAccessException {
 		ObjectNode dataNode = objectMapper.createObjectNode();
 
 		// Perform initial conversion
 		ObjectNode attributesNode = objectMapper.valueToTree(object);
 
 		// Handle id, meta and relationship fields
-		Field idField = configuration.getIdField(object.getClass());
-		attributesNode.remove(idField.getName());
+		String resourceId = getIdValue(object);
+
+		// Remove id field from resulting attribute node
+		removeField(attributesNode, configuration.getIdField(object.getClass()));
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
 		if (metaField != null) {
-			JsonNode meta = attributesNode.remove(metaField.getName());
-			if (meta != null && serializationFeatures.contains(SerializationFeature.INCLUDE_META)) {
+			JsonNode meta = removeField(attributesNode, metaField);
+			if (meta != null && shouldSerializeMeta(settings)) {
 				dataNode.set(META, meta);
 			}
 		}
 
 		// Handle links
-		Field linksField = configuration.getLinksField(object.getClass());
-		if (linksField != null) {
-			JsonNode links = attributesNode.remove(linksField.getName());
-			if (links != null && serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS)) {
-				dataNode.set(LINKS, links.get(LINKS));
+		String selfHref = null;
+		JsonNode jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
+		if (jsonLinks != null) {
+			dataNode.set(LINKS, jsonLinks);
+
+			if (jsonLinks.has(SELF)) {
+				selfHref = jsonLinks.get(SELF).get(HREF).asText();
 			}
 		}
 
-
 		// Handle resource identifier
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
-
-		String resourceId = (String) idField.get(object);
 		if (resourceId != null) {
 			dataNode.put(ID, resourceId);
 
@@ -670,7 +809,6 @@ public class ResourceConverter {
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
 		dataNode.set(ATTRIBUTES, attributesNode);
-
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
@@ -682,23 +820,52 @@ public class ResourceConverter {
 				Object relationshipObject = relationshipField.get(object);
 
 				if (relationshipObject != null) {
-					attributesNode.remove(relationshipField.getName());
+					removeField(attributesNode, relationshipField);
 
 					Relationship relationship = configuration.getFieldRelationship(relationshipField);
 
-					// In case serialisation is disabled for a given relationship, skipp it
+					// In case serialisation is disabled for a given relationship, skip it
 					if (!relationship.serialise()) {
 						continue;
 					}
 
 					String relationshipName = relationship.value();
 
-					if (relationshipObject instanceof List) {
+					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
+					relationshipsNode.set(relationshipName, relationshipDataNode);
+
+					// Serialize relationship meta
+					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
+					if (relationshipMeta != null) {
+						relationshipDataNode.set(META, relationshipMeta);
+
+						// Remove meta object from serialized JSON
+						Field refField = configuration
+								.getRelationshipMetaField(object.getClass(), relationshipName);
+
+						removeField(attributesNode, refField);
+					}
+
+					// Serialize relationship links
+					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
+
+					if (relationshipLinks != null) {
+						relationshipDataNode.set(LINKS, relationshipLinks);
+
+						// Remove link object from serialized JSON
+						Field refField = configuration
+								.getRelationshipLinksField(object.getClass(), relationshipName);
+
+						removeField(attributesNode, refField);
+					}
+
+					if (relationshipObject instanceof Collection) {
 						ArrayNode dataArrayNode = objectMapper.createArrayNode();
 
-						for (Object element : (List<?>) relationshipObject) {
+						for (Object element : (Collection<?>) relationshipObject) {
 							String relationshipType = configuration.getTypeName(element.getClass());
-							String idValue = (String) configuration.getIdField(element.getClass()).get(element);
+
+							String idValue = getIdValue(element);
 
 							ObjectNode identifierNode = objectMapper.createObjectNode();
 							identifierNode.put(TYPE, relationshipType);
@@ -706,40 +873,32 @@ public class ResourceConverter {
 							dataArrayNode.add(identifierNode);
 
 							// Handle included data
-							if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
-									idValue != null) {
+							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
 								String identifier = idValue.concat(relationshipType);
 								if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
 									includedContainer.put(identifier,
-											getDataNode(element, includedContainer));
+											getDataNode(element, includedContainer, settings));
 								}
 							}
 						}
-
-						ObjectNode relationshipDataNode = objectMapper.createObjectNode();
 						relationshipDataNode.set(DATA, dataArrayNode);
-						relationshipsNode.set(relationshipName, relationshipDataNode);
 
 					} else {
 						String relationshipType = configuration.getTypeName(relationshipObject.getClass());
-						String idValue = (String) configuration.getIdField(relationshipObject.getClass())
-								.get(relationshipObject);
+
+						String idValue = getIdValue(relationshipObject);
 
 						ObjectNode identifierNode = objectMapper.createObjectNode();
 						identifierNode.put(TYPE, relationshipType);
 						identifierNode.put(ID, idValue);
 
-
-						ObjectNode relationshipDataNode = objectMapper.createObjectNode();
 						relationshipDataNode.set(DATA, identifierNode);
 
-						relationshipsNode.set(relationshipName, relationshipDataNode);
-
-						if (serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES) &&
-								idValue != null) {
+						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
 							String identifier = idValue.concat(relationshipType);
 							if (!includedContainer.containsKey(identifier)) {
-								includedContainer.put(identifier, getDataNode(relationshipObject, includedContainer));
+								includedContainer.put(identifier,
+										getDataNode(relationshipObject, includedContainer, settings));
 							}
 						}
 					}
@@ -795,24 +954,6 @@ public class ResourceConverter {
 	private RelationshipResolver getResolver(Class<?> type) {
 		RelationshipResolver resolver = typedResolvers.get(type);
 		return resolver != null ? resolver : globalResolver;
-	}
-
-	private static class Resource {
-		private String identifier;
-		private Object object;
-
-		public Resource(String identifier, Object resource) {
-			this.identifier = identifier;
-			this.object = resource;
-		}
-
-		public String getIdentifier() {
-			return identifier;
-		}
-
-		public Object getObject() {
-			return object;
-		}
 	}
 
 	/**
@@ -879,7 +1020,7 @@ public class ResourceConverter {
 	 * @param metaNode a JsonNode representing a meta object
 	 * @return a Map of the meta information, keyed by member name.
 	 */
-	private Map<String, ?> mapMeta(JsonNode metaNode) {
+	private Map<String, Object> mapMeta(JsonNode metaNode) {
 		JsonParser p = objectMapper.treeAsTokens(metaNode);
 		MapType mapType = TypeFactory.defaultInstance()
 				.constructMapType(HashMap.class, String.class, Object.class);
@@ -930,9 +1071,172 @@ public class ResourceConverter {
 			}
 		}
 
+		throw new UnregisteredTypeException(type);
+	}
+
+
+	private Collection<?> createCollectionInstance(Class<?> type)
+			throws InstantiationException, IllegalAccessException {
+		if (!type.isInterface() && !Modifier.isAbstract(type.getModifiers())) {
+			return (Collection<?>) type.newInstance();
+		}
+
+		if (List.class.equals(type) || Collection.class.equals(type)) {
+			return new ArrayList<>();
+		}
+
+		if (Set.class.equals(type)) {
+			return new HashSet<>();
+		}
+
+		throw new RuntimeException("Unable to create appropriate instance for type: " + type.getSimpleName());
+	}
+
+	private JsonNode getRelationshipMeta(Object source, String relationshipName, SerializationSettings settings)
+			throws IllegalAccessException {
+		if (shouldSerializeMeta(settings)) {
+			Field relationshipMetaField = configuration
+					.getRelationshipMetaField(source.getClass(), relationshipName);
+
+			if (relationshipMetaField != null && relationshipMetaField.get(source) != null) {
+				return objectMapper.valueToTree(relationshipMetaField.get(source));
+			}
+		}
 		return null;
 	}
 
+	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId,
+									  SerializationSettings settings) throws IllegalAccessException {
+		Type type = configuration.getType(resource.getClass());
+
+		// Check if there are user-provided links
+		Links links = null;
+		Field linksField = configuration.getLinksField(resource.getClass());
+		if (linksField != null) {
+			links = (Links) linksField.get(resource);
+
+			// Remove links from attributes object
+			//TODO: this state change needs to be removed from here
+			if (links != null) {
+				removeField(serializedResource, linksField);
+			}
+		}
+
+		// If enabled, handle links
+		if (shouldSerializeLinks(settings)) {
+			Map<String, Link> linkMap = new HashMap<>();
+
+			if (links != null) {
+				linkMap.putAll(links.getLinks());
+			}
+
+			// If link path is defined in type and id is not null and user did not explicitly set link value, create it
+			if (!type.path().trim().isEmpty() && !linkMap.containsKey(SELF) && resourceId != null) {
+				linkMap.put(SELF, new Link(createURL(baseURL, type.path().replace("{id}", resourceId))));
+			}
+
+			// If there is at least one link generated, serialize and return
+			if (!linkMap.isEmpty()) {
+				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+			}
+		}
+		return null;
+	}
+
+	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
+										  SerializationSettings settings) throws IllegalAccessException {
+		if (shouldSerializeLinks(settings)) {
+			Links links = null;
+
+			Field relationshipLinksField = configuration
+					.getRelationshipLinksField(source.getClass(), relationship.value());
+
+			if (relationshipLinksField != null) {
+				links = (Links) relationshipLinksField.get(source);
+			}
+
+			Map<String, Link> linkMap = new HashMap<>();
+
+			if (links != null) {
+				linkMap.putAll(links.getLinks());
+			}
+
+			if (!relationship.path().trim().isEmpty() && !linkMap.containsKey(SELF)) {
+				linkMap.put(SELF, new Link(createURL(ownerLink, relationship.path())));
+			}
+
+			if (!relationship.relatedPath().trim().isEmpty() && !linkMap.containsKey(RELATED)) {
+				linkMap.put(RELATED, new Link(createURL(ownerLink, relationship.relatedPath())));
+			}
+
+			if (!linkMap.isEmpty()) {
+				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+			}
+		}
+		return null;
+	}
+
+	private String createURL(String base, String path) {
+		String result = base;
+		if (!result.endsWith("/")) {
+			result = result.concat("/");
+		}
+
+		if (path.startsWith("/")) {
+			result = result.concat(path.substring(1));
+		} else {
+			result = result.concat(path);
+		}
+
+		return result;
+	}
+
+	private boolean shouldSerializeRelationship(String relationshipName, SerializationSettings settings) {
+		if (settings != null) {
+			if (settings.isRelationshipIncluded(relationshipName) && !settings.isRelationshipExcluded(relationshipName)) {
+				return true;
+			}
+
+			if (settings.isRelationshipExcluded(relationshipName)) {
+				return false;
+			}
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+	}
+
+	private boolean shouldSerializeLinks(SerializationSettings settings) {
+		if (settings != null && settings.serializeLinks() != null) {
+			return settings.serializeLinks();
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_LINKS);
+	}
+
+	private boolean shouldSerializeMeta(SerializationSettings settings) {
+		if (settings != null && settings.serializeMeta() != null) {
+			return settings.serializeMeta();
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_META);
+	}
+
+	private JsonNode removeField(ObjectNode node, Field field) {
+		if (field != null) {
+			return node.remove(namingStrategy.nameForField(null, null, field.getName()));
+		}
+		return null;
+	}
+
+	/**
+	 * Registers new type to be used with this converter instance.
+	 * @param type {@link Class} type to register
+	 * @return <code>true</code> if type was registed, else <code>false</code> (in case type was registered already or
+	 * type is not eligible for registering ie. missing required annotations)
+	 */
+	public boolean registerType(Class<?> type) {
+		if (!configuration.isRegisteredType(type) && ConverterConfiguration.isEligibleType(type)) {
+			return configuration.registerType(type);
+		}
+		return false;
+	}
 
 	/**
 	 * Adds (enables) new deserialization option.

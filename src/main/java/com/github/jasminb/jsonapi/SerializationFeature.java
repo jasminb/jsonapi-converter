@@ -19,12 +19,12 @@ public enum SerializationFeature {
 	/**
 	 * If enabled, meta attribute will be serialized
 	 */
-	INCLUDE_META(false),
+	INCLUDE_META(true),
 
 	/**
 	 * If enabled, links attribute will be serialized
 	 */
-	INCLUDE_LINKS(false);
+	INCLUDE_LINKS(true);
 
 	final boolean enabled;
 

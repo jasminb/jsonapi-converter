@@ -1,6 +1,7 @@
 package com.github.jasminb.jsonapi.retrofit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.jasminb.jsonapi.JSONAPIDocument;
 import com.github.jasminb.jsonapi.ResourceConverter;
 import com.github.jasminb.jsonapi.models.errors.Error;
 import com.github.jasminb.jsonapi.ErrorUtils;
@@ -18,6 +19,7 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -152,5 +154,36 @@ public class RetrofitTest {
 		String requestBody = new String(request.getBody().readByteArray());
 
 		Assert.assertEquals(new String(converter.writeObject(user)), requestBody);
+	}
+
+	@Test
+	public void testPostWithCollection() throws Exception {
+		String usersResponse = IOUtils.getResourceAsString("users.json");
+
+
+		server.enqueue(new MockResponse()
+				.setResponseCode(201)
+				.setBody(usersResponse));
+
+
+		List<User> users = new ArrayList<>();
+
+		User user = new User();
+		user.setId("id");
+		user.setName("John");
+		users.add(user);
+
+		List<User> result = service.createMultipleUsers(new JSONAPIDocument<>(users)).execute().body().get();
+		RecordedRequest request = server.takeRequest();
+		String requestBody = new String(request.getBody().readByteArray());
+
+		Assert.assertEquals(2, result.size());
+
+		JSONAPIDocument<List<User>> serverSide = converter.readDocumentCollection(requestBody.getBytes(), User.class);
+
+		Assert.assertEquals(1, serverSide.get().size());
+		Assert.assertEquals(user.getId(), serverSide.get().iterator().next().getId());
+		Assert.assertEquals(user.getName(), serverSide.get().iterator().next().getName());
+
 	}
 }
