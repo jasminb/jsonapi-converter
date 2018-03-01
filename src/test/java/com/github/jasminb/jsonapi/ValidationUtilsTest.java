@@ -36,6 +36,12 @@ public class ValidationUtilsTest {
 		ValidationUtils.ensureNotError(mapper, node);
 	}
 
+	@Test(expected = ResourceParseException.class)
+	public void testNodeWithVersionIsError() throws IOException {
+		JsonNode node = mapper.readTree(IOUtils.getResourceAsString("errors-with-version.json"));
+		ValidationUtils.ensureNotError(mapper, node);
+	}
+
 	@Test
 	public void testRelationshipValidationPositive() throws IOException {
 		Assert.assertTrue(ValidationUtils.isRelationshipParsable(mapper.readTree("{\"type\" : \"type\", \"id\" : " +
