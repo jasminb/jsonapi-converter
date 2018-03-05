@@ -86,7 +86,7 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 														  Annotation[] methodAnnotations, Retrofit retrofit) {
 		RetrofitType retrofitType = new RetrofitType(type);
 
-		if (retrofitType.isValid() && deserializer.isRegisteredType(retrofitType.getType())) {
+		if (retrofitType.isValid() && serializer.isRegisteredType(retrofitType.getType())) {
 			return new JSONAPIRequestBodyConverter<>(serializer);
 		} else if (alternativeFactory != null) {
 			return alternativeFactory.requestBodyConverter(type, parameterAnnotations, methodAnnotations, retrofit);
