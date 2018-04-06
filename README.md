@@ -561,3 +561,21 @@ open class MyClass {
 ```
 
 Removing the `open` modifier will solve the issue.
+
+#### Note for Proguard
+
+This library use reflection at runtime for checking if all registred types have an ID-field.  
+You have to add this proguard rule:
+```
+# Keep jsonapi-converter relative fields
+-keepclassmembers class * {
+    @com.github.jasminb.jsonapi.annotations.Id <fields>;
+}
+```
+
+Proguard should remove all fields and methods that you are not accessing. If you would like to keep all deserialized fields, you can add a rule for unconditially keep all your POJO classes.
+```
+# Keep all POJO classes
+-keep class com.example.json.** {*;}
+```
+Replace `com.example.json` by the correct package.
