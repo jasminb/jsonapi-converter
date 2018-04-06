@@ -573,7 +573,7 @@ You have to add this proguard rule:
 }
 ```
 
-Proguard should remove all fields and methods that you are not accessing. If you would like to keep all deserialized fields, you can add a rule for unconditially keep all your POJO classes.
+Proguard should remove all fields and methods that you are not accessing. If you would like to keep all deserialized fields, you can add a rule for unconditionally keep all your POJO classes.
 ```
 # Keep all POJO classes
 -keep class com.example.json.** {*;}
