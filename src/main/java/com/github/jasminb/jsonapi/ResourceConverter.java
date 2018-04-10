@@ -819,8 +819,9 @@ public class ResourceConverter {
 			for (Field relationshipField : relationshipFields) {
 				Object relationshipObject = relationshipField.get(object);
 
+				removeField(attributesNode, relationshipField);
+
 				if (relationshipObject != null) {
-					removeField(attributesNode, relationshipField);
 
 					Relationship relationship = configuration.getFieldRelationship(relationshipField);
 
