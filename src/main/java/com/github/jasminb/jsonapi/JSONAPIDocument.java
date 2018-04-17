@@ -3,6 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.models.errors.Error;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -50,10 +51,54 @@ public class JSONAPIDocument<T> {
 	}
 
 	/**
+	 * Creates new JsonApiDocument.
+	 *
+	 * @param data {@link T} API resource type
+	 * @param links @link Links} links
+	 * @param meta {@link Map} meta
+	 */
+	public JSONAPIDocument(T data, Links links, Map<String, Object> meta) {
+		this(data);
+		this.links = links;
+		this.meta = meta;
+	}
+
+	/**
+	 * Creates new JsonApiDocument.
+	 *
+	 * @param data {@link T} API resource type
+	 * @param links @link Links} links
+	 * @param meta {@link Map} meta
+	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
+	 */
+	public JSONAPIDocument(T data, Links links, Map<String, Object> meta, ObjectMapper deserializer) {
+		this(data, links, meta);
+		this.deserializer = deserializer;
+	}
+
+	/**
 	 * Creates new JSONAPIDocument.
 	 */
 	public JSONAPIDocument() {
 		// Default constructor
+	}
+
+	/**
+	 * Creates new JSONAPIDocument.
+	 *
+	 * @param errors errors
+	 */
+	public JSONAPIDocument(Iterable<? extends Error> errors) {
+		this.errors = errors;
+	}
+
+	/**
+	 * Creates new JSONAPIDocument.
+	 *
+	 * @param error error
+	 */
+	public JSONAPIDocument(Error error) {
+		this.errors = Arrays.asList(error);
 	}
 	
 	/**
