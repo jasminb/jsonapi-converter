@@ -21,6 +21,13 @@ public class Links implements Serializable {
 
 	/**
 	 * Create new Links.
+	 */
+	public Links() {
+		this.links = new HashMap<>();
+	}
+
+	/**
+	 * Create new Links.
 	 * @param linkMap {@link Map} link data
 	 */
 	public Links(Map<String, Link> linkMap) {
