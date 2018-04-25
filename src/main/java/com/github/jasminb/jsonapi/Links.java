@@ -3,7 +3,7 @@ package com.github.jasminb.jsonapi;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -23,7 +23,7 @@ public class Links implements Serializable {
 	 * Create new Links.
 	 */
 	public Links() {
-		this.links = new HashMap<>();
+		this.links = new LinkedHashMap<>();
 	}
 
 	/**
@@ -31,7 +31,7 @@ public class Links implements Serializable {
 	 * @param linkMap {@link Map} link data
 	 */
 	public Links(Map<String, Link> linkMap) {
-		this.links = new HashMap<>(linkMap);
+		this.links = new LinkedHashMap<>(linkMap);
 	}
 
 	/**
@@ -108,7 +108,7 @@ public class Links implements Serializable {
 	 * @return {@link Map} link data
 	 */
 	public Map<String, Link> getLinks() {
-		return new HashMap<>(links);
+		return new LinkedHashMap<>(links);
 	}
 
 	/**
