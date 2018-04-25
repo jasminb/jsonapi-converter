@@ -753,11 +753,12 @@ public class ResourceConverter {
 			ObjectNode result = objectMapper.createObjectNode();
 			result.set(DATA, results);
 
-			result = addIncludedSection(result, includedDataMap);
-
 			// Handle global links and meta
 			serializeMeta(documentCollection, result, serializationSettings);
 			serializeLinks(documentCollection, result, serializationSettings);
+
+			result = addIncludedSection(result, includedDataMap);
+
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -782,19 +783,15 @@ public class ResourceConverter {
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
+		JsonNode meta = null;
 		if (metaField != null) {
-			JsonNode meta = removeField(attributesNode, metaField);
-			if (meta != null && shouldSerializeMeta(settings)) {
-				dataNode.set(META, meta);
-			}
+			meta = removeField(attributesNode, metaField);
 		}
 
 		// Handle links
 		String selfHref = null;
 		JsonNode jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
 		if (jsonLinks != null) {
-			dataNode.set(LINKS, jsonLinks);
-
 			if (jsonLinks.has(SELF)) {
 				selfHref = jsonLinks.get(SELF).get(HREF).asText();
 			}
@@ -911,6 +908,15 @@ public class ResourceConverter {
 				dataNode.set(RELATIONSHIPS, relationshipsNode);
 			}
 		}
+
+		if (jsonLinks != null) {
+			dataNode.set(LINKS, jsonLinks);
+		}
+
+		if (meta != null && shouldSerializeMeta(settings)) {
+			dataNode.set(META, meta);
+		}
+
 		return dataNode;
 	}
 
