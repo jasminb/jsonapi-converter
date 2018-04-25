@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
@@ -793,7 +794,12 @@ public class ResourceConverter {
 		JsonNode jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
 		if (jsonLinks != null) {
 			if (jsonLinks.has(SELF)) {
-				selfHref = jsonLinks.get(SELF).get(HREF).asText();
+				JsonNode selfLink = jsonLinks.get(SELF);
+				if (selfLink instanceof TextNode) {
+					selfHref = selfLink.textValue();
+				} else {
+					selfHref = selfLink.get(HREF).asText();
+				}
 			}
 		}
 

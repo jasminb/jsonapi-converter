@@ -1,11 +1,18 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 
 /**
  * Models a JSON API Link object.
  */
+@JsonSerialize(using = Link.LinkSerializer.class)
 public class Link implements Serializable {
 	private static final long serialVersionUID = -6509249812347545112L;
 	
@@ -78,5 +85,25 @@ public class Link implements Serializable {
 	@Override
 	public String toString() {
 		return String.valueOf(getHref());
+	}
+
+
+	protected static class LinkSerializer extends StdSerializer<Link> {
+
+		public LinkSerializer() {
+			super(Link.class);
+		}
+
+		@Override
+		public void serialize(Link link, JsonGenerator json, SerializerProvider provider) throws IOException {
+			if (link.getMeta() != null) {
+				json.writeStartObject();
+				json.writeStringField(JSONAPISpecConstants.HREF, link.getHref());
+				json.writeObjectField(JSONAPISpecConstants.META, link.getMeta());
+				json.writeEndObject();
+			} else {
+				json.writeString(link.getHref());
+			}
+		}
 	}
 }
