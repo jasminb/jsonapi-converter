@@ -1,5 +1,8 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -10,6 +13,8 @@ public class Link implements Serializable {
 	private static final long serialVersionUID = -6509249812347545112L;
 	
 	private String href;
+
+	@JsonInclude(Include.NON_NULL)
 	private Map<String, ?> meta;
 	
 	/**

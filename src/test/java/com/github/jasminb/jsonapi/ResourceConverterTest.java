@@ -688,6 +688,41 @@ public class ResourceConverterTest {
 		converter.readDocument(apiResponse, User.class);
 	}
 
+	@Test
+	public void testWriteLinkWithMeta() throws Exception {
+		JSONAPIDocument<?> document = new JSONAPIDocument<>(null);
+
+		Map<String, Object> linkMeta = new HashMap<>();
+		linkMeta.put("meta", "abc");
+
+		Map<String, Link> linkMap = new HashMap<>();
+		linkMap.put("self", new Link("abc", linkMeta));
+
+		document.setLinks(new Links(linkMap));
+
+		String serialized = new String(converter.writeDocument(document));
+
+		String expected = "{\"links\":{\"self\":{\"href\":\"abc\",\"meta\":{\"meta\":\"abc\"}}}}";
+
+		Assert.assertEquals(expected, serialized);
+	}
+
+	@Test
+	public void testWriteLinkWithoutMeta() throws Exception {
+		JSONAPIDocument<?> document = new JSONAPIDocument<>(null);
+
+		Map<String, Link> linkMap = new HashMap<>();
+		linkMap.put("self", new Link("abc"));
+
+		document.setLinks(new Links(linkMap));
+
+		String serialized = new String(converter.writeDocument(document));
+
+		String expected = "{\"links\":{\"self\":{\"href\":\"abc\"}}}";
+
+		Assert.assertEquals(expected, serialized);
+	}
+
 	/**
 	 * Simple global RelationshipResolver implementation that maintains a count of responses for each
 	 * relationship url.
