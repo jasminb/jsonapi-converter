@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -745,7 +746,7 @@ public class ResourceConverter {
 		try {
 			resourceCache.init();
 			ArrayNode results = objectMapper.createArrayNode();
-			Map<String, ObjectNode> includedDataMap = new HashMap<>();
+			Map<String, ObjectNode> includedDataMap = new LinkedHashMap<>();
 
 			for (Object object : documentCollection.get()) {
 				results.add(getDataNode(object, includedDataMap, serializationSettings));
