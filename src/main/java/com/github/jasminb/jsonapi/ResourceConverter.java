@@ -509,9 +509,16 @@ public class ResourceConverter {
 							Collection elements = createCollectionInstance(relationshipField.getType());
 
 							for (JsonNode element : relationship.get(DATA)) {
-								Object relationshipObject = parseRelationship(element, type);
-								if (relationshipObject != null) {
-									elements.add(relationshipObject);
+								try {
+									Object relationshipObject = parseRelationship(element, type);
+									if (relationshipObject != null) {
+										elements.add(relationshipObject);
+									}
+								} catch (Exception ex) {
+									if(relationshipField.getType().isInterface() &&
+											!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP)) {
+										throw ex;
+									}
 								}
 							}
 							relationshipField.set(object, elements);
@@ -590,7 +597,7 @@ public class ResourceConverter {
 		String id = idNode != null ? idNode.asText().trim() : "";
 
 		if (id.isEmpty() && deserializationFeatures.contains(DeserializationFeature.REQUIRE_RESOURCE_ID)) {
-			throw new IllegalArgumentException("Resource must have an non null and non-empty 'id' attribute!");
+			throw new IllegalArgumentException("Resource must have an non null and non-empty 'id' attribute! " + object.toString());
 		}
 
 		String type = object.get(TYPE).asText();

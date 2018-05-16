@@ -14,6 +14,9 @@ public class Comment {
 	@Relationship("author")
 	private Author author;
 
+	@Relationship("about")
+	private Commentable about;
+
 	public String getId() {
 		return id;
 	}
@@ -36,5 +39,13 @@ public class Comment {
 
 	public void setAuthor(Author author) {
 		this.author = author;
+	}
+
+	public Commentable getAbout() {
+		return about;
+	}
+
+	public void setAbout(Commentable about) {
+		this.about = about;
 	}
 }

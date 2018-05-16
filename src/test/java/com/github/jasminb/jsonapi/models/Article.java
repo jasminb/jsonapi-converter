@@ -12,7 +12,7 @@ import java.util.List;
 
 @Type("articles")
 @JsonIdentityInfo(generator = ObjectIdGenerators.StringIdGenerator.class, property = "id")
-public class Article {
+public class Article implements Commentable {
 	@Id
 	private String id;
 
