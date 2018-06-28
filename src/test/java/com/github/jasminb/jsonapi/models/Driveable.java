@@ -1,4 +1,4 @@
 package com.github.jasminb.jsonapi.models;
 
-public interface Commentable {
+public interface Driveable {
 }

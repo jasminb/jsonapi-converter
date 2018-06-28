@@ -7,17 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
-import com.github.jasminb.jsonapi.models.Article;
-import com.github.jasminb.jsonapi.models.Author;
-import com.github.jasminb.jsonapi.models.Comment;
-import com.github.jasminb.jsonapi.models.IntegerIdResource;
-import com.github.jasminb.jsonapi.models.LongIdResource;
-import com.github.jasminb.jsonapi.models.NoDefaultConstructorClass;
-import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
-import com.github.jasminb.jsonapi.models.RecursingNode;
-import com.github.jasminb.jsonapi.models.SimpleMeta;
-import com.github.jasminb.jsonapi.models.Status;
-import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.*;
 import com.github.jasminb.jsonapi.models.inheritance.BaseModel;
 import com.github.jasminb.jsonapi.models.inheritance.City;
 import com.github.jasminb.jsonapi.models.inheritance.Engineer;
@@ -55,7 +45,7 @@ public class ResourceConverterTest {
 		converter = new ResourceConverter("https://api.example.com", Status.class, User.class, Author.class,
 				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
 				IntegerIdResource.class, LongIdResource.class,
-				NoDefaultConstructorClass.class);
+				NoDefaultConstructorClass.class, Car.class, Dealership.class);
 	}
 
 	@Test
@@ -329,6 +319,16 @@ public class ResourceConverterTest {
 		Assert.assertFalse(user.getStatuses().isEmpty());
 
 		Assert.assertEquals("valid", user.getStatuses().get(0).getId());
+	}
+
+	@Test
+	public void testReadPolymorphicRelationships() throws IOException {
+		ResourceConverter carConverter = new ResourceConverter("https://api.example.com", Car.class, Dealership.class);
+				InputStream apiResponse = IOUtils.getResource("cars.json");
+
+		carConverter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP);
+		JSONAPIDocument<Dealership> dealershipDocument = carConverter.readDocument(apiResponse, Dealership.class);
+		Assert.assertNotNull(dealershipDocument.get().getAutomobiles());
 	}
 
 	@Test(expected = IllegalArgumentException.class)

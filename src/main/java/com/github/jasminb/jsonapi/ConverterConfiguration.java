@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Converter configuration.
@@ -37,7 +38,7 @@ public class ConverterConfiguration {
 	private final Map<Class<?>, Class<?>> metaTypeMap = new HashMap<>();
 	private final Map<Class<?>, Field> metaFieldMap = new HashMap<>();
 	private final Map<Class<?>, Field> linkFieldMap = new HashMap<>();
-	
+
 	// Relationship links lookups
 	private final Map<Class<?>, Map<String, Field>> relationshipLinksFieldMap = new HashMap<>();
 
@@ -164,12 +165,10 @@ public class ConverterConfiguration {
 				throw new IllegalArgumentException(String.format("Only one links field is allowed for type '%s'",
 						clazz.getCanonicalName()));
 			}
-
-		} else {
-			if (!clazz.isInterface()) {
-				throw new IllegalArgumentException("Class " + clazz.getName() +
-						" don't have Type annotation. All resource classes must be annotated with Type annotation!");
-			}
+		} else if (!clazz.isInterface()) {
+			throw new IllegalArgumentException(String.format(
+					"Class %s doesn't have a Type annotation. All resource classes must be annotated with a Type annotation!",
+					clazz.getName()));
 		}
 	}
 
