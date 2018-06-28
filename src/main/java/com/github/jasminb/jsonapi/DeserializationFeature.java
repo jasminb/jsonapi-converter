@@ -19,13 +19,7 @@ public enum DeserializationFeature {
 	 * This option determines whether encountering unknown types results in {@link IllegalArgumentException} being
 	 * thrown, or if parsing continues and the unknown field is ignored.
 	 */
-	ALLOW_UNKNOWN_INCLUSIONS(false),
-
-	/**
-	 * This option determines if relationship (collection) can have unknown type.
-	 * Can be use with polymorphic relationship.
-	 */
-	ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP(false);
+	ALLOW_UNKNOWN_INCLUSIONS(false);
 
 	private final boolean enabledByDefault;
 

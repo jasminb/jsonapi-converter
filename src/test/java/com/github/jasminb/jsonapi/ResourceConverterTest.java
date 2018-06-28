@@ -7,7 +7,19 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
-import com.github.jasminb.jsonapi.models.*;
+import com.github.jasminb.jsonapi.models.Article;
+import com.github.jasminb.jsonapi.models.Author;
+import com.github.jasminb.jsonapi.models.Car;
+import com.github.jasminb.jsonapi.models.Comment;
+import com.github.jasminb.jsonapi.models.Dealership;
+import com.github.jasminb.jsonapi.models.IntegerIdResource;
+import com.github.jasminb.jsonapi.models.LongIdResource;
+import com.github.jasminb.jsonapi.models.NoDefaultConstructorClass;
+import com.github.jasminb.jsonapi.models.NoIdAnnotationModel;
+import com.github.jasminb.jsonapi.models.RecursingNode;
+import com.github.jasminb.jsonapi.models.SimpleMeta;
+import com.github.jasminb.jsonapi.models.Status;
+import com.github.jasminb.jsonapi.models.User;
 import com.github.jasminb.jsonapi.models.inheritance.BaseModel;
 import com.github.jasminb.jsonapi.models.inheritance.City;
 import com.github.jasminb.jsonapi.models.inheritance.Engineer;
@@ -326,7 +338,6 @@ public class ResourceConverterTest {
 		ResourceConverter carConverter = new ResourceConverter("https://api.example.com", Car.class, Dealership.class);
 				InputStream apiResponse = IOUtils.getResource("cars.json");
 
-		carConverter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP);
 		JSONAPIDocument<Dealership> dealershipDocument = carConverter.readDocument(apiResponse, Dealership.class);
 		Assert.assertNotNull(dealershipDocument.get().getAutomobiles());
 	}
