@@ -1,0 +1,45 @@
+{
+  "data": {
+    "type": "dealerships",
+    "id": "1",
+    "attributes": {
+      "name": "Cars, Cars, Cars"
+    },
+    "links": {
+      "self": "http://example.com/dealerships/1"
+    },
+    "relationships": {
+      "inventory": {
+        "links": {
+          "self": "http://example.com/dealerships/1/relationships/inventory",
+          "related": "http://example.com/dealerships/1/inventory"
+        },
+        "data": [
+          { "type": "cars", "id": "2" },
+          { "type": "cars", "id": "3" }
+        ]
+      }
+    }
+  },
+  "included": [{
+    "type": "cars",
+    "id": "2",
+    "attributes": {
+      "make": "BMW",
+      "model": "i8 Roadster"
+    },
+    "links": {
+      "self": "http://example.com/cars/2"
+    }
+  }, {
+    "type": "cars",
+    "id": "3",
+    "attributes": {
+      "make": "Volkswagon",
+      "model": "Golf GTI"
+    },
+    "links": {
+      "self": "http://example.com/cars/3"
+    }
+  }]
+}
