@@ -346,20 +346,11 @@ public class ResourceConverterTest {
 	public void testReadPolymorphicRelationshipsWithoutNewType() throws IOException {
 		ResourceConverter carConverter = new ResourceConverter("https://api.example.com", Car.class, Dealership.class);
 		carConverter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS);
+		carConverter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP);
 		InputStream apiResponse = IOUtils.getResource("cars2.json");
 
 		JSONAPIDocument<Dealership> dealershipDocument = carConverter.readDocument(apiResponse, Dealership.class);
 		Assert.assertNotNull(dealershipDocument.get().getAutomobiles());
-		/*
-		Failing with:
-		com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException: No class was registered for type 'trucks'.
-			at com.github.jasminb.jsonapi.ResourceConverter.getActualType(ResourceConverter.java:1088)
-			at com.github.jasminb.jsonapi.ResourceConverter.readObject(ResourceConverter.java:330)
-			at com.github.jasminb.jsonapi.ResourceConverter.parseRelationship(ResourceConverter.java:571)
-			at com.github.jasminb.jsonapi.ResourceConverter.handleRelationships(ResourceConverter.java:512)
-			at com.github.jasminb.jsonapi.ResourceConverter.readDocument(ResourceConverter.java:217)
-			at com.github.jasminb.jsonapi.ResourceConverterTest.testReadPolymorphicRelationshipsWithoutNewType(ResourceConverterTest.java:351)
-		 */
 	}
 
 	@Test(expected = IllegalArgumentException.class)
