@@ -514,7 +514,7 @@ public class ResourceConverter {
 									if (relationshipObject != null) {
 										elements.add(relationshipObject);
 									}
-								} catch (Exception ex) {
+								} catch (UnregisteredTypeException ex) {
 									// Don't raise exception if the relationship is an interface and that we accept new type
 									if (relationshipField.getType().isInterface() &&
 											!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP)) {
