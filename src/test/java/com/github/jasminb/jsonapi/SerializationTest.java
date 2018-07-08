@@ -1,11 +1,15 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
+import com.github.jasminb.jsonapi.models.IntegerIdResource;
 import com.github.jasminb.jsonapi.models.SimpleMeta;
+import com.github.jasminb.jsonapi.models.SimpleResource;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
 import com.github.jasminb.jsonapi.models.errors.Error;
@@ -13,6 +17,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -127,6 +132,22 @@ public class SerializationTest {
 		Assert.assertNull(status.getContent());
 	}
 	
+	@Test
+	public void testEnableNonEmptyAttributesTagThroughSettings() throws Exception {
+		SimpleResource source = new SimpleResource();
+		source.setId(80085);
+		JSONAPIDocument<SimpleResource> document = new JSONAPIDocument<>(source);
+
+		SerializationSettings serializationSettings = new SerializationSettings.Builder()
+				.serializeEmptyAttributesTag(false )
+				.build();
+
+		converter.registerType(SimpleResource.class);
+		String s = new String( converter.writeDocument(document, serializationSettings) );
+		ObjectMapper m = new ObjectMapper();
+		Assert.assertNull( m.readTree(s.getBytes()).get("attributes"));
+	}
+
 	/**
 	 * Covers use-case where global settings are used to disable relationship attribute inclusion but
 	 * behaviour is changed trouh local settings provided when serialization is executed.
@@ -136,18 +157,18 @@ public class SerializationTest {
 	public void testIncludedDataEnabledTroughSettings() throws DocumentSerializationException {
 		converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
 		JSONAPIDocument<User> document = createDocument(createUser());
-		
+
 		SerializationSettings serializationSettings = new SerializationSettings.Builder()
 				.includeRelationship("statuses")
 				.build();
-		
+
 		JSONAPIDocument<User> convertedBack = converter.readDocument(
 				converter.writeDocument(document, serializationSettings), User.class);
-		
+
 		Status status = convertedBack.get().getStatuses().iterator().next();
 		Assert.assertNotNull(status.getContent());
 	}
-	
+
 	@Test
 	public void testOverrideGlobalMetaLinksSettings() throws DocumentSerializationException {
 		JSONAPIDocument<User> document = createDocument(createUser());

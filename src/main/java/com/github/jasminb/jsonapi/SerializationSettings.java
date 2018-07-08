@@ -13,6 +13,7 @@ public class SerializationSettings {
 	private List<String> relationshipExludes;
 	private Boolean serializeMeta;
 	private Boolean serializeLinks;
+	private Boolean serializeEmptyAttributesTag = true;
 	
 	private SerializationSettings() {
 		// Hide CTOR
@@ -52,6 +53,10 @@ public class SerializationSettings {
 		return serializeLinks;
 	}
 	
+	public Boolean serializeEmptyAttributesTag() {
+		return serializeEmptyAttributesTag;
+	}
+
 	/**
 	 * Serialisation settings builder.
 	 */
@@ -60,6 +65,7 @@ public class SerializationSettings {
 		private List<String> relationshipExludes = new ArrayList<>();
 		private Boolean serializeMeta;
 		private Boolean serializeLinks;
+		private Boolean serializeEmptyAttributesTag;
 		
 		/**
 		 * Explicitly enable relationship serialisation.
@@ -70,7 +76,7 @@ public class SerializationSettings {
 			relationshipIncludes.add(relationshipName);
 			return this;
 		}
-		
+
 		/**
 		 * Explicitly disable relationship serialisation.
 		 * @param relationshipName {@link String} relationship name
@@ -100,6 +106,11 @@ public class SerializationSettings {
 			serializeLinks = flag;
 			return this;
 		}
+
+		public Builder serializeEmptyAttributesTag(Boolean flag) {
+			serializeEmptyAttributesTag = flag;
+			return this;
+		}
 		
 		/**
 		 * Create new SerialisationSettings instance.
@@ -111,6 +122,7 @@ public class SerializationSettings {
 			result.relationshipExludes = new ArrayList<>(relationshipExludes);
 			result.serializeLinks = serializeLinks;
 			result.serializeMeta = serializeMeta;
+			result.serializeEmptyAttributesTag = serializeEmptyAttributesTag;
 			return result;
 		}
 	}
