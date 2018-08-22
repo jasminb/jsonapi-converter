@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
@@ -26,6 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -507,16 +509,32 @@ public class ResourceConverter {
 							Collection elements = createCollectionInstance(relationshipField.getType());
 
 							for (JsonNode element : relationship.get(DATA)) {
-								Object relationshipObject = parseRelationship(element, type);
-								if (relationshipObject != null) {
-									elements.add(relationshipObject);
+								try {
+									Object relationshipObject = parseRelationship(element, type);
+									if (relationshipObject != null) {
+										elements.add(relationshipObject);
+									}
+								} catch (UnregisteredTypeException ex) {
+									// Don't raise exception if the relationship is an interface and that we accept new type
+									if (relationshipField.getType().isInterface() &&
+											!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP)) {
+										throw ex;
+									}
 								}
 							}
 							relationshipField.set(object, elements);
 						} else {
+							try {
 							Object relationshipObject = parseRelationship(relationship.get(DATA), type);
-							if (relationshipObject != null) {
-								relationshipField.set(object, relationshipObject);
+								if (relationshipObject != null) {
+									relationshipField.set(object, relationshipObject);
+								}
+							} catch (UnregisteredTypeException ex) {
+								// Don't raise exception if the relationship is an interface and that we accept new type
+								if (relationshipField.getType().isInterface() &&
+										!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP)) {
+									throw ex;
+								}
 							}
 						}
 					}
@@ -588,7 +606,7 @@ public class ResourceConverter {
 		String id = idNode != null ? idNode.asText().trim() : "";
 
 		if (id.isEmpty() && deserializationFeatures.contains(DeserializationFeature.REQUIRE_RESOURCE_ID)) {
-			throw new IllegalArgumentException("Resource must have an non null and non-empty 'id' attribute!");
+			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'id' attribute! %s", object.toString()));
 		}
 
 		String type = object.get(TYPE).asText();
@@ -744,7 +762,7 @@ public class ResourceConverter {
 		try {
 			resourceCache.init();
 			ArrayNode results = objectMapper.createArrayNode();
-			Map<String, ObjectNode> includedDataMap = new HashMap<>();
+			Map<String, ObjectNode> includedDataMap = new LinkedHashMap<>();
 
 			for (Object object : documentCollection.get()) {
 				results.add(getDataNode(object, includedDataMap, serializationSettings));
@@ -753,11 +771,12 @@ public class ResourceConverter {
 			ObjectNode result = objectMapper.createObjectNode();
 			result.set(DATA, results);
 
-			result = addIncludedSection(result, includedDataMap);
-
 			// Handle global links and meta
 			serializeMeta(documentCollection, result, serializationSettings);
 			serializeLinks(documentCollection, result, serializationSettings);
+
+			result = addIncludedSection(result, includedDataMap);
+
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -782,21 +801,22 @@ public class ResourceConverter {
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
+		JsonNode meta = null;
 		if (metaField != null) {
-			JsonNode meta = removeField(attributesNode, metaField);
-			if (meta != null && shouldSerializeMeta(settings)) {
-				dataNode.set(META, meta);
-			}
+			meta = removeField(attributesNode, metaField);
 		}
 
 		// Handle links
 		String selfHref = null;
 		JsonNode jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
 		if (jsonLinks != null) {
-			dataNode.set(LINKS, jsonLinks);
-
 			if (jsonLinks.has(SELF)) {
-				selfHref = jsonLinks.get(SELF).get(HREF).asText();
+				JsonNode selfLink = jsonLinks.get(SELF);
+				if (selfLink instanceof TextNode) {
+					selfHref = selfLink.textValue();
+				} else {
+					selfHref = selfLink.get(HREF).asText();
+				}
 			}
 		}
 
@@ -911,6 +931,15 @@ public class ResourceConverter {
 				dataNode.set(RELATIONSHIPS, relationshipsNode);
 			}
 		}
+
+		if (jsonLinks != null) {
+			dataNode.set(LINKS, jsonLinks);
+		}
+
+		if (meta != null && shouldSerializeMeta(settings)) {
+			dataNode.set(META, meta);
+		}
+
 		return dataNode;
 	}
 

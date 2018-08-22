@@ -18,14 +18,14 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.8</version>
+  <version>0.8.1</version>
 </dependency>
 ```
 
 SBT:
 
 ```groovy
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.8"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.8.1"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -579,3 +579,8 @@ Proguard should remove all fields and methods that you are not accessing. If you
 -keep class com.example.json.** {*;}
 ```
 Replace `com.example.json` by the correct package.
+
+```
+# Keep custom id handlers
+-keep class * implements com.github.jasminb.jsonapi.ResourceIdHandler
+```

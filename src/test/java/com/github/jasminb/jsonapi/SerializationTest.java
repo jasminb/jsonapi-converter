@@ -2,9 +2,6 @@ package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.github.jasminb.jsonapi.annotations.Relationship;
-import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
-import com.github.jasminb.jsonapi.annotations.RelationshipMeta;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
@@ -229,6 +226,38 @@ public class SerializationTest {
 
 		Assert.assertFalse(new String(data).contains("user_relationship_meta"));
 		Assert.assertFalse(new String(data).contains("user_relationship_links"));
+	}
+
+	@Test
+	public void testLinkWithoutMeta() throws DocumentSerializationException {
+		User user = new User();
+		user.setName("Name");
+		Map<String, Link> linkMap = new HashMap<>();
+		linkMap.put(JSONAPISpecConstants.SELF, new Link("the-self-link"));
+		user.links = new Links(linkMap);
+
+		byte [] data = converter.writeDocument(new JSONAPIDocument<>(user));
+
+		Assert.assertFalse(new String(data).contains("href"));
+		Assert.assertTrue(new String(data).contains("the-self-link"));
+	}
+
+	@Test
+	public void testLinkWithMeta() throws DocumentSerializationException {
+		User user = new User();
+		user.setName("Name");
+		Map<String, String> meta = new HashMap<>();
+		meta.put("foo", "bar");
+		Map<String, Link> linkMap = new HashMap<>();
+		linkMap.put(JSONAPISpecConstants.SELF, new Link("the-self-link", meta));
+		user.links = new Links(linkMap);
+
+		byte [] data = converter.writeDocument(new JSONAPIDocument<>(user));
+
+		Assert.assertTrue(new String(data).contains("href"));
+		Assert.assertTrue(new String(data).contains("the-self-link"));
+		Assert.assertTrue(new String(data).contains("foo"));
+		Assert.assertTrue(new String(data).contains("bar"));
 	}
 
 	private JSONAPIDocument<User> createDocument(User user) {
