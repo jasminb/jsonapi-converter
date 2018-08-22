@@ -342,6 +342,17 @@ public class ResourceConverterTest {
 		Assert.assertNotNull(dealershipDocument.get().getAutomobiles());
 	}
 
+	@Test
+	public void testReadPolymorphicRelationshipsWithoutNewType() throws IOException {
+		ResourceConverter carConverter = new ResourceConverter("https://api.example.com", Car.class, Dealership.class);
+		carConverter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS);
+		carConverter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP);
+		InputStream apiResponse = IOUtils.getResource("cars2.json");
+
+		JSONAPIDocument<Dealership> dealershipDocument = carConverter.readDocument(apiResponse, Dealership.class);
+		Assert.assertNotNull(dealershipDocument.get().getAutomobiles());
+	}
+
 	@Test(expected = IllegalArgumentException.class)
 	public void testUsingNoTypeAnnotationClass() {
 		new ResourceConverter(String.class);
