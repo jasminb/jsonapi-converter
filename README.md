@@ -22,6 +22,11 @@ Maven:
 </dependency>
 ```
 
+Gradle:
+```groovy
+implementation 'com.github.jasminb:jsonapi-converter:0.9'
+```
+
 SBT:
 
 ```groovy
