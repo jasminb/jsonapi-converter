@@ -65,6 +65,7 @@ When writing models that will be used to represent requests and responses, one n
  - Each model class must be annotated with `com.github.jasminb.jsonapi.annotations.Type` annotation
  - Each class must contain an `String` attribute annotated with `com.github.jasminb.jsonapi.annotations.Id` annotation
  - All relationships must be annotated with `com.github.jasminb.jsonapi.annotations.Relationship` annotation
+ - Attributes in the API that are _not_ well-formed Java identifiers, must use `JsonProperty` annotation
 
 #### Type annotation
 
@@ -304,6 +305,48 @@ public class Book {
 ```
 
 Links are inheritable.
+
+#### Attribute annotations
+
+If your JSON API endpoint returns attributes that do not map well to Java identifiers, you'll get a fatal error on deserialization. The log message will tell you
+about an unrecognized field with that name. To fix it, you can use `com.fasterxml.jackson.annotation.JsonProperty`.
+
+Example: your JSON API endpoint returns something like this
+
+```json
+{
+    "data": [
+        {
+            "id": "1",
+            "type": "gears",
+            "attributes": {
+                "tooth-count": 13,
+                "tooth-depth": 21
+            }
+        }
+    ]
+}
+```
+
+then your model must be:
+
+```java
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@Type("gears")
+public class Gear {
+  @Id
+  private String id;
+
+  @JsonProperty("tooth-count")
+  private Long toothCount;
+  @JsonProperty("tooth-depth")
+  private Long toothDepth;
+}
+```
+
+This also lets you use different names for your fields than your API.
 
 #### Full example
 
