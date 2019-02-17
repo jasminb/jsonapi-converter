@@ -2,6 +2,8 @@ package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.models.errors.Error;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -109,6 +111,7 @@ public class JSONAPIDocument<T> {
 	 * </p>
 	 * @param errors
 	 */
+	@NotNull
 	public static JSONAPIDocument<?> createErrorDocument(Iterable<? extends Error> errors) {
 		JSONAPIDocument<?> result = new JSONAPIDocument();
 		result.errors = errors;
@@ -120,6 +123,7 @@ public class JSONAPIDocument<T> {
 	 *
 	 * @return {@link T} resource object
 	 */
+	@Nullable
 	public T get() {
 		return data;
 	}
@@ -129,6 +133,7 @@ public class JSONAPIDocument<T> {
 	 *
 	 * @return {@link Map} meta
 	 */
+	@Nullable
 	public Map<String, ?> getMeta() {
 		return meta;
 	}
@@ -154,6 +159,7 @@ public class JSONAPIDocument<T> {
 	 *
 	 * @return the links
 	 */
+	@Nullable
 	public Links getLinks() {
 		return links;
 	}
@@ -186,6 +192,7 @@ public class JSONAPIDocument<T> {
 	 * @param <T> type
 	 * @return meta or <code>null</code>
 	 */
+	@Nullable
 	public <T> T getMeta(Class<?> metaType) {
 		if (meta != null && deserializer != null) {
 			return (T) deserializer.convertValue(meta, metaType);
@@ -198,6 +205,7 @@ public class JSONAPIDocument<T> {
 	 * Returns error objects or <code>null</code> in case no errors were set.
 	 * @return {@link Iterable} errors
 	 */
+	@Nullable
 	public Iterable<? extends Error> getErrors() {
 		return errors;
 	}
