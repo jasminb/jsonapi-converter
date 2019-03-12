@@ -681,6 +681,7 @@ public class ResourceConverter {
 
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 *
 	 * @param document {@link JSONAPIDocument} document to serialize
 	 * @param settings {@link SerializationSettings} settings that override global serialization settings
 	 * @return serialized content in bytes
@@ -699,6 +700,12 @@ public class ResourceConverter {
 			if (document.get() != null) {
 				ObjectNode dataNode = getDataNode(document.get(), includedDataMap, settings);
 				result.set(DATA, dataNode);
+
+				// It is possible that relationships point back to top-level resource, in this case remove it from
+				// included section since it is already present (as a top level resource)
+				String identifier = String.valueOf(getIdValue(document.get()))
+						.concat(configuration.getTypeName(document.get().getClass()));
+				includedDataMap.remove(identifier);
 				result = addIncludedSection(result, includedDataMap);
 			}
 

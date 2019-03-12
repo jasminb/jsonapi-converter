@@ -1,6 +1,5 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
@@ -36,6 +35,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -563,8 +563,39 @@ public class ResourceConverterTest {
 		Assert.assertNull(deserialized.get().getAuthor().getFirstName());
 	}
 
+	/**
+	 * Asserts that in cases where relationship close the loop (a -> b -> a), a is not doubly marshaled.
+	 *
+	 * @throws DocumentSerializationException in case serialization calls fail
+	 */
 	@Test
-	public void testWriteWithKebabCaseRelationships() throws DocumentSerializationException, JsonProcessingException, IOException {
+	public void testWriteWithRecursiveRelationship() throws DocumentSerializationException {
+		Author author = new Author();
+		author.setId("authorid");
+		author.setFirstName("John");
+
+		Author author2 = new Author();
+		author2.setId("authorid");
+		author2.setFirstName("John");
+
+		Article article = new Article();
+		article.setId("articleid");
+		article.setTitle("title");
+		article.setAuthor(author2);
+
+		author.setArticles(Collections.singletonList(article));
+
+		ResourceConverter converter = new ResourceConverter(Author.class, Article.class);
+		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+		byte [] data = converter.writeDocument(new JSONAPIDocument<>(author));
+
+		JSONAPIDocument<Author> deserialized = converter.readDocument(data, Author.class);
+		Assert.assertEquals(deserialized.get(), deserialized.get().getArticles().iterator().next().getAuthor());
+	}
+
+	@Test
+	public void testWriteWithKebabCaseRelationships() throws DocumentSerializationException, IOException {
 		final ObjectMapper kebabMapper = new ObjectMapper();
 		kebabMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
 		ResourceConverter kebabConverter = new ResourceConverter(kebabMapper, "https://api.example.com", Status.class, User.class, Author.class,
