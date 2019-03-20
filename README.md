@@ -204,6 +204,104 @@ There two different relationship types:
  
 Have in mind that relationship (same as id) is inheritable and can be defined in a base class.
 
+#### Polymorphic Relationships
+
+In order to support polymorphic relationships, an `interface` needs to be created and than implemented by all possible types relationship supports. Created interface is used as a relationship's type (see example below).
+
+
+Example response containing multiple types in a relationship:
+
+```json
+{
+  "data": {
+    "type": "dealerships",
+    "id": "1",
+    "attributes": {
+      "name": "Dealership name"
+    },
+    "links": {
+      "self": "http://example.com/dealerships/1"
+    },
+    "relationships": {
+      "inventory": {
+        "links": {
+          "self": "http://example.com/dealerships/1/relationships/inventory",
+          "related": "http://example.com/dealerships/1/inventory"
+        },
+        "data": [
+          { "type": "cars", "id": "2" },
+          { "type": "trucks", "id": "1" }
+        ]
+      }
+    }
+  },
+  "included": [{
+    "type": "cars",
+    "id": "2",
+    "attributes": {
+      "make": "BMW",
+      "model": "i8 Roadster"
+    },
+    "links": {
+      "self": "http://example.com/cars/2"
+    }
+  }, {
+    "type": "trucks",
+    "id": "1",
+    "attributes": {
+      "make": "Ford",
+      "model": "Semi"
+    },
+    "links": {
+      "self": "http://example.com/trucks/1"
+    }
+  }]
+}
+```
+
+Needed classes, and example usage:
+
+```java
+public interface Driveable {}
+
+@Type("cars")
+public class Car implements Driveable {
+	@Id
+	private String id;
+	private String model;
+	private String make;
+	// Getters and setters...
+}
+
+@Type("trucks")
+public class Truck implements Driveable {
+
+	@Id
+	private String id;
+	private String make;
+	private String model;
+        // Getters and setters...
+}
+
+@Type("dealerships")
+public class Dealership {
+	@Id
+	private String id;
+	private String name;
+	private String city;
+
+        // Interface is used as relalationship type (instead of concrete resource type)
+	@Relationship("inventory")
+	private Collection<Driveable> automobiles;
+}
+
+// Putting everything together
+ResourceConverter converter = new ResourceConverter("https://api.example.com", Car.class, Dealership.class, Truck.class);
+JSONAPIDocument<Dealership> document = converter.readDocument(apiResponse, Dealership.class);
+
+
+```
+
 #### Relationship meta and links
 
 jsonapi-spec allows for having relationship-level metadata and links.
