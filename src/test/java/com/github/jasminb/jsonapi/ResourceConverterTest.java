@@ -23,6 +23,9 @@ import com.github.jasminb.jsonapi.models.inheritance.BaseModel;
 import com.github.jasminb.jsonapi.models.inheritance.City;
 import com.github.jasminb.jsonapi.models.inheritance.Engineer;
 import com.github.jasminb.jsonapi.models.inheritance.EngineeringField;
+import com.github.jasminb.jsonapi.models.inheritance.Movie;
+import com.github.jasminb.jsonapi.models.inheritance.Video;
+import com.github.jasminb.jsonapi.models.inheritance.Vod;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -628,6 +631,45 @@ public class ResourceConverterTest {
 		JSONAPIDocument<BaseModel> engineerDocument = converter.readDocument(data, BaseModel.class);
 
 		Assert.assertTrue(engineerDocument.get() instanceof Engineer);
+	}
+
+	/**
+	 * Tests use-case where API can return different types as part of its data array.
+	 *
+	 * This use-case is solved by introducing base-type and extending it to support different sub-types returned
+	 * by the API.
+	 *
+	 * @throws IOException in case resource loading fails
+	 */
+	@Test
+	public void testSubtypeCollectionDeserialization() throws IOException {
+		converter.registerType(Movie.class);
+		converter.registerType(Vod.class);
+		InputStream data = IOUtils.getResource("subtype-list.json");
+
+		JSONAPIDocument<List<Video>> elements = converter.readDocumentCollection(data, Video.class);
+
+		Assert.assertEquals(2, elements.get().size());
+
+		Movie movie = null;
+		Vod vod = null;
+
+		for (Video video : elements.get()) {
+			if (video instanceof Movie) {
+				movie = (Movie) video;
+			} else {
+				vod = (Vod) video;
+			}
+		}
+
+		Assert.assertNotNull(movie);
+		Assert.assertNotNull(vod);
+
+		Assert.assertEquals("Movie Title", movie.getMovieTitle());
+		Assert.assertEquals("Vod Title", vod.getVodTitle());
+
+		Assert.assertNotNull(movie.getDescription());
+		Assert.assertNotNull(vod.getDescription());
 	}
 
 	@Test
