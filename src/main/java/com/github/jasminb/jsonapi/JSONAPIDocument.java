@@ -1,5 +1,6 @@
 package com.github.jasminb.jsonapi;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.models.errors.Error;
 import org.jetbrains.annotations.NotNull;
@@ -18,7 +19,7 @@ import java.util.Map;
 public class JSONAPIDocument<T> {
 	private T data;
 	private ObjectMapper deserializer;
-	
+
 	private Iterable<? extends Error> errors;
 
 	/**
@@ -30,6 +31,11 @@ public class JSONAPIDocument<T> {
 	 * A map of meta fields, keyed by the meta field name
 	 */
 	private Map<String, Object> meta;
+
+	/**
+	 * Raw JSON-node response
+	 */
+	private JsonNode responseJSONNode;
 
 
 	/**
@@ -50,6 +56,19 @@ public class JSONAPIDocument<T> {
 	public JSONAPIDocument(T data, ObjectMapper deserializer) {
 		this(data);
 		this.deserializer = deserializer;
+	}
+
+	/**
+	 * Creates new JSONAPIDocument.
+	 *
+	 * @param data {@link T} API resource type
+	 * @param jsonNode {@link JsonNode} response JSON
+	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
+	 */
+	public JSONAPIDocument(T data, JsonNode jsonNode, ObjectMapper deserializer) {
+		this(data);
+		this.deserializer = deserializer;
+		this.responseJSONNode = jsonNode;
 	}
 
 	/**
@@ -102,7 +121,7 @@ public class JSONAPIDocument<T> {
 	public JSONAPIDocument(Error error) {
 		this.errors = Arrays.asList(error);
 	}
-	
+
 	/**
 	 * Factory method for creating JSONAPIDocument that holds the Error object.
 	 *
@@ -189,18 +208,18 @@ public class JSONAPIDocument<T> {
 	/**
 	 * Returns typed meta-data object or <code>null</code> if no meta is present.
 	 * @param metaType {@link Class} target type
-	 * @param <T> type
+	 * @param <M> type
 	 * @return meta or <code>null</code>
 	 */
 	@Nullable
-	public <T> T getMeta(Class<?> metaType) {
+	public <M> M getMeta(Class<?> metaType) {
 		if (meta != null && deserializer != null) {
-			return (T) deserializer.convertValue(meta, metaType);
+			return (M) deserializer.convertValue(meta, metaType);
 		}
 
 		return null;
 	}
-	
+
 	/**
 	 * Returns error objects or <code>null</code> in case no errors were set.
 	 * @return {@link Iterable} errors
@@ -208,5 +227,14 @@ public class JSONAPIDocument<T> {
 	@Nullable
 	public Iterable<? extends Error> getErrors() {
 		return errors;
+	}
+
+	/**
+	 * Returns raw JSON node used to create <code>this</code> {@link JSONAPIDocument}.
+	 *
+	 * @return {@link JsonNode}
+	 */
+	public JsonNode getResponseJSONNode() {
+		return responseJSONNode;
 	}
 }

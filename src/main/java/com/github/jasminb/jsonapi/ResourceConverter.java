@@ -217,7 +217,7 @@ public class ResourceConverter {
 				handleRelationships(dataNode, resourceObject);
 			}
 
-			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, objectMapper);
+			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, rootNode, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -290,7 +290,7 @@ public class ResourceConverter {
 				}
 			}
 
-			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, objectMapper);
+			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, rootNode, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
