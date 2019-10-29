@@ -15,4 +15,11 @@ public class InvalidJsonApiResourceException extends RuntimeException {
     public InvalidJsonApiResourceException() {
         super("Resource must contain at least one of 'data', 'error' or 'meta' nodes.");
     }
+
+    /**
+     * Creates a new InvalidJsonApiResourceException.
+     */
+    public InvalidJsonApiResourceException(String errorMessage) {
+        super(errorMessage);
+    }
 }

@@ -268,6 +268,16 @@ public class ResourceConverterTest {
 	}
 
 	@Test
+	public void testReadCollectionInvalidItem() throws IOException {
+		InputStream apiResponse = IOUtils.getResource("missing-type-collection.json");
+
+		thrown.expect(InvalidJsonApiResourceException.class);
+		thrown.expectMessage("Primary data must be an array of resource objects, an array of resource identifier objects, or an empty array ([])");
+
+		converter.readDocumentCollection(apiResponse, User.class);
+	}
+
+	@Test
 	public void testReadWithCollectionRelationship() throws IOException {
 		InputStream apiResponse = IOUtils.getResource("user-with-statuses.json");
 
@@ -335,6 +345,26 @@ public class ResourceConverterTest {
 		assertFalse(user.getStatuses().isEmpty());
 
 		assertEquals("valid", user.getStatuses().get(0).getId());
+	}
+
+	@Test
+	public void testReadIncludedResourceMissingType() throws IOException {
+		InputStream data = IOUtils.getResource("missing-type-inclusion.json");
+
+		thrown.expect(InvalidJsonApiResourceException.class);
+		thrown.expectMessage("Included must be an array of valid resource objects, or an empty array ([])");
+
+		converter.readDocument(data, BaseModel.class);
+
+	}
+
+	@Test
+	public void testReadRelationshipMissingTypeInclusionIsSkipped() throws IOException {
+		InputStream data = IOUtils.getResource("missing-type-relationship.json");
+
+		JSONAPIDocument<Engineer> engineerDocument = converter.readDocument(data, Engineer.class);
+		assertNull(engineerDocument.get().getCity());
+
 	}
 
 	@Test
@@ -514,10 +544,17 @@ public class ResourceConverterTest {
 		assertNull(nullObject.get());
 	}
 
-	@Test
+	@Test(expected = InvalidJsonApiResourceException.class)
 	public void testNullDataNodeCollection() {
 		JSONAPIDocument<List<User>> nullObjectCollection = converter
 				.readDocumentCollection("{\"data\" : null, \"meta\": {}}".getBytes(), User.class);
+		assertTrue(nullObjectCollection.get().isEmpty());
+	}
+
+	@Test
+	public void testEmptyArrayDataNodeCollection() {
+		JSONAPIDocument<List<User>> nullObjectCollection = converter
+				.readDocumentCollection("{\"data\" : [], \"meta\": {}}".getBytes(), User.class);
 		assertTrue(nullObjectCollection.get().isEmpty());
 	}
 
@@ -682,7 +719,7 @@ public class ResourceConverterTest {
 
 		assertEquals("Name", result.get().getName());
 
-		result = converter.readDocument("{\"data\":{\"type\":\"no-def-ctor\",\"id\":\"1\"}}".getBytes(),
+		result = converter.readDocument("{\"data\":{\"type\":\"no-def-ctor\",\"id\":\"1\",\"attributes\":{}}}".getBytes(),
 				NoDefaultConstructorClass.class);
 
 		assertNotNull(result.get());
@@ -780,6 +817,16 @@ public class ResourceConverterTest {
 
 		thrown.expect(UnregisteredTypeException.class);
 		thrown.expectMessage("No class was registered for type 'unRegisteredType'.");
+
+		converter.readDocument(apiResponse, User.class);
+	}
+
+	@Test
+	public void testInvalidDataMissingType() throws IOException {
+		InputStream apiResponse = IOUtils.getResource("missing-type.json");
+
+        thrown.expect(InvalidJsonApiResourceException.class);
+		thrown.expectMessage("Primary data must be either a single resource object, a single resource identifier object, or null");
 
 		converter.readDocument(apiResponse, User.class);
 	}
