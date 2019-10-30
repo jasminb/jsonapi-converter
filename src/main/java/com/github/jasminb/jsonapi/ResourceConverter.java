@@ -205,8 +205,8 @@ public class ResourceConverter {
 				} else {
 					resourceObject = readObject(dataNode, clazz, false);
 				}
-			} else if (dataNode != null && !dataNode.isNull()) {
-				throw new InvalidJsonApiResourceException("Primary data must be either a single resource object, a single resource identifier object, or null");
+			} else {
+				ValidationUtils.ensurePrimaryDataNull(dataNode);
 			}
 
 			// Parse all included resources

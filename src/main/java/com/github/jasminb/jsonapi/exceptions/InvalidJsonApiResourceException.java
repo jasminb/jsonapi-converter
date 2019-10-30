@@ -18,6 +18,8 @@ public class InvalidJsonApiResourceException extends RuntimeException {
 
     /**
      * Creates a new InvalidJsonApiResourceException.
+     *
+     * @param errorMessage detail message containing spec for resource that was invalid.
      */
     public InvalidJsonApiResourceException(String errorMessage) {
         super(errorMessage);

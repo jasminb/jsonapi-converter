@@ -153,4 +153,10 @@ public class ValidationUtils {
 		return true;
 	}
 
+	public static void ensurePrimaryDataNull(JsonNode dataNode) {
+		if (dataNode != null && !dataNode.isNull()) {
+			throw new InvalidJsonApiResourceException("Primary data must be either a single resource object, a single resource identifier object, or null");
+		}
+	}
+
 }
