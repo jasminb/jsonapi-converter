@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
-import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.errors.Error;
 
@@ -190,13 +189,16 @@ public class ResourceConverter {
 
 			// Validate
 			ValidationUtils.ensureValidDocument(objectMapper, rootNode);
+
 			JsonNode dataNode = rootNode.get(DATA);
+
+			ValidationUtils.ensurePrimaryDataValidObjectOrNull(dataNode);
 
 			// Parse data node without handling relationships
 			T resourceObject = null;
 			boolean cached = false;
 
-			if (ValidationUtils.isValidObject(dataNode)) {
+			if (ValidationUtils.isNotNullNode(dataNode)) {
 				String identifier = createIdentifier(dataNode);
 				cached = resourceCache.contains(identifier);
 
@@ -205,8 +207,6 @@ public class ResourceConverter {
 				} else {
 					resourceObject = readObject(dataNode, clazz, false);
 				}
-			} else {
-				ValidationUtils.ensurePrimaryDataNull(dataNode);
 			}
 
 			// Parse all included resources
@@ -267,16 +267,14 @@ public class ResourceConverter {
 
 			JsonNode dataNode = rootNode.get(DATA);
 
+			ValidationUtils.ensurePrimaryDataValidArray(dataNode);
+
 			// Parse data node without handling relationships
 			List<T> resourceList = new ArrayList<>();
 
-			if (ValidationUtils.isValidArray(dataNode)) {
-				for (JsonNode element : dataNode) {
-					T pojo = readObject(element, clazz, false);
-					resourceList.add(pojo);
-				}
-			} else {
-				throw new InvalidJsonApiResourceException("Primary data must be an array of resource objects, an array of resource identifier objects, or an empty array ([])");
+			for (JsonNode element : dataNode) {
+				T pojo = readObject(element, clazz, false);
+				resourceList.add(pojo);
 			}
 
 			// Parse all included resources
@@ -422,21 +420,18 @@ public class ResourceConverter {
 		Map<String, Object> result = new HashMap<>();
 
 		JsonNode included = parent.get(INCLUDED);
-		if (ValidationUtils.isArrayOfResourceObjects(included)) {
-			for (JsonNode jsonNode : included) {
-				String type = jsonNode.get(TYPE).asText();
-				Class<?> clazz = configuration.getTypeClass(type);
-				if (clazz != null) {
-					Object object = readObject(jsonNode, clazz, false);
-					if (object != null) {
-						result.put(createIdentifier(jsonNode), object);
-					}
-				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
-					throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
+		ValidationUtils.ensureValidResourceObjectArray(included);
+		for (JsonNode jsonNode : included) {
+			String type = jsonNode.get(TYPE).asText();
+			Class<?> clazz = configuration.getTypeClass(type);
+			if (clazz != null) {
+				Object object = readObject(jsonNode, clazz, false);
+				if (object != null) {
+					result.put(createIdentifier(jsonNode), object);
 				}
+			} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
+				throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
 			}
-		} else {
-			throw new InvalidJsonApiResourceException("Included must be an array of valid resource objects, or an empty array ([])");
 		}
 
 		return result;

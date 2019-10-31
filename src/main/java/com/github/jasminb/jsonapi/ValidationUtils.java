@@ -47,9 +47,57 @@ public class ValidationUtils {
 	}
 
 	/**
+	 * Ensures 'DATA' node is Array containing only valid Resource Objects or Resource Identifier Objects.
+	 *
+	 * @param dataNode array data node
+	 * @throws InvalidJsonApiResourceException is thrown when 'DATA' node is not an array of valid resource objects, an array of valid resource
+	 * identifier objects, or an empty array.
+	 */
+	public static void ensurePrimaryDataValidArray(JsonNode dataNode) {
+		if (!isArrayOfResourceObjects(dataNode) && !isArrayOfResourceIdentifierObjects(dataNode)) {
+			throw new InvalidJsonApiResourceException("Primary data must be an array of resource objects, an array of resource identifier objects, or an empty array ([])");
+		}
+	}
+
+	/**
+	 * Ensures 'DATA' node is a valid object, null or has JsonNode type NULL.
+	 *
+	 * @param dataNode data node.
+	 * @throws InvalidJsonApiResourceException is thrown when 'DATA' node is not valid object, null or null node.
+	 */
+	public static void ensurePrimaryDataValidObjectOrNull(JsonNode dataNode) {
+		if (!isValidObject(dataNode) && isNotNullNode(dataNode)) {
+			throw new InvalidJsonApiResourceException("Primary data must be either a single resource object, a single resource identifier object, or null");
+		}
+	}
+
+	/**
+	 * Ensures 'DATA' node is Array containing only valid Resource Objects.
+	 *
+	 * @param dataNode resource object array data node
+	 * @throws InvalidJsonApiResourceException is thrown when 'DATA' node is not an array of valid resource objects, or an empty array.
+	 */
+	public static void ensureValidResourceObjectArray(JsonNode dataNode) {
+		if (!isArrayOfResourceObjects(dataNode)) {
+			throw new InvalidJsonApiResourceException("Included must be an array of valid resource objects, or an empty array ([])");
+		}
+	}
+
+	/**
+	 * Returns  <code>true</code> in case 'DATA' node is not null and does not have JsonNode type NULL.
+	 *
+	 * @param dataNode data node.
+	 * @return <code>false</code> if node is null or is null node <code>true</code>
+	 * node.
+	 */
+	public static boolean isNotNullNode(JsonNode dataNode) {
+		return dataNode != null && !dataNode.isNull();
+	}
+
+	/**
 	 * Returns <code>true</code> in case 'DATA' node is valid Resource Object or Resource Identifier Object.
 	 *
-	 * @param dataNode resource object data node
+	 * @param dataNode object data node
 	 * @return <code>true</code> if node is valid primary data object, else <code>false</code>
 	 */
 	public static boolean isValidObject(JsonNode dataNode) {
@@ -57,20 +105,10 @@ public class ValidationUtils {
 	}
 
 	/**
-	 * Returns <code>true</code> in case 'DATA' node is Array containing only valid Resource Objects or Resource Identifier Objects.
-	 *
-	 * @param dataNode resource object data node
-	 * @return <code>true</code> if node has Array of valid primary data objects, else <code>false</code>
-	 */
-	public static boolean isValidArray(JsonNode dataNode) {
-		return isArrayOfResourceObjects(dataNode) || isArrayOfResourceIdentifierObjects(dataNode);
-	}
-
-	/**
 	 * Returns <code>true</code> in case node has 'ID' and 'TYPE' attributes.
 	 *
 	 * @param dataNode resource identifier object data node
-	 * @return <code>true</code> if node has required attributes and all attributes are valid, else <code>false</code>
+	 * @return <code>true</code> if node has required attributes and all provided attributes are valid, else <code>false</code>
 	 */
 	public static boolean isResourceIdentifierObject(JsonNode dataNode) {
 		return dataNode != null && dataNode.isObject() &&
@@ -83,7 +121,7 @@ public class ValidationUtils {
 	 * Returns <code>true</code> in case 'DATA' node has 'ATTRIBUTES' and 'TYPE' attributes.
 	 *
 	 * @param dataNode resource object data node
-	 * @return <code>true</code> if node has required attributes and all attributes are valid, else <code>false</code>
+	 * @return <code>true</code> if node has required attributes and all provided attributes are valid, else <code>false</code>
 	 */
 	public static boolean isResourceObject(JsonNode dataNode) {
 		return dataNode != null && dataNode.isObject() &&
@@ -98,7 +136,7 @@ public class ValidationUtils {
 	/**
 	 * Returns <code>true</code> in case 'DATA' node has array of valid Resource Objects.
 	 *
-	 * @param dataNode resource object data node
+	 * @param dataNode resource object array data node
 	 * @return <code>true</code> if node is empty array or contains only valid Resource Objects
 	 */
 	public static boolean isArrayOfResourceObjects(JsonNode dataNode) {
@@ -116,7 +154,7 @@ public class ValidationUtils {
 	/**
 	 * Returns <code>true</code> in case 'DATA' node has array of valid Resource Identifier Objects.
 	 *
-	 * @param dataNode resource object data node
+	 * @param dataNode resource identifier object array data node
 	 * @return <code>true</code> if node is empty array or contains only valid Resource Identifier Objects
 	 */
 	public static boolean isArrayOfResourceIdentifierObjects(JsonNode dataNode) {
@@ -151,12 +189,6 @@ public class ValidationUtils {
 			return dataNode.get(attribute).isValueNode();
 		}
 		return true;
-	}
-
-	public static void ensurePrimaryDataNull(JsonNode dataNode) {
-		if (dataNode != null && !dataNode.isNull()) {
-			throw new InvalidJsonApiResourceException("Primary data must be either a single resource object, a single resource identifier object, or null");
-		}
 	}
 
 }
