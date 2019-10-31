@@ -3,11 +3,14 @@ package com.github.jasminb.jsonapi.models;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.github.jasminb.jsonapi.Links;
 import com.github.jasminb.jsonapi.RelType;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Id;
+import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
 import com.github.jasminb.jsonapi.annotations.Type;
 
+import java.util.Collections;
 import java.util.List;
 
 @Type("articles")
@@ -24,6 +27,15 @@ public class Article {
 	@Relationship(value = "comments", resolve = true)
 	private List<Comment> comments;
 
+	@Relationship(value = "users", serialiseData = false)
+	private List<User> users;
+
+	@RelationshipLinks(value = "users")
+	private Links userRelationshipLinks;
+
+	public Article() {
+		users = Collections.emptyList();
+	}
 
 	public String getId() {
 		return id;
@@ -55,5 +67,21 @@ public class Article {
 
 	public void setComments(List<Comment> comments) {
 		this.comments = comments;
+	}
+
+	public List<User> getUsers() {
+		return users;
+	}
+
+	public void setUsers(List<User> users) {
+		this.users = users;
+	}
+
+	public Links getUserRelationshipLinks() {
+		return userRelationshipLinks;
+	}
+
+	public void setUserRelationshipLinks(Links userRelationshipLinks) {
+		this.userRelationshipLinks = userRelationshipLinks;
 	}
 }

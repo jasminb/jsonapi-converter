@@ -559,7 +559,7 @@ public class ResourceConverterTest {
 	}
 
 	@Test
-	public void testWriteWithRelationships() throws DocumentSerializationException {
+	public void testWriteWithRelationships() throws DocumentSerializationException, IOException {
 		Author author = new Author();
 		author.setId("id");
 		author.setFirstName("John");
@@ -571,17 +571,29 @@ public class ResourceConverterTest {
 		comment.setAuthor(author);
 		comments.add(comment);
 
+		Map<String, Link> userLinkMap = new HashMap<>();
+		userLinkMap.put(JSONAPISpecConstants.SELF, new Link("http://example.com/articles/id/relationships/users"));
+		userLinkMap.put(JSONAPISpecConstants.RELATED, new Link("http://example.com/articles/id/users"));
+
 		Article article = new Article();
 		article.setId("id");
 		article.setTitle("title");
 		article.setAuthor(author);
 		article.setComments(comments);
+		article.setUserRelationshipLinks(new Links(userLinkMap));
 
 		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
 		converter.enableSerializationOption(SerializationFeature.INCLUDE_LINKS);
 
 
 		byte [] serialized = converter.writeDocument(new JSONAPIDocument<>(article));
+
+		ObjectMapper mapper = new ObjectMapper();
+		JsonNode node = mapper.readTree(serialized);
+		// Make sure only the relationship with disabled data serialization does not have a data node
+		assertFalse(node.at("/data/relationships/author/data").isMissingNode());
+		assertFalse(node.at("/data/relationships/comments/data").isMissingNode());
+		assertTrue(node.at("/data/relationships/users/data").isMissingNode());
 
 		JSONAPIDocument<Article> deserialized = converter.readDocument(serialized, Article.class);
 
@@ -593,6 +605,11 @@ public class ResourceConverterTest {
 		assertEquals(author.getFirstName(),
 				deserialized.get().getComments().iterator().next().getAuthor().getFirstName());
 
+		assertEquals(0, deserialized.get().getUsers().size());
+		assertEquals(userLinkMap.get(JSONAPISpecConstants.SELF).toString(),
+				deserialized.get().getUserRelationshipLinks().getSelf().toString());
+		assertEquals(userLinkMap.get(JSONAPISpecConstants.RELATED).toString(),
+				deserialized.get().getUserRelationshipLinks().getRelated().toString());
 
 		// Make sure that disabling serializing attributes works
 		converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
