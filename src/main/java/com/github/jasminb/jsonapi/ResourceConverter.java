@@ -188,25 +188,25 @@ public class ResourceConverter {
 			JsonNode rootNode = objectMapper.readTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureValidResource(rootNode);
+			ValidationUtils.ensureValidDocument(objectMapper, rootNode);
 
 			JsonNode dataNode = rootNode.get(DATA);
 
+			ValidationUtils.ensurePrimaryDataValidObjectOrNull(dataNode);
+
 			// Parse data node without handling relationships
-			T resourceObject;
+			T resourceObject = null;
 			boolean cached = false;
-			if (dataNode != null && dataNode.isObject()) {
+
+			if (ValidationUtils.isNotNullNode(dataNode)) {
 				String identifier = createIdentifier(dataNode);
-				cached = identifier != null && resourceCache.contains(identifier);
+				cached = resourceCache.contains(identifier);
 
 				if (cached) {
 					resourceObject = (T) resourceCache.get(identifier);
 				} else {
 					resourceObject = readObject(dataNode, clazz, false);
 				}
-			} else {
-				resourceObject = null;
 			}
 
 			// Parse all included resources
@@ -263,19 +263,18 @@ public class ResourceConverter {
 			JsonNode rootNode = objectMapper.readTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureValidResource(rootNode);
+			ValidationUtils.ensureValidDocument(objectMapper, rootNode);
 
 			JsonNode dataNode = rootNode.get(DATA);
+
+			ValidationUtils.ensurePrimaryDataValidArray(dataNode);
 
 			// Parse data node without handling relationships
 			List<T> resourceList = new ArrayList<>();
 
-			if (dataNode != null && dataNode.isArray()) {
-				for (JsonNode element : dataNode) {
-					T pojo = readObject(element, clazz, false);
-					resourceList.add(pojo);
-				}
+			for (JsonNode element : dataNode) {
+				T pojo = readObject(element, clazz, false);
+				resourceList.add(pojo);
 			}
 
 			// Parse all included resources
@@ -283,11 +282,9 @@ public class ResourceConverter {
 
 			// Connect data node's relationships now that all resources have been parsed
 			for (int i = 0; i < resourceList.size(); i++) {
-				JsonNode source = dataNode != null && dataNode.isArray() ? dataNode.get(i) : null;
+				JsonNode source = dataNode.get(i);
 				T resourceObject = resourceList.get(i);
-				if (source != null && resourceObject != null) {
-					handleRelationships(source, resourceObject);
-				}
+				handleRelationships(source, resourceObject);
 			}
 
 			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, rootNode, objectMapper);
@@ -419,24 +416,21 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	private Map<String, Object> getIncludedResources(JsonNode parent)
-			throws IOException, IllegalAccessException, InstantiationException {
+	private Map<String, Object> getIncludedResources(JsonNode parent) throws IOException, IllegalAccessException, InstantiationException {
 		Map<String, Object> result = new HashMap<>();
 
-		if (parent.has(INCLUDED)) {
-			for (JsonNode jsonNode : parent.get(INCLUDED)) {
-				String type = jsonNode.get(TYPE).asText();
-
-				Class<?> clazz = configuration.getTypeClass(type);
-
-				if (clazz != null) {
-					Object object = readObject(jsonNode, clazz, false);
-					if (object != null) {
-						result.put(createIdentifier(jsonNode), object);
-					}
-				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
-					throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
+		JsonNode included = parent.get(INCLUDED);
+		ValidationUtils.ensureValidResourceObjectArray(included);
+		for (JsonNode jsonNode : included) {
+			String type = jsonNode.get(TYPE).asText();
+			Class<?> clazz = configuration.getTypeClass(type);
+			if (clazz != null) {
+				Object object = readObject(jsonNode, clazz, false);
+				if (object != null) {
+					result.put(createIdentifier(jsonNode), object);
 				}
+			} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
+				throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
 			}
 		}
 
@@ -565,7 +559,7 @@ public class ResourceConverter {
 	}
 
 	/**
-	 * Creates relationship object by consuming provided 'data' node.
+	 * Creates relationship object by consuming provided resource linkage 'DATA' node.
 	 * @param relationshipDataNode relationship data node
 	 * @param type object type
 	 * @return created object or <code>null</code> in case data node is not valid
@@ -575,7 +569,7 @@ public class ResourceConverter {
 	 */
 	private Object parseRelationship(JsonNode relationshipDataNode, Class<?> type)
 			throws IOException, IllegalAccessException, InstantiationException {
-		if (ValidationUtils.isRelationshipParsable(relationshipDataNode)) {
+		if (ValidationUtils.isResourceIdentifierObject(relationshipDataNode)) {
 			String identifier = createIdentifier(relationshipDataNode);
 
 			if (resourceCache.contains(identifier)) {
