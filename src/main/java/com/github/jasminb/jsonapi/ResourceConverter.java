@@ -892,6 +892,12 @@ public class ResourceConverter {
 							ObjectNode identifierNode = objectMapper.createObjectNode();
 							identifierNode.put(TYPE, relationshipType);
 							identifierNode.put(ID, idValue);
+
+							ObjectNode resourceMeta = getResourceMeta(element, settings);
+							if (resourceMeta != null && shouldSerializeMeta(settings)) {
+								identifierNode.set(META, resourceMeta);
+							}
+
 							dataArrayNode.add(identifierNode);
 
 							// Handle included data
@@ -914,6 +920,11 @@ public class ResourceConverter {
 						identifierNode.put(TYPE, relationshipType);
 						identifierNode.put(ID, idValue);
 
+						ObjectNode resourceMeta = getResourceMeta(relationshipObject, settings);
+						if (resourceMeta != null && shouldSerializeMeta(settings)) {
+							identifierNode.set(META, resourceMeta);
+						}
+
 						relationshipDataNode.set(DATA, identifierNode);
 
 						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
@@ -925,7 +936,6 @@ public class ResourceConverter {
 						}
 					}
 				}
-
 			}
 
 			if (relationshipsNode.size() > 0) {
@@ -1128,6 +1138,18 @@ public class ResourceConverter {
 		if (shouldSerializeMeta(settings)) {
 			Field relationshipMetaField = configuration
 					.getRelationshipMetaField(source.getClass(), relationshipName);
+
+			if (relationshipMetaField != null && relationshipMetaField.get(source) != null) {
+				return objectMapper.valueToTree(relationshipMetaField.get(source));
+			}
+		}
+		return null;
+	}
+
+	private ObjectNode getResourceMeta(Object source, SerializationSettings settings)
+			throws IllegalAccessException {
+		if (shouldSerializeMeta(settings)) {
+			Field relationshipMetaField = configuration.getMetaField(source.getClass());
 
 			if (relationshipMetaField != null && relationshipMetaField.get(source) != null) {
 				return objectMapper.valueToTree(relationshipMetaField.get(source));

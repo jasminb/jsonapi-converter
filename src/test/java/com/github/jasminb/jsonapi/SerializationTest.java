@@ -8,6 +8,7 @@ import com.github.jasminb.jsonapi.models.Author;
 import com.github.jasminb.jsonapi.models.SimpleMeta;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
+import com.github.jasminb.jsonapi.models.User.UserMeta;
 import com.github.jasminb.jsonapi.models.errors.Error;
 import org.junit.Assert;
 import org.junit.Before;
@@ -258,6 +259,26 @@ public class SerializationTest {
 		Assert.assertTrue(new String(data).contains("the-self-link"));
 		Assert.assertTrue(new String(data).contains("foo"));
 		Assert.assertTrue(new String(data).contains("bar"));
+	}
+
+	@Test
+	public void testHasResourceMetaWithoutIncluded() throws DocumentSerializationException {
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+		Status status = new Status();
+		status.setId("statusId");
+
+		User user = new User();
+		user.setId("userId");
+		UserMeta userMeta = new UserMeta();
+		userMeta.token = "token";
+		user.meta = userMeta;
+
+		status.setUser(user);
+
+		byte[] data = converter.writeDocument(new JSONAPIDocument<Status>(status));
+
+		Assert.assertTrue(new String(data).contains("token"));
 	}
 
 	private JSONAPIDocument<User> createDocument(User user) {
