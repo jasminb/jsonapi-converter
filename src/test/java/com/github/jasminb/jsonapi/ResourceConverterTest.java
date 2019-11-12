@@ -804,6 +804,20 @@ public class ResourceConverterTest {
 	}
 
 	@Test
+	public void testWriteRelationshipWithoutData() throws IOException, DocumentSerializationException {
+		InputStream statusStream = IOUtils.getResource("status.json");
+		JSONAPIDocument<Status> statusJSONAPIDocument = converter.readDocument(statusStream, Status.class);
+		statusJSONAPIDocument.get().setRelatedUser(null);
+		byte [] serialized = converter.writeDocument(statusJSONAPIDocument);
+
+		Status status = converter.readDocument(serialized, Status.class).get();
+		assertNotNull(status.getUserRelationshipLinks());
+		assertEquals("users/userid", status.getUserRelationshipLinks().getSelf().getHref());
+
+		assertNull(status.getRelatedUser());
+	}
+
+	@Test
 	public void testReadMetaOnly() {
 		JSONAPIDocument<Status> status = converter.readDocument("{\"meta\" : {}}".getBytes(StandardCharsets.UTF_8),
 				Status.class);
