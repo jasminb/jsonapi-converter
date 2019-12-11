@@ -19,6 +19,7 @@ public @interface Relationship {
 	String value();
 	boolean resolve() default false;
 	boolean serialise() default true;
+	boolean serialiseData() default true;
 	RelType relType() default RelType.SELF;
 	
 	/**

@@ -18,14 +18,19 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.8.1</version>
+  <version>0.9</version>
 </dependency>
+```
+
+Gradle:
+```groovy
+implementation 'com.github.jasminb:jsonapi-converter:0.9'
 ```
 
 SBT:
 
 ```groovy
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.8.1"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.9"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -49,7 +54,7 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.9-SNAPSHOT</version>
+  <version>0.10-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -60,6 +65,7 @@ When writing models that will be used to represent requests and responses, one n
  - Each model class must be annotated with `com.github.jasminb.jsonapi.annotations.Type` annotation
  - Each class must contain an `String` attribute annotated with `com.github.jasminb.jsonapi.annotations.Id` annotation
  - All relationships must be annotated with `com.github.jasminb.jsonapi.annotations.Relationship` annotation
+ - Attributes in the API that are _not_ well-formed Java identifiers, must use `JsonProperty` annotation
 
 #### Type annotation
 
@@ -198,6 +204,104 @@ There two different relationship types:
  
 Have in mind that relationship (same as id) is inheritable and can be defined in a base class.
 
+#### Polymorphic Relationships
+
+In order to support polymorphic relationships, an `interface` needs to be created and than implemented by all possible types relationship supports. Created interface is used as a relationship's type (see example below).
+
+
+Example response containing multiple types in a relationship:
+
+```json
+{
+  "data": {
+    "type": "dealerships",
+    "id": "1",
+    "attributes": {
+      "name": "Dealership name"
+    },
+    "links": {
+      "self": "http://example.com/dealerships/1"
+    },
+    "relationships": {
+      "inventory": {
+        "links": {
+          "self": "http://example.com/dealerships/1/relationships/inventory",
+          "related": "http://example.com/dealerships/1/inventory"
+        },
+        "data": [
+          { "type": "cars", "id": "2" },
+          { "type": "trucks", "id": "1" }
+        ]
+      }
+    }
+  },
+  "included": [{
+    "type": "cars",
+    "id": "2",
+    "attributes": {
+      "make": "BMW",
+      "model": "i8 Roadster"
+    },
+    "links": {
+      "self": "http://example.com/cars/2"
+    }
+  }, {
+    "type": "trucks",
+    "id": "1",
+    "attributes": {
+      "make": "Ford",
+      "model": "Semi"
+    },
+    "links": {
+      "self": "http://example.com/trucks/1"
+    }
+  }]
+}
+```
+
+Needed classes, and example usage:
+
+```java
+public interface Driveable {}
+
+@Type("cars")
+public class Car implements Driveable {
+	@Id
+	private String id;
+	private String model;
+	private String make;
+	// Getters and setters...
+}
+
+@Type("trucks")
+public class Truck implements Driveable {
+
+	@Id
+	private String id;
+	private String make;
+	private String model;
+        // Getters and setters...
+}
+
+@Type("dealerships")
+public class Dealership {
+	@Id
+	private String id;
+	private String name;
+	private String city;
+
+        // Interface is used as relalationship type (instead of concrete resource type)
+	@Relationship("inventory")
+	private Collection<Driveable> automobiles;
+}
+
+// Putting everything together
+ResourceConverter converter = new ResourceConverter("https://api.example.com", Car.class, Dealership.class, Truck.class);
+JSONAPIDocument<Dealership> document = converter.readDocument(apiResponse, Dealership.class);
+
+
+```
+
 #### Relationship meta and links
 
 jsonapi-spec allows for having relationship-level metadata and links.
@@ -299,6 +403,48 @@ public class Book {
 ```
 
 Links are inheritable.
+
+#### Attribute annotations
+
+If your JSON API endpoint returns attributes that do not map well to Java identifiers, you'll get a fatal error on deserialization. The log message will tell you
+about an unrecognized field with that name. To fix it, you can use `com.fasterxml.jackson.annotation.JsonProperty`.
+
+Example: your JSON API endpoint returns something like this
+
+```json
+{
+    "data": [
+        {
+            "id": "1",
+            "type": "gears",
+            "attributes": {
+                "tooth-count": 13,
+                "tooth-depth": 21
+            }
+        }
+    ]
+}
+```
+
+then your model must be:
+
+```java
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@Type("gears")
+public class Gear {
+  @Id
+  private String id;
+
+  @JsonProperty("tooth-count")
+  private Long toothCount;
+  @JsonProperty("tooth-depth")
+  private Long toothDepth;
+}
+```
+
+This also lets you use different names for your fields than your API.
 
 #### Full example
 

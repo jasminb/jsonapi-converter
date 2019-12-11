@@ -1,0 +1,22 @@
+{
+  "data": [
+    {
+      "attributes": {
+        "categoryId": 97,
+        "description": "Test",
+        "movieTitle": "Movie Title"
+      },
+      "id": 5341,
+      "type": "Movie"
+    },
+    {
+      "attributes": {
+        "categoryId": 75,
+        "description": "Test",
+        "vodTitle": "Vod Title"
+      },
+      "id": 5033,
+      "type": "Vod"
+    }
+  ]
+}

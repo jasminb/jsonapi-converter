@@ -1,0 +1,44 @@
+{
+  "data": {
+    "type": "engineer",
+    "id": "id",
+    "attributes": {
+      "firstName": "John",
+      "lastName": "Doe"
+    },
+    "relationships": {
+      "field": {
+        "data": {
+          "id": "field_id"
+        }
+      },
+      "city": {
+        "data": {
+          "id": "city_id"
+        }
+      }
+    },
+    "meta": {
+      "note" : "Note"
+    }
+  },
+  "included": [
+    {
+      "type": "engineering_field",
+      "id": "field_id",
+      "attributes": {
+        "name": "Software Engineering"
+      }
+    },
+    {
+      "type": "city",
+      "id": "city_id",
+      "attributes": {
+        "name": "Sarajevo"
+      }
+    }
+  ],
+  "meta": {
+    "note" : "Note"
+  }
+}

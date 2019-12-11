@@ -188,25 +188,25 @@ public class ResourceConverter {
 			JsonNode rootNode = objectMapper.readTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureValidResource(rootNode);
+			ValidationUtils.ensureValidDocument(objectMapper, rootNode);
 
 			JsonNode dataNode = rootNode.get(DATA);
 
+			ValidationUtils.ensurePrimaryDataValidObjectOrNull(dataNode);
+
 			// Parse data node without handling relationships
-			T resourceObject;
+			T resourceObject = null;
 			boolean cached = false;
-			if (dataNode != null && dataNode.isObject()) {
+
+			if (ValidationUtils.isNotNullNode(dataNode)) {
 				String identifier = createIdentifier(dataNode);
-				cached = identifier != null && resourceCache.contains(identifier);
+				cached = resourceCache.contains(identifier);
 
 				if (cached) {
 					resourceObject = (T) resourceCache.get(identifier);
 				} else {
 					resourceObject = readObject(dataNode, clazz, false);
 				}
-			} else {
-				resourceObject = null;
 			}
 
 			// Parse all included resources
@@ -217,7 +217,7 @@ public class ResourceConverter {
 				handleRelationships(dataNode, resourceObject);
 			}
 
-			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, objectMapper);
+			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, rootNode, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -263,19 +263,18 @@ public class ResourceConverter {
 			JsonNode rootNode = objectMapper.readTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureNotError(objectMapper, rootNode);
-			ValidationUtils.ensureValidResource(rootNode);
+			ValidationUtils.ensureValidDocument(objectMapper, rootNode);
 
 			JsonNode dataNode = rootNode.get(DATA);
+
+			ValidationUtils.ensurePrimaryDataValidArray(dataNode);
 
 			// Parse data node without handling relationships
 			List<T> resourceList = new ArrayList<>();
 
-			if (dataNode != null && dataNode.isArray()) {
-				for (JsonNode element : dataNode) {
-					T pojo = readObject(element, clazz, false);
-					resourceList.add(pojo);
-				}
+			for (JsonNode element : dataNode) {
+				T pojo = readObject(element, clazz, false);
+				resourceList.add(pojo);
 			}
 
 			// Parse all included resources
@@ -283,14 +282,12 @@ public class ResourceConverter {
 
 			// Connect data node's relationships now that all resources have been parsed
 			for (int i = 0; i < resourceList.size(); i++) {
-				JsonNode source = dataNode != null && dataNode.isArray() ? dataNode.get(i) : null;
+				JsonNode source = dataNode.get(i);
 				T resourceObject = resourceList.get(i);
-				if (source != null && resourceObject != null) {
-					handleRelationships(source, resourceObject);
-				}
+				handleRelationships(source, resourceObject);
 			}
 
-			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, objectMapper);
+			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, rootNode, objectMapper);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -419,24 +416,21 @@ public class ResourceConverter {
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	private Map<String, Object> getIncludedResources(JsonNode parent)
-			throws IOException, IllegalAccessException, InstantiationException {
+	private Map<String, Object> getIncludedResources(JsonNode parent) throws IOException, IllegalAccessException, InstantiationException {
 		Map<String, Object> result = new HashMap<>();
 
-		if (parent.has(INCLUDED)) {
-			for (JsonNode jsonNode : parent.get(INCLUDED)) {
-				String type = jsonNode.get(TYPE).asText();
-
-				Class<?> clazz = configuration.getTypeClass(type);
-
-				if (clazz != null) {
-					Object object = readObject(jsonNode, clazz, false);
-					if (object != null) {
-						result.put(createIdentifier(jsonNode), object);
-					}
-				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
-					throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
+		JsonNode included = parent.get(INCLUDED);
+		ValidationUtils.ensureValidResourceObjectArray(included);
+		for (JsonNode jsonNode : included) {
+			String type = jsonNode.get(TYPE).asText();
+			Class<?> clazz = configuration.getTypeClass(type);
+			if (clazz != null) {
+				Object object = readObject(jsonNode, clazz, false);
+				if (object != null) {
+					result.put(createIdentifier(jsonNode), object);
 				}
+			} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
+				throw new IllegalArgumentException("Included section contains unknown resource type: " + type);
 			}
 		}
 
@@ -565,7 +559,7 @@ public class ResourceConverter {
 	}
 
 	/**
-	 * Creates relationship object by consuming provided 'data' node.
+	 * Creates relationship object by consuming provided resource linkage 'DATA' node.
 	 * @param relationshipDataNode relationship data node
 	 * @param type object type
 	 * @return created object or <code>null</code> in case data node is not valid
@@ -575,7 +569,7 @@ public class ResourceConverter {
 	 */
 	private Object parseRelationship(JsonNode relationshipDataNode, Class<?> type)
 			throws IOException, IllegalAccessException, InstantiationException {
-		if (ValidationUtils.isRelationshipParsable(relationshipDataNode)) {
+		if (ValidationUtils.isResourceIdentifierObject(relationshipDataNode)) {
 			String identifier = createIdentifier(relationshipDataNode);
 
 			if (resourceCache.contains(identifier)) {
@@ -681,6 +675,7 @@ public class ResourceConverter {
 
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+	 *
 	 * @param document {@link JSONAPIDocument} document to serialize
 	 * @param settings {@link SerializationSettings} settings that override global serialization settings
 	 * @return serialized content in bytes
@@ -699,6 +694,12 @@ public class ResourceConverter {
 			if (document.get() != null) {
 				ObjectNode dataNode = getDataNode(document.get(), includedDataMap, settings);
 				result.set(DATA, dataNode);
+
+				// It is possible that relationships point back to top-level resource, in this case remove it from
+				// included section since it is already present (as a top level resource)
+				String identifier = String.valueOf(getIdValue(document.get()))
+						.concat(configuration.getTypeName(document.get().getClass()));
+				includedDataMap.remove(identifier);
 				result = addIncludedSection(result, includedDataMap);
 			}
 
@@ -880,46 +881,49 @@ public class ResourceConverter {
 						removeField(attributesNode, refField);
 					}
 
-					if (relationshipObject instanceof Collection) {
-						ArrayNode dataArrayNode = objectMapper.createArrayNode();
+					boolean shouldSerializeData = configuration.getFieldRelationship(relationshipField).serialiseData();
+					if (shouldSerializeData) {
+						if (relationshipObject instanceof Collection) {
+							ArrayNode dataArrayNode = objectMapper.createArrayNode();
 
-						for (Object element : (Collection<?>) relationshipObject) {
-							String relationshipType = configuration.getTypeName(element.getClass());
+							for (Object element : (Collection<?>) relationshipObject) {
+								String relationshipType = configuration.getTypeName(element.getClass());
 
-							String idValue = getIdValue(element);
+								String idValue = getIdValue(element);
+
+								ObjectNode identifierNode = objectMapper.createObjectNode();
+								identifierNode.put(TYPE, relationshipType);
+								identifierNode.put(ID, idValue);
+								dataArrayNode.add(identifierNode);
+
+								// Handle included data
+								if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
+									String identifier = idValue.concat(relationshipType);
+									if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
+										includedContainer.put(identifier,
+												getDataNode(element, includedContainer, settings));
+									}
+								}
+							}
+							relationshipDataNode.set(DATA, dataArrayNode);
+
+						} else {
+							String relationshipType = configuration.getTypeName(relationshipObject.getClass());
+
+							String idValue = getIdValue(relationshipObject);
 
 							ObjectNode identifierNode = objectMapper.createObjectNode();
 							identifierNode.put(TYPE, relationshipType);
 							identifierNode.put(ID, idValue);
-							dataArrayNode.add(identifierNode);
 
-							// Handle included data
+							relationshipDataNode.set(DATA, identifierNode);
+
 							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
 								String identifier = idValue.concat(relationshipType);
-								if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
+								if (!includedContainer.containsKey(identifier)) {
 									includedContainer.put(identifier,
-											getDataNode(element, includedContainer, settings));
+											getDataNode(relationshipObject, includedContainer, settings));
 								}
-							}
-						}
-						relationshipDataNode.set(DATA, dataArrayNode);
-
-					} else {
-						String relationshipType = configuration.getTypeName(relationshipObject.getClass());
-
-						String idValue = getIdValue(relationshipObject);
-
-						ObjectNode identifierNode = objectMapper.createObjectNode();
-						identifierNode.put(TYPE, relationshipType);
-						identifierNode.put(ID, idValue);
-
-						relationshipDataNode.set(DATA, identifierNode);
-
-						if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-							String identifier = idValue.concat(relationshipType);
-							if (!includedContainer.containsKey(identifier)) {
-								includedContainer.put(identifier,
-										getDataNode(relationshipObject, includedContainer, settings));
 							}
 						}
 					}
