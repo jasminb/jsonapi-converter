@@ -130,9 +130,9 @@ public class ResourceConverter {
 	 */
 	public void setTypeResolver(RelationshipResolver resolver, Class<?> type) {
 		if (resolver != null) {
-			String typeName = ReflectionUtils.getTypeName(type);
+			String[] typeNames = ReflectionUtils.getTypeNames(type);
 
-			if (typeName != null) {
+			if (typeNames != null) {
 				typedResolvers.put(type, resolver);
 			}
 		}
