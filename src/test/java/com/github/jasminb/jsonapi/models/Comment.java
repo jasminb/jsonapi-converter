@@ -11,7 +11,7 @@ public class Comment {
 	private String id;
 	private String body;
 
-	@Relationship("author")
+	@Relationship({"author", "authors"})
 	private Author author;
 
 	public String getId() {

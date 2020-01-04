@@ -851,7 +851,7 @@ public class ResourceConverter {
 						continue;
 					}
 
-					String relationshipName = relationship.value();
+					String relationshipName = relationship.value()[0];
 
 					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
 					relationshipsNode.set(relationshipName, relationshipDataNode);
@@ -1183,7 +1183,7 @@ public class ResourceConverter {
 			Links links = null;
 
 			Field relationshipLinksField = configuration
-					.getRelationshipLinksField(source.getClass(), relationship.value());
+					.getRelationshipLinksField(source.getClass(), relationship.value()[0]);
 
 			if (relationshipLinksField != null) {
 				links = (Links) relationshipLinksField.get(source);
