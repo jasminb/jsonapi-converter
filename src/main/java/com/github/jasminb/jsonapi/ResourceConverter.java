@@ -603,7 +603,14 @@ public class ResourceConverter {
 			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'id' attribute! %s", object.toString()));
 		}
 
-		String type = object.get(TYPE).asText();
+		JsonNode typeNode = object.get(TYPE);
+
+		String type = typeNode != null ? typeNode.asText().trim() : "";
+
+		if (type.isEmpty()) {
+			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'type' attribute! %s", object.toString()));
+		}
+
 		return type.concat(id);
 	}
 
