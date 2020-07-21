@@ -538,6 +538,19 @@ public class ResourceConverterTest {
 		}
 	}
 
+	/**
+	 * Added to test a regression introduced in 0.10.
+	 *
+	 * @throws IOException
+	 */
+	@Test
+	public void testEnableAllowUnknownInclusionsTwo() throws IOException {
+		converter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS);
+
+		InputStream rawData = IOUtils.getResource("included_fail.json");
+		converter.readDocument(rawData, City.class).get();
+	}
+
 	@Test
 	public void testNullDataNodeObject() {
 		JSONAPIDocument<User> nullObject = converter.readDocument("{\"data\" : null}".getBytes(), User.class);
