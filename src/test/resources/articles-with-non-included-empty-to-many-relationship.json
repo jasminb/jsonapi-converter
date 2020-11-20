@@ -1,0 +1,39 @@
+{
+  "data": [{
+    "type": "articles",
+    "id": "1",
+    "attributes": {
+      "title": "JSON API paints my bikeshed!"
+    },
+    "links": {
+      "self": "http://example.com/articles/1"
+    },
+    "relationships": {
+      "author": {
+        "links": {
+          "self": "http://example.com/articles/1/relationships/author",
+          "related": "http://example.com/articles/1/author"
+        },
+        "data": { "type": "people", "id": "9" }
+      },
+      "users": {
+        "links": {
+          "self": "http://example.com/articles/1/relationships/users",
+          "related": "http://example.com/articles/1/users"
+        }
+      }
+    }
+  }],
+  "included": [{
+    "type": "people",
+    "id": "9",
+    "attributes": {
+      "first-name": "Dan",
+      "last-name": "Gebhardt",
+      "twitter": "dgeb"
+    },
+    "links": {
+      "self": "http://example.com/people/9"
+    }
+  }]
+}

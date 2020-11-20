@@ -842,19 +842,36 @@ public class ResourceConverter {
 
 				removeField(attributesNode, relationshipField);
 
+				Relationship relationship = configuration.getFieldRelationship(relationshipField);
+
+				// In case serialisation is disabled for a given relationship, skip it
+				if (!relationship.serialise()) {
+					continue;
+				}
+
+				// Serialize relationship object
+				ObjectNode relationshipDataNode = objectMapper.createObjectNode();
+
+				String relationshipName = relationship.value();
+
+				// Allow relationships node to have relationship data node even if relationship object is null
+				relationshipsNode.set(relationshipName, relationshipDataNode);
+
+				// Serialize relationship links
+				JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
+
+				if (relationshipLinks != null) {
+					// Allow relationship data node to have links even if relationship object is null
+					relationshipDataNode.set(LINKS, relationshipLinks);
+
+					// Remove link object from serialized JSON
+					Field refField = configuration
+							.getRelationshipLinksField(object.getClass(), relationshipName);
+
+					removeField(attributesNode, refField);
+				}
+
 				if (relationshipObject != null) {
-
-					Relationship relationship = configuration.getFieldRelationship(relationshipField);
-
-					// In case serialisation is disabled for a given relationship, skip it
-					if (!relationship.serialise()) {
-						continue;
-					}
-
-					String relationshipName = relationship.value();
-
-					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
-					relationshipsNode.set(relationshipName, relationshipDataNode);
 
 					// Serialize relationship meta
 					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
@@ -864,19 +881,6 @@ public class ResourceConverter {
 						// Remove meta object from serialized JSON
 						Field refField = configuration
 								.getRelationshipMetaField(object.getClass(), relationshipName);
-
-						removeField(attributesNode, refField);
-					}
-
-					// Serialize relationship links
-					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
-
-					if (relationshipLinks != null) {
-						relationshipDataNode.set(LINKS, relationshipLinks);
-
-						// Remove link object from serialized JSON
-						Field refField = configuration
-								.getRelationshipLinksField(object.getClass(), relationshipName);
 
 						removeField(attributesNode, refField);
 					}

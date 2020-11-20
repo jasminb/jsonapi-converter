@@ -13,7 +13,7 @@ import com.github.jasminb.jsonapi.annotations.Type;
 import java.util.Collections;
 import java.util.List;
 
-@Type("articles")
+@Type(value = "articles", path = "/articles/{id}")
 @JsonIdentityInfo(generator = ObjectIdGenerators.StringIdGenerator.class, property = "id")
 public class Article {
 	@Id
@@ -24,8 +24,11 @@ public class Article {
 	@Relationship(value = "author", resolve = true, relType = RelType.RELATED)
 	private Author author;
 
-	@Relationship(value = "comments", resolve = true)
+	@Relationship(value = "comments", resolve = true, path = "relationships/comments", relatedPath = "comments")
 	private List<Comment> comments;
+
+    @RelationshipLinks(value = "comments")
+    private Links commentRelationshipLinks;
 
 	@Relationship(value = "users", serialiseData = false)
 	private List<User> users;
@@ -84,4 +87,12 @@ public class Article {
 	public void setUserRelationshipLinks(Links userRelationshipLinks) {
 		this.userRelationshipLinks = userRelationshipLinks;
 	}
+
+    public Links getCommentRelationshipLinks() {
+        return commentRelationshipLinks;
+    }
+
+    public void setCommentRelationshipLinks(Links commentRelationshipLinks) {
+        this.commentRelationshipLinks = commentRelationshipLinks;
+    }
 }

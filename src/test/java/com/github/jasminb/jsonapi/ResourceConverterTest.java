@@ -148,6 +148,47 @@ public class ResourceConverterTest {
 	}
 
 	@Test
+	public void testLinksForNonIncludedEmptyToManyRelationship() throws IOException, IllegalAccessException {
+		InputStream apiResponse = IOUtils.getResource("articles-with-non-included-empty-to-many-relationship.json");
+
+		ObjectMapper articlesMapper = new ObjectMapper();
+		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+
+		ResourceConverter articlesConverter = new ResourceConverter(articlesMapper, Article.class, Author.class,
+				Comment.class);
+
+		JSONAPIDocument<List<Article>> articlesDocument = articlesConverter.readDocumentCollection(apiResponse, Article.class);
+		List<Article> articles = articlesDocument.get();
+
+		assertNotNull(articles);
+		assertEquals(1, articles.size());
+
+		Article article = articles.get(0);
+
+		assertNull(article.getComments());
+
+		assertNull(article.getCommentRelationshipLinks());
+
+		byte[] convertedData = converter.writeObjectCollection(articles);
+		assertNotNull(convertedData);
+		assertNotEquals(0, convertedData.length);
+
+		JSONAPIDocument<List<Article>> convertedDocument = converter.readDocumentCollection(new ByteArrayInputStream(convertedData), Article.class);
+		List<Article> convertedArticles = convertedDocument.get();
+		assertNotNull(convertedArticles);
+
+		Article convertedArticle = convertedArticles.get(0);
+
+		assertNull(convertedArticle.getComments());
+
+		// Make sure Relationship links are getting serialized even if relationship object i.e. comments is null
+		assertNotNull(convertedArticle.getCommentRelationshipLinks());
+		assertEquals("https://api.example.com/articles/1/relationships/comments", convertedArticle.getCommentRelationshipLinks().getSelf().toString());
+		assertEquals("https://api.example.com/articles/1/comments", convertedArticle.getCommentRelationshipLinks().getRelated().toString());
+
+	}
+
+    @Test
 	public void testReadWithMetaAndLinksSection() throws IOException {
 		InputStream apiResponse = IOUtils.getResource("user-with-meta.json");
 
