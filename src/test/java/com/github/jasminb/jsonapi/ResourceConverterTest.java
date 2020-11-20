@@ -127,6 +127,13 @@ public class ResourceConverterTest {
 
 		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
 		List<User> users = usersDocument.get();
+
+		assertNotNull(users);
+		assertEquals(2, users.size());
+
+		// Make sure that relationship object i.e. statuses is null
+		assertNull(users.get(0).getStatuses());
+
 		byte[] convertedData = converter.writeObjectCollection(users);
 
 		assertNotNull(convertedData);
@@ -140,7 +147,21 @@ public class ResourceConverterTest {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			JsonNode node1 = mapper.readTree(IOUtils.getResource("users.json"));
+
+			// Make sure relationship node always get serialized even if relationship object i.e. statuses is null
+			JsonNode user1Relationships = node1.get("data").get(0).get("relationships");
+			assertNotNull(user1Relationships.get("statuses"));
+
+			JsonNode user2Relationships = node1.get("data").get(1).get("relationships");
+			assertNotNull(user2Relationships.get("statuses"));
+
 			JsonNode node2 = mapper.readTree(convertedData);
+			user1Relationships = node2.get("data").get(0).get("relationships");
+			assertNotNull(user1Relationships.get("statuses"));
+
+			user2Relationships = node2.get("data").get(1).get("relationships");
+			assertNotNull(user2Relationships.get("statuses"));
+
 			assertEquals(node1, node2);
 		} catch (IOException e) {
 			throw new RuntimeException("Unable to read json, make sure is correct", e);
