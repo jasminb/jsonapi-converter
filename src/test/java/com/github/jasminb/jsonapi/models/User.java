@@ -10,7 +10,7 @@ import com.github.jasminb.jsonapi.annotations.Type;
 
 import java.util.List;
 
-@Type("users")
+@Type(value = "users", path = "/users/{id}")
 @JsonIdentityInfo(generator = ObjectIdGenerators.StringIdGenerator.class, property = "id")
 public class User {
 
@@ -26,7 +26,7 @@ public class User {
 	public String id;
 	public String name;
 
-	@Relationship("statuses")
+	@Relationship(value = "statuses", path = "/relationship/statuses")
 	private List<Status> statuses;
 
 	@Meta

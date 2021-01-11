@@ -122,7 +122,7 @@ public class ResourceConverterTest {
 	}
 
 	@Test
-	public void testWriteCollection() throws IOException, IllegalAccessException {
+	public void testWriteCollection() throws DocumentSerializationException, IOException {
 		InputStream usersRequest = IOUtils.getResource("users.json");
 
 		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
@@ -134,7 +134,7 @@ public class ResourceConverterTest {
 		// Make sure that relationship object i.e. statuses is null
 		assertNull(users.get(0).getStatuses());
 
-		byte[] convertedData = converter.writeObjectCollection(users);
+		byte[] convertedData = converter.writeDocumentCollection(usersDocument);
 
 		assertNotNull(convertedData);
 		assertFalse(convertedData.length == 0);
@@ -156,13 +156,17 @@ public class ResourceConverterTest {
 			assertNotNull(user2Relationships.get("statuses"));
 
 			JsonNode node2 = mapper.readTree(convertedData);
+
+			// Make sure relationship node must always contains one of either meta, link or data node
 			user1Relationships = node2.get("data").get(0).get("relationships");
 			assertNotNull(user1Relationships.get("statuses"));
+			assertNotNull(user1Relationships.get("statuses").get("links"));
 
 			user2Relationships = node2.get("data").get(1).get("relationships");
 			assertNotNull(user2Relationships.get("statuses"));
+			assertNotNull(user2Relationships.get("statuses").get("links"));
 
-			assertEquals(node1, node2);
+			assertNotEquals(node1, node2);
 		} catch (IOException e) {
 			throw new RuntimeException("Unable to read json, make sure is correct", e);
 		}

@@ -187,6 +187,7 @@ public class SerializationTest {
 		User user = new User();
 		user.setName("Name");
 		
+		converter.disableSerializationOption(SerializationFeature.INCLUDE_LINKS);
 		byte [] data = converter.writeDocument(new JSONAPIDocument<>(user));
 		
 		Assert.assertTrue(new String(data).contains(user.getName()));
