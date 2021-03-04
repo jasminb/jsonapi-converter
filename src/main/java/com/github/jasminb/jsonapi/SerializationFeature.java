@@ -24,9 +24,16 @@ public enum SerializationFeature {
 	/**
 	 * If enabled, links attribute will be serialized
 	 */
-	INCLUDE_LINKS(true);
+	INCLUDE_LINKS(true),
+
+	/**
+	 * If enabled, resources that only have
+	 * type and id will not render the attributes property.
+	 */
+	ATTRIBUTES_TAG_ONLY_IF_NOT_EMPTY(false);
 
 	final boolean enabled;
+
 
 	SerializationFeature(boolean enabled) {
 		this.enabled = enabled;

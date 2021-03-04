@@ -836,7 +836,6 @@ public class ResourceConverter {
 			// Cache the object for recursion breaking purposes
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
-		dataNode.set(ATTRIBUTES, attributesNode);
 
 		// Handle relationships (remove from base type and add as relationships)
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
@@ -940,6 +939,20 @@ public class ResourceConverter {
 
 			if (relationshipsNode.size() > 0) {
 				dataNode.set(RELATIONSHIPS, relationshipsNode);
+			}
+		}
+
+		// Note: Attributes can be rendered once all other top
+		//       level object properties have been removed.
+		//       If done earlier, the presence of these properties
+		//       will cause the isEmpty test to fail in the case
+		//       of a configuration disallowing an empty
+		//       'attributes' tag to be rendered.
+		if (canSerializeEmptyAttributesTag(settings)) {
+			dataNode.set(ATTRIBUTES, attributesNode); // default
+		} else {
+			if (!attributesNode.isEmpty(null)) {
+				dataNode.set(ATTRIBUTES, attributesNode);
 			}
 		}
 
@@ -1257,6 +1270,13 @@ public class ResourceConverter {
 			return settings.serializeMeta();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_META);
+	}
+
+	private boolean canSerializeEmptyAttributesTag(SerializationSettings settings) {
+	  if (settings != null && settings.serializeEmptyAttributesTag() != null) {
+		  return settings.serializeEmptyAttributesTag();
+	  }
+	  return serializationFeatures.contains(SerializationFeature.ATTRIBUTES_TAG_ONLY_IF_NOT_EMPTY);
 	}
 
 	private JsonNode removeField(ObjectNode node, Field field) {
