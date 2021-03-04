@@ -122,12 +122,19 @@ public class ResourceConverterTest {
 	}
 
 	@Test
-	public void testWriteCollection() throws IOException, IllegalAccessException {
+	public void testWriteCollection() throws DocumentSerializationException, IOException {
 		InputStream usersRequest = IOUtils.getResource("users.json");
 
 		JSONAPIDocument<List<User>> usersDocument = converter.readDocumentCollection(usersRequest, User.class);
 		List<User> users = usersDocument.get();
-		byte[] convertedData = converter.writeObjectCollection(users);
+
+		assertNotNull(users);
+		assertEquals(2, users.size());
+
+		// Make sure that relationship object i.e. statuses is null
+		assertNull(users.get(0).getStatuses());
+
+		byte[] convertedData = converter.writeDocumentCollection(usersDocument);
 
 		assertNotNull(convertedData);
 		assertFalse(convertedData.length == 0);
@@ -140,14 +147,73 @@ public class ResourceConverterTest {
 		ObjectMapper mapper = new ObjectMapper();
 		try {
 			JsonNode node1 = mapper.readTree(IOUtils.getResource("users.json"));
+
+			// Make sure relationship node always get serialized even if relationship object i.e. statuses is null
+			JsonNode user1Relationships = node1.get("data").get(0).get("relationships");
+			assertNotNull(user1Relationships.get("statuses"));
+
+			JsonNode user2Relationships = node1.get("data").get(1).get("relationships");
+			assertNotNull(user2Relationships.get("statuses"));
+
 			JsonNode node2 = mapper.readTree(convertedData);
-			assertEquals(node1, node2);
+
+			// Make sure relationship node must always contains one of either meta, link or data node
+			user1Relationships = node2.get("data").get(0).get("relationships");
+			assertNotNull(user1Relationships.get("statuses"));
+			assertNotNull(user1Relationships.get("statuses").get("links"));
+
+			user2Relationships = node2.get("data").get(1).get("relationships");
+			assertNotNull(user2Relationships.get("statuses"));
+			assertNotNull(user2Relationships.get("statuses").get("links"));
+
+			assertNotEquals(node1, node2);
 		} catch (IOException e) {
 			throw new RuntimeException("Unable to read json, make sure is correct", e);
 		}
 	}
 
 	@Test
+	public void testLinksForNonIncludedEmptyToManyRelationship() throws IOException, IllegalAccessException {
+		InputStream apiResponse = IOUtils.getResource("articles-with-non-included-empty-to-many-relationship.json");
+
+		ObjectMapper articlesMapper = new ObjectMapper();
+		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+
+		ResourceConverter articlesConverter = new ResourceConverter(articlesMapper, Article.class, Author.class,
+				Comment.class);
+
+		JSONAPIDocument<List<Article>> articlesDocument = articlesConverter.readDocumentCollection(apiResponse, Article.class);
+		List<Article> articles = articlesDocument.get();
+
+		assertNotNull(articles);
+		assertEquals(1, articles.size());
+
+		Article article = articles.get(0);
+
+		assertNull(article.getComments());
+
+		assertNull(article.getCommentRelationshipLinks());
+
+		byte[] convertedData = converter.writeObjectCollection(articles);
+		assertNotNull(convertedData);
+		assertNotEquals(0, convertedData.length);
+
+		JSONAPIDocument<List<Article>> convertedDocument = converter.readDocumentCollection(new ByteArrayInputStream(convertedData), Article.class);
+		List<Article> convertedArticles = convertedDocument.get();
+		assertNotNull(convertedArticles);
+
+		Article convertedArticle = convertedArticles.get(0);
+
+		assertNull(convertedArticle.getComments());
+
+		// Make sure Relationship links are getting serialized even if relationship object i.e. comments is null
+		assertNotNull(convertedArticle.getCommentRelationshipLinks());
+		assertEquals("https://api.example.com/articles/1/relationships/comments", convertedArticle.getCommentRelationshipLinks().getSelf().toString());
+		assertEquals("https://api.example.com/articles/1/comments", convertedArticle.getCommentRelationshipLinks().getRelated().toString());
+
+	}
+
+    @Test
 	public void testReadWithMetaAndLinksSection() throws IOException {
 		InputStream apiResponse = IOUtils.getResource("user-with-meta.json");
 

@@ -5,6 +5,9 @@
       "id": "1",
       "attributes": {
         "name": "liz"
+      },
+      "relationships": {
+        "statuses": {}
       }
     },
     {
@@ -12,6 +15,9 @@
       "id": "2",
       "attributes": {
         "name": "john"
+      },
+      "relationships": {
+        "statuses": {}
       }
     }
   ]
