@@ -13,11 +13,12 @@ public class SerializationSettings {
 	private List<String> relationshipExludes;
 	private Boolean serializeMeta;
 	private Boolean serializeLinks;
-	
+	private Boolean serializeId;
+
 	private SerializationSettings() {
 		// Hide CTOR
 	}
-	
+
 	/**
 	 * Checks if relationship with provided name has been explicitly marked for inclusion in serialized object.
 	 * @param relationshipName {@link String} relationship name
@@ -26,7 +27,7 @@ public class SerializationSettings {
 	public boolean isRelationshipIncluded(String relationshipName) {
 		return relationshipIncludes.contains(relationshipName);
 	}
-	
+
 	/**
 	 * Checks if relationship with provided name has been explicitly marked for exclusion in serialized object.
 	 * @param relationshipName {@link String} relationship name
@@ -35,7 +36,7 @@ public class SerializationSettings {
 	public boolean isRelationshipExcluded(String relationshipName) {
 		return relationshipExludes.contains(relationshipName);
 	}
-	
+
 	/**
 	 * Returns meta serialization flag.
 	 * @return {@link Boolean}
@@ -43,7 +44,7 @@ public class SerializationSettings {
 	public Boolean serializeMeta() {
 		return serializeMeta;
 	}
-	
+
 	/**
 	 * Returns links serialization flag.
 	 * @return {@link Boolean}
@@ -51,7 +52,16 @@ public class SerializationSettings {
 	public Boolean serializeLinks() {
 		return serializeLinks;
 	}
-	
+
+	/**
+	 * Returns {@link com.github.jasminb.jsonapi.annotations.Id} serialization flag.
+	 *
+	 * @return {@link Boolean}
+	 */
+	public Boolean serializeId() {
+		return serializeId;
+	}
+
 	/**
 	 * Serialisation settings builder.
 	 */
@@ -60,7 +70,8 @@ public class SerializationSettings {
 		private List<String> relationshipExludes = new ArrayList<>();
 		private Boolean serializeMeta;
 		private Boolean serializeLinks;
-		
+		private Boolean serializeId;
+
 		/**
 		 * Explicitly enable relationship serialisation.
 		 * @param relationshipName {@link String} relationship name
@@ -70,7 +81,7 @@ public class SerializationSettings {
 			relationshipIncludes.add(relationshipName);
 			return this;
 		}
-		
+
 		/**
 		 * Explicitly disable relationship serialisation.
 		 * @param relationshipName {@link String} relationship name
@@ -80,7 +91,7 @@ public class SerializationSettings {
 			relationshipExludes.add(relationshipName);
 			return this;
 		}
-		
+
 		/**
 		 * Enable or disable meta serialization.
 		 * @param flag {@link Boolean} serialization flag
@@ -90,7 +101,7 @@ public class SerializationSettings {
 			serializeMeta = flag;
 			return this;
 		}
-		
+
 		/**
 		 * Enable or disable links serialization.
 		 * @param flag {@link Boolean} serialization flag
@@ -100,7 +111,17 @@ public class SerializationSettings {
 			serializeLinks = flag;
 			return this;
 		}
-		
+
+		/**
+		 * Enable or disable id serialization.
+		 * @param flag {@link Boolean} serialization flag
+		 * @return {@link Builder}
+		 */
+		public Builder serializeId(Boolean flag) {
+			serializeId = flag;
+			return this;
+		}
+
 		/**
 		 * Create new SerialisationSettings instance.
 		 * @return {@link SerializationSettings}
@@ -111,10 +132,11 @@ public class SerializationSettings {
 			result.relationshipExludes = new ArrayList<>(relationshipExludes);
 			result.serializeLinks = serializeLinks;
 			result.serializeMeta = serializeMeta;
+			result.serializeId = serializeId;
 			return result;
 		}
 	}
-	
-	
-	
+
+
+
 }

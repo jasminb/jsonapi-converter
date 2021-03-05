@@ -795,8 +795,11 @@ public class ResourceConverter {
 	}
 
 
-	private ObjectNode getDataNode(Object object, Map<String, ObjectNode> includedContainer,
-								   SerializationSettings settings) throws IllegalAccessException {
+	private ObjectNode getDataNode(
+			Object object,
+			Map<String, ObjectNode> includedContainer,
+			SerializationSettings settings
+	) throws IllegalAccessException {
 		ObjectNode dataNode = objectMapper.createObjectNode();
 
 		// Perform initial conversion
@@ -833,7 +836,7 @@ public class ResourceConverter {
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
 		if (resourceId != null) {
 			// Write id if its enabled
-			if (serializationFeatures.contains(SerializationFeature.INCLUDE_ID)) {
+			if (shouldSerializeId(settings)) {
 				dataNode.put(ID, resourceId);
 			}
 			// Cache the object for recursion breaking purposes
@@ -1260,6 +1263,13 @@ public class ResourceConverter {
 			return settings.serializeMeta();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_META);
+	}
+
+	private boolean shouldSerializeId(SerializationSettings settings) {
+		if (settings != null && settings.serializeId() != null) {
+			return settings.serializeId();
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_ID);
 	}
 
 	private JsonNode removeField(ObjectNode node, Field field) {
