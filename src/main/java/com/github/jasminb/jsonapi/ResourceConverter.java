@@ -831,8 +831,10 @@ public class ResourceConverter {
 		// Handle resource identifier
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
 		if (resourceId != null) {
-			dataNode.put(ID, resourceId);
-
+			// Write id if its enabled
+			if (serializationFeatures.contains(SerializationFeature.INCLUDE_ID)) {
+				dataNode.put(ID, resourceId);
+			}
 			// Cache the object for recursion breaking purposes
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
