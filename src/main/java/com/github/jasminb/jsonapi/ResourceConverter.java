@@ -420,7 +420,9 @@ public class ResourceConverter {
 		Map<String, Object> result = new HashMap<>();
 
 		JsonNode included = parent.get(INCLUDED);
-		ValidationUtils.ensureValidResourceObjectArray(included);
+		if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS)) {
+			ValidationUtils.ensureValidResourceObjectArray(included);
+		}
 		for (JsonNode jsonNode : included) {
 			String type = jsonNode.get(TYPE).asText();
 			Class<?> clazz = configuration.getTypeClass(type);
