@@ -142,7 +142,7 @@ public class ValidationUtils {
 	public static boolean isArrayOfResourceObjects(JsonNode dataNode) {
 		if (dataNode != null && dataNode.isArray()) {
 			for (JsonNode element : dataNode) {
-				if (!isResourceObject(element)) {
+				if (!isResourceObject(element) && !isResourceIdentifierObject(element)) {
 					return false;
 				}
 			}

@@ -24,7 +24,12 @@ public enum SerializationFeature {
 	/**
 	 * If enabled, links attribute will be serialized
 	 */
-	INCLUDE_LINKS(true);
+	INCLUDE_LINKS(true),
+
+	/**
+	 * If enabled, {@link com.github.jasminb.jsonapi.annotations.Id} attribute will be serialized
+	 */
+	INCLUDE_ID(true);
 
 	final boolean enabled;
 

@@ -1,0 +1,25 @@
+{
+    "data": {
+        "attributes": {
+            "name": "test name"
+        },
+        "id": "yaddayadda",
+        "relationships": {
+            "items": {
+                "data": [
+                    {
+                        "id": "123",
+                        "type": "undefined_subtype"
+                    }
+                ]
+            }
+        },
+        "type": "city"
+    },
+    "included": [
+        {
+            "id": "123",
+            "type": "undefined_subtype"
+        }
+    ]
+}

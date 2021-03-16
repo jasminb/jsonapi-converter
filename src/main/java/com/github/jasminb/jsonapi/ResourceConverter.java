@@ -421,6 +421,7 @@ public class ResourceConverter {
 
 		JsonNode included = parent.get(INCLUDED);
 		ValidationUtils.ensureValidResourceObjectArray(included);
+
 		for (JsonNode jsonNode : included) {
 			String type = jsonNode.get(TYPE).asText();
 			Class<?> clazz = configuration.getTypeClass(type);
@@ -603,7 +604,14 @@ public class ResourceConverter {
 			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'id' attribute! %s", object.toString()));
 		}
 
-		String type = object.get(TYPE).asText();
+		JsonNode typeNode = object.get(TYPE);
+
+		String type = typeNode != null ? typeNode.asText().trim() : "";
+
+		if (type.isEmpty()) {
+			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'type' attribute! %s", object.toString()));
+		}
+
 		return type.concat(id);
 	}
 
@@ -787,8 +795,11 @@ public class ResourceConverter {
 	}
 
 
-	private ObjectNode getDataNode(Object object, Map<String, ObjectNode> includedContainer,
-								   SerializationSettings settings) throws IllegalAccessException {
+	private ObjectNode getDataNode(
+			Object object,
+			Map<String, ObjectNode> includedContainer,
+			SerializationSettings settings
+	) throws IllegalAccessException {
 		ObjectNode dataNode = objectMapper.createObjectNode();
 
 		// Perform initial conversion
@@ -824,8 +835,10 @@ public class ResourceConverter {
 		// Handle resource identifier
 		dataNode.put(TYPE, configuration.getTypeName(object.getClass()));
 		if (resourceId != null) {
-			dataNode.put(ID, resourceId);
-
+			// Write id if its enabled
+			if (shouldSerializeId(settings)) {
+				dataNode.put(ID, resourceId);
+			}
 			// Cache the object for recursion breaking purposes
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
@@ -1250,6 +1263,13 @@ public class ResourceConverter {
 			return settings.serializeMeta();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_META);
+	}
+
+	private boolean shouldSerializeId(SerializationSettings settings) {
+		if (settings != null && settings.serializeId() != null) {
+			return settings.serializeId();
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_ID);
 	}
 
 	private JsonNode removeField(ObjectNode node, Field field) {
