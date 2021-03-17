@@ -1,6 +1,6 @@
 {
   "data": [{
-    "type": "articles",
+    "type": "article",
     "id": "1",
     "attributes": {
       "title": "JSON API paints my bikeshed!"

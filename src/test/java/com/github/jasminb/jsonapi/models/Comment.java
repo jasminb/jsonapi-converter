@@ -5,13 +5,13 @@ import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.Type;
 
-@Type("comments")
+@Type({"comments", "comment"})
 public class Comment {
 	@Id
 	private String id;
 	private String body;
 
-	@Relationship("author")
+	@Relationship({"author", "authors"})
 	private Author author;
 
 	public String getId() {

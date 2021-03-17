@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Relationship {
-	String value();
+	String[] value();
 	boolean resolve() default false;
 	boolean serialise() default true;
 	boolean serialiseData() default true;
