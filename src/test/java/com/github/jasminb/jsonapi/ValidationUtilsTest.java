@@ -48,6 +48,12 @@ public class ValidationUtilsTest {
 		ValidationUtils.ensureValidDocument(mapper, mapper.readTree("{\"data\" : null}"));
 	}
 
+	@Test(expected = ResourceParseException.class)
+	public void testNodeWithVersionIsError() throws IOException {
+		JsonNode node = mapper.readTree(IOUtils.getResourceAsString("errors-with-version.json"));
+		ValidationUtils.ensureNotError(mapper, node);
+	}
+
 	@Test
 	public void metaResource() throws IOException {
 		ValidationUtils.ensureValidDocument(mapper, mapper.readTree("{\"meta\": {}}"));

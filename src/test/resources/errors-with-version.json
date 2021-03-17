@@ -1,0 +1,20 @@
+{
+  "jsonapi": {
+    "version": "1.0"
+  },
+  "errors": [
+    {
+      "id": "id",
+      "status": "status",
+      "code": "code",
+      "links": {
+        "about": "about"
+      },
+      "source": {
+        "pointer": "pointer"
+      },
+      "title": "title",
+      "detail": "detail"
+    }
+  ]
+}

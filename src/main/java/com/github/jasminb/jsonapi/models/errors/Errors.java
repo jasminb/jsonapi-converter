@@ -1,5 +1,8 @@
 package com.github.jasminb.jsonapi.models.errors;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.github.jasminb.jsonapi.JSONAPISpecConstants;
+
 import java.util.List;
 
 /**
@@ -7,6 +10,7 @@ import java.util.List;
  *
  * @author jbegic
  */
+@JsonIgnoreProperties(JSONAPISpecConstants.JSONAPI)
 public class Errors {
 	private List<Error> errors;
 
