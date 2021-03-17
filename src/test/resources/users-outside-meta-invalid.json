@@ -1,0 +1,19 @@
+{
+  "meta":[],
+  "data": [
+    {
+      "type": "users",
+      "id": "1",
+      "attributes": {
+        "name": "liz"
+      }
+    },
+    {
+      "type": "users",
+      "id": "2",
+      "attributes": {
+        "name": "john"
+      }
+    }
+  ]
+}
