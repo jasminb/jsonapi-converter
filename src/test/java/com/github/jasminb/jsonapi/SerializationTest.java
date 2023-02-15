@@ -263,6 +263,19 @@ public class SerializationTest {
 		Assert.assertTrue(new String(data).contains("bar"));
 	}
 
+	@Test
+	public void testEmptyRelationship() throws DocumentSerializationException {
+		Author author = new Author();
+		author.setId("author_id");
+		author.setLastName("Bar");
+		author.setFirstName("Foo");
+		author.setArticles(new ArrayList<Article>());
+
+		byte[] serialized = converter.writeDocument(new JSONAPIDocument<>(author));
+
+		Assert.assertTrue(new String(serialized).contains("\"included\":[]"));
+	}
+
 	private JSONAPIDocument<User> createDocument(User user) {
 		JSONAPIDocument<User> document = new JSONAPIDocument<>(user);
 
