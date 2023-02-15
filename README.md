@@ -18,19 +18,19 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.11</version>
+  <version>0.12</version>
 </dependency>
 ```
 
 Gradle:
 ```groovy
-implementation 'com.github.jasminb:jsonapi-converter:0.10'
+implementation 'com.github.jasminb:jsonapi-converter:0.12'
 ```
 
 SBT:
 
 ```groovy
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.10"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.12"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -54,7 +54,7 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.12-SNAPSHOT</version>
+  <version>0.13-SNAPSHOT</version>
 </dependency>
 ```
 
