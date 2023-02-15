@@ -708,7 +708,7 @@ public class ResourceConverter {
 				String identifier = String.valueOf(getIdValue(document.get()))
 						.concat(configuration.getTypeName(document.get().getClass()));
 				includedDataMap.remove(identifier);
-				result = addIncludedSection(result, includedDataMap);
+				result = addIncludedSection(result, includedDataMap, settings);
 			}
 
 			// Serialize errors if present
@@ -784,7 +784,7 @@ public class ResourceConverter {
 			serializeMeta(documentCollection, result, serializationSettings);
 			serializeLinks(documentCollection, result, serializationSettings);
 
-			result = addIncludedSection(result, includedDataMap);
+			result = addIncludedSection(result, includedDataMap, serializationSettings);
 
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
@@ -1080,8 +1080,18 @@ public class ResourceConverter {
 		return null;
 	}
 
-	private ObjectNode addIncludedSection(ObjectNode rootNode, Map<String, ObjectNode> includedDataMap) {
-		if (!includedDataMap.isEmpty()) {
+	private ObjectNode addIncludedSection(
+			ObjectNode rootNode,
+			Map<String, ObjectNode> includedDataMap,
+			SerializationSettings serializationSettings
+	) {
+		boolean inclusionsEnabled = serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
+
+		if (serializationSettings != null) {
+			inclusionsEnabled = serializationSettings.hasIncludedRelationships();
+		}
+
+		if (!includedDataMap.isEmpty() || inclusionsEnabled) {
 			ArrayNode includedArray = objectMapper.createArrayNode();
 			includedArray.addAll(includedDataMap.values());
 

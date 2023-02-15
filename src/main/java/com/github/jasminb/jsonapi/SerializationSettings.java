@@ -1,7 +1,9 @@
 package com.github.jasminb.jsonapi;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Serialization settings.
@@ -35,6 +37,18 @@ public class SerializationSettings {
 	 */
 	public boolean isRelationshipExcluded(String relationshipName) {
 		return relationshipExludes.contains(relationshipName);
+	}
+
+	/**
+	 * Returns <code>true</code> in case there is at least one relationship that should be included during serialization.
+	 *
+	 * @return {@link Boolean}
+	 */
+	public boolean hasIncludedRelationships() {
+		Set<String> includedRelationships = new HashSet<>(relationshipIncludes);
+		includedRelationships.removeAll(relationshipExludes);
+
+		return !includedRelationships.isEmpty();
 	}
 
 	/**
