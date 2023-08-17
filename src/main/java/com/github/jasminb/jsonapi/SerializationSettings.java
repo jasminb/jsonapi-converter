@@ -16,6 +16,7 @@ public class SerializationSettings {
 	private Boolean serializeMeta;
 	private Boolean serializeLinks;
 	private Boolean serializeId;
+  private Boolean serializeJSONAPIObject;
 
 	private SerializationSettings() {
 		// Hide CTOR
@@ -76,6 +77,15 @@ public class SerializationSettings {
 		return serializeId;
 	}
 
+  /**
+   * Returns JSON API object serialization flag.
+   *
+   * @return {@link Boolean}
+   */
+  public Boolean serializeJSONAPIObject() {
+    return serializeJSONAPIObject;
+  }
+
 	/**
 	 * Serialisation settings builder.
 	 */
@@ -85,6 +95,7 @@ public class SerializationSettings {
 		private Boolean serializeMeta;
 		private Boolean serializeLinks;
 		private Boolean serializeId;
+    private Boolean serializeJSONAPIObject;
 
 		/**
 		 * Explicitly enable relationship serialisation.
@@ -136,6 +147,17 @@ public class SerializationSettings {
 			return this;
 		}
 
+    /**
+     * Enable or disable JSON API object serialization.
+     *
+     * @param flag {@link Boolean} serialization flag
+     * @return {@link Builder}
+     */
+    public Builder serializeJSONAPIObject(Boolean flag) {
+      serializeJSONAPIObject = flag;
+      return this;
+    }
+
 		/**
 		 * Create new SerialisationSettings instance.
 		 * @return {@link SerializationSettings}
@@ -147,10 +169,8 @@ public class SerializationSettings {
 			result.serializeLinks = serializeLinks;
 			result.serializeMeta = serializeMeta;
 			result.serializeId = serializeId;
+      result.serializeJSONAPIObject = serializeJSONAPIObject;
 			return result;
 		}
 	}
-
-
-
 }

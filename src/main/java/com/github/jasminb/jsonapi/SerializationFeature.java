@@ -29,7 +29,12 @@ public enum SerializationFeature {
 	/**
 	 * If enabled, {@link com.github.jasminb.jsonapi.annotations.Id} attribute will be serialized
 	 */
-	INCLUDE_ID(true);
+	INCLUDE_ID(true),
+
+  /**
+   * If enabled JSON API object will be serialized.
+   */
+  INCLUDE_JSONAPI_OBJECT(true);
 
 	final boolean enabled;
 

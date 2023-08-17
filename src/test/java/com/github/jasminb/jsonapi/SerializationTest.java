@@ -276,6 +276,43 @@ public class SerializationTest {
 		Assert.assertTrue(new String(serialized).contains("\"included\":[]"));
 	}
 
+  @Test
+  public void testJSONAPIObjectSerialization() throws DocumentSerializationException {
+    Author author = new Author();
+    author.setId("author_id");
+    author.setLastName("Bar");
+    author.setFirstName("Foo");
+
+    JSONAPIDocument<Author> document = new JSONAPIDocument<>(author);
+    JsonApi jsonApi = new JsonApi();
+    jsonApi.setVersion("1.1");
+    document.setJsonApi(jsonApi);
+
+    byte[] serialized = converter.writeDocument(document);
+
+    Assert.assertTrue(new String(serialized).contains("\"jsonapi\":{\"version\":\"1.1\"}"));
+  }
+
+  @Test
+  public void testJSONAPIObjectSerializationDisabledDisabled() throws DocumentSerializationException {
+    Author author = new Author();
+    author.setId("author_id");
+    author.setLastName("Bar");
+    author.setFirstName("Foo");
+
+    JSONAPIDocument<Author> document = new JSONAPIDocument<>(author);
+    JsonApi jsonApi = new JsonApi();
+    jsonApi.setVersion("1.1");
+    document.setJsonApi(jsonApi);
+
+    byte[] serialized = converter.writeDocument(
+      document,
+      new SerializationSettings.Builder().serializeJSONAPIObject(false).build()
+    );
+
+    Assert.assertFalse(new String(serialized).contains("\"jsonapi\":{\"version\":\"1.1\"}"));
+  }
+
 	private JSONAPIDocument<User> createDocument(User user) {
 		JSONAPIDocument<User> document = new JSONAPIDocument<>(user);
 

@@ -32,6 +32,12 @@ public class JSONAPIDocument<T> {
 	 */
 	private Map<String, Object> meta;
 
+  /**
+   * JSON API object that may hold information about the server implementation version, extensions, profiles and
+   * additional meta-data.
+   */
+  private JsonApi jsonApi;
+
 	/**
 	 * Raw JSON-node response
 	 */
@@ -237,4 +243,22 @@ public class JSONAPIDocument<T> {
 	public JsonNode getResponseJSONNode() {
 		return responseJSONNode;
 	}
+
+  /**
+   * Returns JSON API object if present.
+   *
+   * @return {@link JsonApi} or null
+   */
+  public JsonApi getJsonApi() {
+    return jsonApi;
+  }
+
+  /**
+   * Sets the JSON API object.
+   *
+   * @param jsonApi {@link JsonApi}
+   */
+  public void setJsonApi(JsonApi jsonApi) {
+    this.jsonApi = jsonApi;
+  }
 }
