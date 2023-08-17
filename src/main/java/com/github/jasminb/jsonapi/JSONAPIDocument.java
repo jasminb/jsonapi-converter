@@ -32,11 +32,11 @@ public class JSONAPIDocument<T> {
 	 */
 	private Map<String, Object> meta;
 
-  /**
-   * JSON API object that may hold information about the server implementation version, extensions, profiles and
-   * additional meta-data.
-   */
-  private JsonApi jsonApi;
+	/**
+	 * JSON API object that may hold information about the server implementation version, extensions, profiles and
+	 * additional meta-data.
+	 */
+	private JsonApi jsonApi;
 
 	/**
 	 * Raw JSON-node response
@@ -56,7 +56,7 @@ public class JSONAPIDocument<T> {
 	/**
 	 * Creates new JSONAPIDocument.
 	 *
-	 * @param data {@link T} API resource type
+	 * @param data         {@link T} API resource type
 	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
 	 */
 	public JSONAPIDocument(T data, ObjectMapper deserializer) {
@@ -67,8 +67,8 @@ public class JSONAPIDocument<T> {
 	/**
 	 * Creates new JSONAPIDocument.
 	 *
-	 * @param data {@link T} API resource type
-	 * @param jsonNode {@link JsonNode} response JSON
+	 * @param data         {@link T} API resource type
+	 * @param jsonNode     {@link JsonNode} response JSON
 	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
 	 */
 	public JSONAPIDocument(T data, JsonNode jsonNode, ObjectMapper deserializer) {
@@ -80,9 +80,9 @@ public class JSONAPIDocument<T> {
 	/**
 	 * Creates new JsonApiDocument.
 	 *
-	 * @param data {@link T} API resource type
+	 * @param data  {@link T} API resource type
 	 * @param links @link Links} links
-	 * @param meta {@link Map} meta
+	 * @param meta  {@link Map} meta
 	 */
 	public JSONAPIDocument(T data, Links links, Map<String, Object> meta) {
 		this(data);
@@ -93,9 +93,9 @@ public class JSONAPIDocument<T> {
 	/**
 	 * Creates new JsonApiDocument.
 	 *
-	 * @param data {@link T} API resource type
-	 * @param links @link Links} links
-	 * @param meta {@link Map} meta
+	 * @param data         {@link T} API resource type
+	 * @param links        @link Links} links
+	 * @param meta         {@link Map} meta
 	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
 	 */
 	public JSONAPIDocument(T data, Links links, Map<String, Object> meta, ObjectMapper deserializer) {
@@ -132,8 +132,9 @@ public class JSONAPIDocument<T> {
 	 * Factory method for creating JSONAPIDocument that holds the Error object.
 	 *
 	 * <p>
-	 *     This method should be used in case error response is being built by the server side.
+	 * This method should be used in case error response is being built by the server side.
 	 * </p>
+	 *
 	 * @param errors
 	 */
 	@NotNull
@@ -193,7 +194,7 @@ public class JSONAPIDocument<T> {
 	 * Adds a named link.
 	 *
 	 * @param linkName the named link to add
-	 * @param link the link to add
+	 * @param link     the link to add
 	 */
 	public void addLink(String linkName, Link link) {
 		if (links == null) {
@@ -213,8 +214,9 @@ public class JSONAPIDocument<T> {
 
 	/**
 	 * Returns typed meta-data object or <code>null</code> if no meta is present.
+	 *
 	 * @param metaType {@link Class} target type
-	 * @param <M> type
+	 * @param <M>      type
 	 * @return meta or <code>null</code>
 	 */
 	@Nullable
@@ -228,6 +230,7 @@ public class JSONAPIDocument<T> {
 
 	/**
 	 * Returns error objects or <code>null</code> in case no errors were set.
+	 *
 	 * @return {@link Iterable} errors
 	 */
 	@Nullable
@@ -244,21 +247,21 @@ public class JSONAPIDocument<T> {
 		return responseJSONNode;
 	}
 
-  /**
-   * Returns JSON API object if present.
-   *
-   * @return {@link JsonApi} or null
-   */
-  public JsonApi getJsonApi() {
-    return jsonApi;
-  }
+	/**
+	 * Returns JSON API object if present.
+	 *
+	 * @return {@link JsonApi} or null
+	 */
+	public JsonApi getJsonApi() {
+		return jsonApi;
+	}
 
-  /**
-   * Sets the JSON API object.
-   *
-   * @param jsonApi {@link JsonApi}
-   */
-  public void setJsonApi(JsonApi jsonApi) {
-    this.jsonApi = jsonApi;
-  }
+	/**
+	 * Sets the JSON API object.
+	 *
+	 * @param jsonApi {@link JsonApi}
+	 */
+	public void setJsonApi(JsonApi jsonApi) {
+		this.jsonApi = jsonApi;
+	}
 }

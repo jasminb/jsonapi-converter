@@ -304,10 +304,10 @@ public class ResourceConverter {
 				result.setLinks(new Links(mapLinks(rootNode.get(LINKS))));
 			}
 
-      // Handle server version/meta (JSON API DOC)
-      if (rootNode.has(JSON_API)) {
-        result.setJsonApi(objectMapper.treeToValue(rootNode.get(JSON_API), JsonApi.class));
-      }
+			// Handle server version/meta (JSON API DOC)
+			if (rootNode.has(JSON_API)) {
+				result.setJsonApi(objectMapper.treeToValue(rootNode.get(JSON_API), JsonApi.class));
+			}
 
 			return result;
 		} catch (RuntimeException e) {
@@ -735,10 +735,10 @@ public class ResourceConverter {
 			serializeMeta(document, result, settings);
 			serializeLinks(document, result, settings);
 
-      // Serialize JSON API object if present
-      serializeJSONAPIObject(document, result, settings);
+			// Serialize JSON API object if present
+			serializeJSONAPIObject(document, result, settings);
 
-      return objectMapper.writeValueAsBytes(result);
+			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
 		} finally {
@@ -759,11 +759,11 @@ public class ResourceConverter {
 		}
 	}
 
-  private void serializeJSONAPIObject(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
-    if (document.getJsonApi() != null && shouldSerializeJSONAPIObject(settings)) {
-      resultNode.set(JSON_API, objectMapper.valueToTree(document.getJsonApi()));
-    }
-  }
+	private void serializeJSONAPIObject(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
+		if (document.getJsonApi() != null && shouldSerializeJSONAPIObject(settings)) {
+			resultNode.set(JSON_API, objectMapper.valueToTree(document.getJsonApi()));
+		}
+	}
 
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
@@ -804,7 +804,7 @@ public class ResourceConverter {
 			// Handle global links and meta
 			serializeMeta(documentCollection, result, serializationSettings);
 			serializeLinks(documentCollection, result, serializationSettings);
-      serializeJSONAPIObject(documentCollection, result, serializationSettings);
+			serializeJSONAPIObject(documentCollection, result, serializationSettings);
 
 			result = addIncludedSection(result, includedDataMap, serializationSettings);
 
@@ -1304,13 +1304,13 @@ public class ResourceConverter {
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_ID);
 	}
 
-  private boolean shouldSerializeJSONAPIObject(SerializationSettings settings) {
-    if (settings != null && settings.serializeJSONAPIObject() != null) {
-      return settings.serializeJSONAPIObject();
-    }
+	private boolean shouldSerializeJSONAPIObject(SerializationSettings settings) {
+		if (settings != null && settings.serializeJSONAPIObject() != null) {
+			return settings.serializeJSONAPIObject();
+		}
 
-    return serializationFeatures.contains(SerializationFeature.INCLUDE_JSONAPI_OBJECT);
-  }
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_JSONAPI_OBJECT);
+	}
 
 	private JsonNode removeField(ObjectNode node, Field field) {
 		if (field != null) {

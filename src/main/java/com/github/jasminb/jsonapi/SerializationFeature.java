@@ -31,10 +31,10 @@ public enum SerializationFeature {
 	 */
 	INCLUDE_ID(true),
 
-  /**
-   * If enabled JSON API object will be serialized.
-   */
-  INCLUDE_JSONAPI_OBJECT(true);
+	/**
+	 * If enabled JSON API object will be serialized.
+	 */
+	INCLUDE_JSONAPI_OBJECT(true);
 
 	final boolean enabled;
 
@@ -44,6 +44,7 @@ public enum SerializationFeature {
 
 	/**
 	 * Returns set of features that are enabled by default.
+	 *
 	 * @return returns features that are enabled by default
 	 */
 	public static Set<SerializationFeature> getDefaultFeatures() {

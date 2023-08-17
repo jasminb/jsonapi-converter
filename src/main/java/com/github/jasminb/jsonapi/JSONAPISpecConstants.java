@@ -22,5 +22,5 @@ public interface JSONAPISpecConstants {
 	String NEXT = "next";
 	String FIRST = "first";
 	String LAST = "last";
-  String JSON_API = "jsonapi";
+	String JSON_API = "jsonapi";
 }

@@ -37,8 +37,7 @@ public class SerializationTest {
 		User user = createUser();
 		JSONAPIDocument<User> document = createDocument(user);
 
-		JSONAPIDocument<User> convertedBack = converter.readDocument(converter.writeDocument(document),
-				User.class);
+		JSONAPIDocument<User> convertedBack = converter.readDocument(converter.writeDocument(document), User.class);
 
 		Assert.assertNotNull(convertedBack);
 		Assert.assertNotNull(convertedBack.get());
@@ -66,8 +65,8 @@ public class SerializationTest {
 		converter.disableDeserializationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
 
 
-		JSONAPIDocument<User> convertedBack = converter
-				.readDocument(converter.writeDocument(createDocument(createUser())), User.class);
+		JSONAPIDocument<User> convertedBack = converter.readDocument(converter.writeDocument(createDocument(createUser()))
+						, User.class);
 
 		Assert.assertNotNull(convertedBack.get());
 		Assert.assertNull(convertedBack.getLinks());
@@ -93,7 +92,7 @@ public class SerializationTest {
 		author.setArticles(new ArrayList<Article>());
 		author.getArticles().add(article);
 
-		byte [] data = converter.writeDocument(new JSONAPIDocument<>(author));
+		byte[] data = converter.writeDocument(new JSONAPIDocument<>(author));
 
 		JSONAPIDocument<Author> authorResource = converter.readDocument(data, Author.class);
 
@@ -119,12 +118,11 @@ public class SerializationTest {
 	public void testIncludedDataDisabledTroughSettings() throws DocumentSerializationException {
 		JSONAPIDocument<User> document = createDocument(createUser());
 
-		SerializationSettings serializationSettings = new SerializationSettings.Builder()
-				.excludedRelationships("statuses")
-				.build();
+		SerializationSettings serializationSettings =
+						new SerializationSettings.Builder().excludedRelationships("statuses").build();
 
-		JSONAPIDocument<User> convertedBack = converter.readDocument(
-				converter.writeDocument(document, serializationSettings), User.class);
+		JSONAPIDocument<User> convertedBack = converter.readDocument(converter.writeDocument(document,
+						serializationSettings), User.class);
 
 		Status status = convertedBack.get().getStatuses().iterator().next();
 		Assert.assertNull(status.getContent());
@@ -133,6 +131,7 @@ public class SerializationTest {
 	/**
 	 * Covers use-case where global settings are used to disable relationship attribute inclusion but
 	 * behaviour is changed trouh local settings provided when serialization is executed.
+	 *
 	 * @throws DocumentSerializationException
 	 */
 	@Test
@@ -140,12 +139,11 @@ public class SerializationTest {
 		converter.disableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
 		JSONAPIDocument<User> document = createDocument(createUser());
 
-		SerializationSettings serializationSettings = new SerializationSettings.Builder()
-				.includeRelationship("statuses")
-				.build();
+		SerializationSettings serializationSettings =
+						new SerializationSettings.Builder().includeRelationship("statuses").build();
 
-		JSONAPIDocument<User> convertedBack = converter.readDocument(
-				converter.writeDocument(document, serializationSettings), User.class);
+		JSONAPIDocument<User> convertedBack = converter.readDocument(converter.writeDocument(document,
+						serializationSettings), User.class);
 
 		Status status = convertedBack.get().getStatuses().iterator().next();
 		Assert.assertNotNull(status.getContent());
@@ -155,29 +153,23 @@ public class SerializationTest {
 	public void testOverrideGlobalMetaLinksSettings() throws DocumentSerializationException {
 		JSONAPIDocument<User> document = createDocument(createUser());
 
-		SerializationSettings serializationSettings = new SerializationSettings.Builder()
-				.serializeLinks(false)
-				.serializeMeta(false)
-				.build();
+		SerializationSettings serializationSettings =
+						new SerializationSettings.Builder().serializeLinks(false).serializeMeta(false).build();
 
-		JSONAPIDocument<User> convertedBack = converter.readDocument(
-				converter.writeDocument(document, serializationSettings), User.class);
+		JSONAPIDocument<User> convertedBack = converter.readDocument(converter.writeDocument(document,
+						serializationSettings), User.class);
 
 		Assert.assertNull(convertedBack.getMeta());
 		Assert.assertNull(convertedBack.getLinks());
 		Assert.assertNull(convertedBack.get().getMeta());
 		Assert.assertNull(convertedBack.get().links);
 
-		serializationSettings = new SerializationSettings.Builder()
-				.serializeLinks(true)
-				.serializeMeta(true)
-				.build();
+		serializationSettings = new SerializationSettings.Builder().serializeLinks(true).serializeMeta(true).build();
 
 		converter.disableSerializationOption(SerializationFeature.INCLUDE_META);
 		converter.disableSerializationOption(SerializationFeature.INCLUDE_LINKS);
 
-		convertedBack = converter.readDocument(
-				converter.writeDocument(document, serializationSettings), User.class);
+		convertedBack = converter.readDocument(converter.writeDocument(document, serializationSettings), User.class);
 
 		Assert.assertNotNull(convertedBack.getMeta());
 		Assert.assertNotNull(convertedBack.getLinks());
@@ -190,7 +182,7 @@ public class SerializationTest {
 		User user = new User();
 		user.setName("Name");
 
-		byte [] data = converter.writeDocument(new JSONAPIDocument<>(user));
+		byte[] data = converter.writeDocument(new JSONAPIDocument<>(user));
 
 		Assert.assertTrue(new String(data).contains(user.getName()));
 		Assert.assertFalse(new String(data).contains("id"));
@@ -223,7 +215,7 @@ public class SerializationTest {
 		status.setUserRelationshipMeta(userRelationshipMeta);
 		status.setUserRelationshipLinks(userRelationshipLink);
 
-		byte [] data = converter.writeDocument(new JSONAPIDocument<>(status));
+		byte[] data = converter.writeDocument(new JSONAPIDocument<>(status));
 
 		System.out.println(new String(data));
 
@@ -239,7 +231,7 @@ public class SerializationTest {
 		linkMap.put(JSONAPISpecConstants.SELF, new Link("the-self-link"));
 		user.links = new Links(linkMap);
 
-		byte [] data = converter.writeDocument(new JSONAPIDocument<>(user));
+		byte[] data = converter.writeDocument(new JSONAPIDocument<>(user));
 
 		Assert.assertFalse(new String(data).contains("href"));
 		Assert.assertTrue(new String(data).contains("the-self-link"));
@@ -255,7 +247,7 @@ public class SerializationTest {
 		linkMap.put(JSONAPISpecConstants.SELF, new Link("the-self-link", meta));
 		user.links = new Links(linkMap);
 
-		byte [] data = converter.writeDocument(new JSONAPIDocument<>(user));
+		byte[] data = converter.writeDocument(new JSONAPIDocument<>(user));
 
 		Assert.assertTrue(new String(data).contains("href"));
 		Assert.assertTrue(new String(data).contains("the-self-link"));
@@ -276,42 +268,40 @@ public class SerializationTest {
 		Assert.assertTrue(new String(serialized).contains("\"included\":[]"));
 	}
 
-  @Test
-  public void testJSONAPIObjectSerialization() throws DocumentSerializationException {
-    Author author = new Author();
-    author.setId("author_id");
-    author.setLastName("Bar");
-    author.setFirstName("Foo");
+	@Test
+	public void testJSONAPIObjectSerialization() throws DocumentSerializationException {
+		Author author = new Author();
+		author.setId("author_id");
+		author.setLastName("Bar");
+		author.setFirstName("Foo");
 
-    JSONAPIDocument<Author> document = new JSONAPIDocument<>(author);
-    JsonApi jsonApi = new JsonApi();
-    jsonApi.setVersion("1.1");
-    document.setJsonApi(jsonApi);
+		JSONAPIDocument<Author> document = new JSONAPIDocument<>(author);
+		JsonApi jsonApi = new JsonApi();
+		jsonApi.setVersion("1.1");
+		document.setJsonApi(jsonApi);
 
-    byte[] serialized = converter.writeDocument(document);
+		byte[] serialized = converter.writeDocument(document);
 
-    Assert.assertTrue(new String(serialized).contains("\"jsonapi\":{\"version\":\"1.1\"}"));
-  }
+		Assert.assertTrue(new String(serialized).contains("\"jsonapi\":{\"version\":\"1.1\"}"));
+	}
 
-  @Test
-  public void testJSONAPIObjectSerializationDisabledDisabled() throws DocumentSerializationException {
-    Author author = new Author();
-    author.setId("author_id");
-    author.setLastName("Bar");
-    author.setFirstName("Foo");
+	@Test
+	public void testJSONAPIObjectSerializationDisabledDisabled() throws DocumentSerializationException {
+		Author author = new Author();
+		author.setId("author_id");
+		author.setLastName("Bar");
+		author.setFirstName("Foo");
 
-    JSONAPIDocument<Author> document = new JSONAPIDocument<>(author);
-    JsonApi jsonApi = new JsonApi();
-    jsonApi.setVersion("1.1");
-    document.setJsonApi(jsonApi);
+		JSONAPIDocument<Author> document = new JSONAPIDocument<>(author);
+		JsonApi jsonApi = new JsonApi();
+		jsonApi.setVersion("1.1");
+		document.setJsonApi(jsonApi);
 
-    byte[] serialized = converter.writeDocument(
-      document,
-      new SerializationSettings.Builder().serializeJSONAPIObject(false).build()
-    );
+		byte[] serialized = converter.writeDocument(document,
+						new SerializationSettings.Builder().serializeJSONAPIObject(false).build());
 
-    Assert.assertFalse(new String(serialized).contains("\"jsonapi\":{\"version\":\"1.1\"}"));
-  }
+		Assert.assertFalse(new String(serialized).contains("\"jsonapi\":{\"version\":\"1.1\"}"));
+	}
 
 	private JSONAPIDocument<User> createDocument(User user) {
 		JSONAPIDocument<User> document = new JSONAPIDocument<>(user);
