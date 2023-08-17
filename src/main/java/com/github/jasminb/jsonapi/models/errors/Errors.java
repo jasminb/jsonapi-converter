@@ -1,5 +1,7 @@
 package com.github.jasminb.jsonapi.models.errors;
 
+import com.github.jasminb.jsonapi.JsonApi;
+
 import java.util.List;
 
 /**
@@ -9,6 +11,7 @@ import java.util.List;
  */
 public class Errors {
 	private List<Error> errors;
+	private JsonApi jsonapi;
 
 	public List<Error> getErrors() {
 		return errors;
@@ -18,10 +21,16 @@ public class Errors {
 		this.errors = errors;
 	}
 
+	public JsonApi getJsonapi() {
+		return jsonapi;
+	}
+
+	public void setJsonapi(JsonApi jsonapi) {
+		this.jsonapi = jsonapi;
+	}
+
 	@Override
 	public String toString() {
-		return "Errors{" +
-				"errors=" + (errors != null ? errors : "Undefined") +
-				'}';
+		return "Errors{" + "errors=" + (errors != null ? errors : "Undefined") + '}';
 	}
 }
