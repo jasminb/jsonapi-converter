@@ -1,6 +1,6 @@
 {
   "data": [{
-    "type": "articles",
+    "type": "article",
     "id": "1",
     "attributes": {
       "title": "JSON API paints my bikeshed!"
@@ -48,7 +48,7 @@
       "self": "http://example.com/people/9"
     }
   }, {
-    "type": "comments",
+    "type": "comment",
     "id": "5",
     "attributes": {
       "body": "First!"
@@ -62,7 +62,7 @@
       "self": "http://example.com/comments/5"
     }
   }, {
-    "type": "comments",
+    "type": "comment",
     "id": "12",
     "attributes": {
       "body": "I like XML better"

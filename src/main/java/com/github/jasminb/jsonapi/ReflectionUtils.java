@@ -51,7 +51,7 @@ public class ReflectionUtils {
 	 * @param clazz type class
 	 * @return name of the type or <code>null</code> in case Type annotation is not present
 	 */
-	public static String getTypeName(Class<?> clazz) {
+	public static String[] getTypeNames(Class<?> clazz) {
 		Type typeAnnotation = clazz.getAnnotation(Type.class);
 		return typeAnnotation != null ? typeAnnotation.value() : null;
 	}

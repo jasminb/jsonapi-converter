@@ -130,9 +130,9 @@ public class ResourceConverter {
 	 */
 	public void setTypeResolver(RelationshipResolver resolver, Class<?> type) {
 		if (resolver != null) {
-			String typeName = ReflectionUtils.getTypeName(type);
+			String[] typeNames = ReflectionUtils.getTypeNames(type);
 
-			if (typeName != null) {
+			if (typeNames != null) {
 				typedResolvers.put(type, resolver);
 			}
 		}
@@ -886,7 +886,7 @@ public class ResourceConverter {
 						continue;
 					}
 
-					String relationshipName = relationship.value();
+					String relationshipName = relationship.value()[0];
 
 					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
 					relationshipsNode.set(relationshipName, relationshipDataNode);
@@ -1228,7 +1228,7 @@ public class ResourceConverter {
 			Links links = null;
 
 			Field relationshipLinksField = configuration
-					.getRelationshipLinksField(source.getClass(), relationship.value());
+					.getRelationshipLinksField(source.getClass(), relationship.value()[0]);
 
 			if (relationshipLinksField != null) {
 				links = (Links) relationshipLinksField.get(source);

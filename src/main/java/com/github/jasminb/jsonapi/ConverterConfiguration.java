@@ -54,7 +54,9 @@ public class ConverterConfiguration {
 	private void processClass(Class<?> clazz) {
 		if (clazz.isAnnotationPresent(Type.class)) {
 			Type annotation = clazz.getAnnotation(Type.class);
-			typeToClassMapping.put(annotation.value(), clazz);
+			for (String typeName : annotation.value()) {
+				typeToClassMapping.put(typeName, clazz);
+			}
 			typeAnnotations.put(clazz, annotation);
 			relationshipTypeMap.put(clazz, new HashMap<String, Class<?>>());
 			relationshipFieldMap.put(clazz, new HashMap<String, Field>());
@@ -70,8 +72,10 @@ public class ConverterConfiguration {
 
 				Relationship relationship = relationshipField.getAnnotation(Relationship.class);
 				Class<?> targetType = ReflectionUtils.getFieldType(relationshipField);
-				relationshipTypeMap.get(clazz).put(relationship.value(), targetType);
-				relationshipFieldMap.get(clazz).put(relationship.value(), relationshipField);
+				for (String relationshipName : relationship.value()) {
+					relationshipTypeMap.get(clazz).put(relationshipName, targetType);
+					relationshipFieldMap.get(clazz).put(relationshipName, relationshipField);
+				}
 				fieldRelationshipMap.put(relationshipField, relationship);
 
 				if (relationship.resolve() && relationship.relType() == null) {
@@ -286,7 +290,7 @@ public class ConverterConfiguration {
 		Type type = typeAnnotations.get(clazz);
 
 		if (type != null) {
-			return type.value();
+			return type.value()[0];
 		}
 		return null;
 	}
