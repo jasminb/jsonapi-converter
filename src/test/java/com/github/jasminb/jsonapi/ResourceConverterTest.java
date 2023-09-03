@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
+import com.github.jasminb.jsonapi.exceptions.InvalidMetaDataTypeException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
@@ -839,6 +840,12 @@ public class ResourceConverterTest {
 				Status.class);
 
 		assertNotNull(status.getMeta());
+	}
+
+	@Test(expected = InvalidMetaDataTypeException.class)
+	public void testInvalidMetaData() throws IOException {
+		InputStream apiResponse = IOUtils.getResource("users-outside-meta-invalid.json");
+		converter.readDocumentCollection(apiResponse, User.class);
 	}
 
 	@Test
