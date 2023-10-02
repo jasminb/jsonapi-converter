@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
+import com.github.jasminb.jsonapi.exceptions.UnknownRelationshipException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.errors.Error;
 
@@ -543,6 +544,9 @@ public class ResourceConverter {
 							}
 						}
 					}
+				} else if (!deserializationFeatures.contains(DeserializationFeature.ALLOW_UNKNOWN_RELATIONSHIPS)) {
+					throw new UnknownRelationshipException(
+							"Trying to parse unknown relationship '" + field + "' in " + object.getClass());
 				}
 			}
 		}

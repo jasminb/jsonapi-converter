@@ -3,6 +3,8 @@ package com.github.jasminb.jsonapi;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.github.jasminb.jsonapi.exceptions.UnknownRelationshipException;
+
 /**
  * Enumeration that defines list of deserialization features that can be set to {@link ResourceConverter}.
  *
@@ -25,7 +27,13 @@ public enum DeserializationFeature {
 	 * This option determines if relationship (collection) can have unknown type.
 	 * Can be use with polymorphic relationship.
 	 */
-	ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP(false);
+	ALLOW_UNKNOWN_TYPE_IN_RELATIONSHIP(false),
+
+	/**
+	 * This option determines whether encountering undeclared relationships throws
+	 * an {@link UnknownRelationshipException} during conversion
+	 */
+	ALLOW_UNKNOWN_RELATIONSHIPS(false);
 
 	private final boolean enabledByDefault;
 
