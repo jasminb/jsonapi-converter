@@ -546,6 +546,7 @@ public class ResourceConverterTest {
 	@Test
 	public void testEnableAllowUnknownInclusionsTwo() throws IOException {
 		converter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_INCLUSIONS);
+		converter.enableDeserializationOption(DeserializationFeature.ALLOW_UNKNOWN_RELATIONSHIPS);
 
 		InputStream rawData = IOUtils.getResource("included_fail.json");
 		converter.readDocument(rawData, City.class).get();
