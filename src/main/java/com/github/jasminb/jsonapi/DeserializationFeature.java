@@ -16,6 +16,11 @@ public enum DeserializationFeature {
 	REQUIRE_RESOURCE_ID(true),
 
 	/**
+	 * This option enforces presence of the 'lid' attribute in resources being parsed.
+	 */
+	REQUIRE_LOCAL_RESOURCE_ID(false),
+
+	/**
 	 * This option determines whether encountering unknown types results in {@link IllegalArgumentException} being
 	 * thrown, or if parsing continues and the unknown field is ignored.
 	 */

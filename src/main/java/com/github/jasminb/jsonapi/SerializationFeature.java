@@ -34,7 +34,12 @@ public enum SerializationFeature {
 	/**
 	 * If enabled JSON API object will be serialized.
 	 */
-	INCLUDE_JSONAPI_OBJECT(true);
+	INCLUDE_JSONAPI_OBJECT(true),
+
+	/**
+	 * If enabled, {@link com.github.jasminb.jsonapi.annotations.LocalId} attribute will be serialized
+	 */
+	INCLUDE_LOCAL_ID(true);
 
 	final boolean enabled;
 

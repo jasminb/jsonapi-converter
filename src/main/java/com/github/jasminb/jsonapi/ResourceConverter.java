@@ -371,6 +371,9 @@ public class ResourceConverter {
 				// Set object id
 				setIdValue(result, source.get(ID));
 
+				// Set object lid
+				setLocalIdValue(result, source.get(LOCAL_ID));
+
 				if (handleRelationships) {
 					// Handle relationships
 					handleRelationships(source, result);
@@ -600,18 +603,28 @@ public class ResourceConverter {
 	}
 
 	/**
-	 * Generates unique resource identifier by combining resource type and resource id fields. <br />
+	 * Generates unique resource identifier by combining resource type and resource id/local id fields. <br />
 	 * By specification id/type combination guarantees uniqueness.
 	 * @param object data object
 	 * @return concatenated id and type values
 	 */
-	private String createIdentifier(JsonNode object) {
+	private String createIdentifier(JsonNode object) throws IllegalArgumentException {
 		JsonNode idNode = object.get(ID);
+		JsonNode lidNode = object.get(LOCAL_ID);
 
 		String id = idNode != null ? idNode.asText().trim() : "";
+		String lid = lidNode != null ? lidNode.asText().trim() : "";
 
 		if (id.isEmpty() && deserializationFeatures.contains(DeserializationFeature.REQUIRE_RESOURCE_ID)) {
-			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'id' attribute! %s", object.toString()));
+			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'id' attribute! %s", object));
+		}
+
+		if (lid.isEmpty() && deserializationFeatures.contains(DeserializationFeature.REQUIRE_LOCAL_RESOURCE_ID)) {
+			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'lid' attribute! %s", object));
+		}
+
+		if (!id.isEmpty() && !lid.isEmpty()) {
+			throw new IllegalArgumentException(String.format("Resource must not have both 'id' and 'lid' attributes! %s", object));
 		}
 
 		JsonNode typeNode = object.get(TYPE);
@@ -619,10 +632,14 @@ public class ResourceConverter {
 		String type = typeNode != null ? typeNode.asText().trim() : "";
 
 		if (type.isEmpty()) {
-			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'type' attribute! %s", object.toString()));
+			throw new IllegalArgumentException(String.format("Resource must have a non null and non-empty 'type' attribute! %s", object));
 		}
 
-		return type.concat(id);
+		if (id.isEmpty()) {
+			return type.concat(lid);
+		} else {
+			return type.concat(id);
+		}
 	}
 
 	/**
@@ -641,6 +658,21 @@ public class ResourceConverter {
 	}
 
 	/**
+	 * Sets the local id attribute value to a target object.
+	 * @param target target POJO
+	 * @param localIdNode local id node
+	 * @throws IllegalAccessException thrown in case target field is not accessible
+	 */
+	private void setLocalIdValue(Object target, JsonNode localIdNode) throws IllegalAccessException {
+		Field idField = configuration.getLocalIdField(target.getClass());
+		ResourceIdHandler idHandler = configuration.getLocalIdHandler(target.getClass());
+
+		if (localIdNode != null) {
+			idField.set(target, idHandler.fromString(localIdNode.asText()));
+		}
+	}
+
+	/**
 	 * Reads @Id value from provided source object.
 	 *
 	 * @param source object to read @Id value from
@@ -652,6 +684,25 @@ public class ResourceConverter {
 		ResourceIdHandler handler = configuration.getIdHandler(source.getClass());
 
 		return handler.asString(idField.get(source));
+	}
+
+	/**
+	 * Reads @LocalId value from provided source object.
+	 *
+	 * @param source object to read @LocalId value from
+	 * @return {@link String} id or <code>null</code>
+	 * @throws IllegalAccessException
+	 */
+	private String getLocalIdValue(Object source) throws IllegalAccessException {
+		Field localIdField = configuration.getLocalIdField(source.getClass());
+
+		// Local id is not required, so it can be null
+		if (localIdField != null) {
+			ResourceIdHandler handler = configuration.getLocalIdHandler(source.getClass());
+			return handler.asString(localIdField.get(source));
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -830,8 +881,12 @@ public class ResourceConverter {
 		// Handle id, meta and relationship fields
 		String resourceId = getIdValue(object);
 
+		// Local id
+		String localId = getLocalIdValue(object);
+
 		// Remove id field from resulting attribute node
 		removeField(attributesNode, configuration.getIdField(object.getClass()));
+		removeField(attributesNode, configuration.getLocalIdField(object.getClass()));
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
@@ -864,6 +919,18 @@ public class ResourceConverter {
 			// Cache the object for recursion breaking purposes
 			resourceCache.cache(resourceId.concat(configuration.getTypeName(object.getClass())), null);
 		}
+
+		if (localId != null) {
+			if (shouldSerializeLocalId(settings)) {
+				dataNode.put(LOCAL_ID, localId);
+			}
+
+			if (resourceId == null) {
+				// TODO: check why null
+				resourceCache.cache(localId.concat(configuration.getTypeName(object.getClass())), null);
+			}
+		}
+
 		dataNode.set(ATTRIBUTES, attributesNode);
 
 		// Handle relationships (remove from base type and add as relationships)
@@ -925,18 +992,24 @@ public class ResourceConverter {
 								String relationshipType = configuration.getTypeName(element.getClass());
 
 								String idValue = getIdValue(element);
+								String localIdValue = getLocalIdValue(element);
 
 								ObjectNode identifierNode = objectMapper.createObjectNode();
 								identifierNode.put(TYPE, relationshipType);
-								identifierNode.put(ID, idValue);
+
+								if (idValue != null) {
+									identifierNode.put(ID, idValue);
+								} else if (localIdValue != null) {
+									identifierNode.put(LOCAL_ID, localIdValue);
+								}
+
 								dataArrayNode.add(identifierNode);
 
 								// Handle included data
-								if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-									String identifier = idValue.concat(relationshipType);
+								if (shouldSerializeRelationship(relationshipName, settings) && (idValue != null || localIdValue != null)) {
+									String identifier = createIdentifier(idValue, localIdValue, relationshipType);
 									if (!includedContainer.containsKey(identifier) && !resourceCache.contains(identifier)) {
-										includedContainer.put(identifier,
-												getDataNode(element, includedContainer, settings));
+										includedContainer.put(identifier, getDataNode(element, includedContainer, settings));
 									}
 								}
 							}
@@ -946,18 +1019,22 @@ public class ResourceConverter {
 							String relationshipType = configuration.getTypeName(relationshipObject.getClass());
 
 							String idValue = getIdValue(relationshipObject);
+							String localIdValue = getLocalIdValue(relationshipObject);
 
 							ObjectNode identifierNode = objectMapper.createObjectNode();
 							identifierNode.put(TYPE, relationshipType);
-							identifierNode.put(ID, idValue);
 
+							if (idValue != null) {
+								identifierNode.put(ID, idValue);
+							} else if (localIdValue != null) {
+								identifierNode.put(LOCAL_ID, localIdValue);
+							}
 							relationshipDataNode.set(DATA, identifierNode);
 
-							if (shouldSerializeRelationship(relationshipName, settings) && idValue != null) {
-								String identifier = idValue.concat(relationshipType);
+							if (shouldSerializeRelationship(relationshipName, settings) && (idValue != null || localIdValue != null)) {
+								String identifier = createIdentifier(idValue, localIdValue, relationshipType);
 								if (!includedContainer.containsKey(identifier)) {
-									includedContainer.put(identifier,
-											getDataNode(relationshipObject, includedContainer, settings));
+									includedContainer.put(identifier, getDataNode(relationshipObject, includedContainer, settings));
 								}
 							}
 						}
@@ -966,7 +1043,7 @@ public class ResourceConverter {
 
 			}
 
-			if (relationshipsNode.size() > 0) {
+			if (!relationshipsNode.isEmpty()) {
 				dataNode.set(RELATIONSHIPS, relationshipsNode);
 			}
 		}
@@ -1012,6 +1089,16 @@ public class ResourceConverter {
 	 */
 	public boolean isRegisteredType(Class<?> type) {
 		return configuration.isRegisteredType(type);
+	}
+
+	private String createIdentifier(String id, String localId, String type) {
+		if (id != null) {
+			return id.concat(type);
+		} else if (localId != null) {
+			return localId.concat(type);
+		} else {
+			throw new IllegalArgumentException("Relationship object must have either an id or lid!");
+		}
 	}
 
 	/**
@@ -1302,6 +1389,13 @@ public class ResourceConverter {
 			return settings.serializeId();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_ID);
+	}
+
+	private boolean shouldSerializeLocalId(SerializationSettings settings) {
+		if (settings != null && settings.serializeLocalId() != null) {
+			return settings.serializeLocalId();
+		}
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_LOCAL_ID);
 	}
 
 	private boolean shouldSerializeJSONAPIObject(SerializationSettings settings) {

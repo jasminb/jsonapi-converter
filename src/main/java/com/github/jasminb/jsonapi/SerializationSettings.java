@@ -12,10 +12,11 @@ import java.util.Set;
  */
 public class SerializationSettings {
 	private List<String> relationshipIncludes;
-	private List<String> relationshipExludes;
+	private List<String> relationshipExcludes;
 	private Boolean serializeMeta;
 	private Boolean serializeLinks;
 	private Boolean serializeId;
+	private Boolean serializeLocalId;
 	private Boolean serializeJSONAPIObject;
 
 	private SerializationSettings() {
@@ -39,7 +40,7 @@ public class SerializationSettings {
 	 * @return {@link Boolean}
 	 */
 	public boolean isRelationshipExcluded(String relationshipName) {
-		return relationshipExludes.contains(relationshipName);
+		return relationshipExcludes.contains(relationshipName);
 	}
 
 	/**
@@ -49,7 +50,7 @@ public class SerializationSettings {
 	 */
 	public boolean hasIncludedRelationships() {
 		Set<String> includedRelationships = new HashSet<>(relationshipIncludes);
-		includedRelationships.removeAll(relationshipExludes);
+		includedRelationships.removeAll(relationshipExcludes);
 
 		return !includedRelationships.isEmpty();
 	}
@@ -82,6 +83,15 @@ public class SerializationSettings {
 	}
 
 	/**
+	 * Returns {@link com.github.jasminb.jsonapi.annotations.LocalId} serialization flag.
+	 *
+	 * @return {@link Boolean}
+	 */
+	public Boolean serializeLocalId() {
+		return serializeLocalId;
+	}
+
+	/**
 	 * Returns JSON API object serialization flag.
 	 *
 	 * @return {@link Boolean}
@@ -94,11 +104,12 @@ public class SerializationSettings {
 	 * Serialisation settings builder.
 	 */
 	public static class Builder {
-		private List<String> relationshipIncludes = new ArrayList<>();
-		private List<String> relationshipExludes = new ArrayList<>();
+		private final List<String> relationshipIncludes = new ArrayList<>();
+		private final List<String> relationshipExcludes = new ArrayList<>();
 		private Boolean serializeMeta;
 		private Boolean serializeLinks;
 		private Boolean serializeId;
+		private Boolean serializeLocalId;
 		private Boolean serializeJSONAPIObject;
 
 		/**
@@ -119,7 +130,7 @@ public class SerializationSettings {
 		 * @return {@link Builder}
 		 */
 		public Builder excludedRelationships(String relationshipName) {
-			relationshipExludes.add(relationshipName);
+			relationshipExcludes.add(relationshipName);
 			return this;
 		}
 
@@ -157,6 +168,17 @@ public class SerializationSettings {
 		}
 
 		/**
+		 * Enable or disable local id serialization.
+		 *
+		 * @param flag {@link Boolean} serialization flag
+		 * @return {@link Builder}
+		 */
+		public Builder serializeLocalId(Boolean flag) {
+			serializeLocalId = flag;
+			return this;
+		}
+
+		/**
 		 * Enable or disable JSON API object serialization.
 		 *
 		 * @param flag {@link Boolean} serialization flag
@@ -175,11 +197,12 @@ public class SerializationSettings {
 		public SerializationSettings build() {
 			SerializationSettings result = new SerializationSettings();
 			result.relationshipIncludes = new ArrayList<>(relationshipIncludes);
-			result.relationshipExludes = new ArrayList<>(relationshipExludes);
+			result.relationshipExcludes = new ArrayList<>(relationshipExcludes);
 			result.serializeLinks = serializeLinks;
 			result.serializeMeta = serializeMeta;
 			result.serializeId = serializeId;
 			result.serializeJSONAPIObject = serializeJSONAPIObject;
+			result.serializeLocalId = serializeLocalId;
 			return result;
 		}
 	}

@@ -1,6 +1,7 @@
 package com.github.jasminb.jsonapi;
 
 import com.github.jasminb.jsonapi.annotations.Id;
+import com.github.jasminb.jsonapi.annotations.LocalId;
 import com.github.jasminb.jsonapi.annotations.Meta;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
@@ -26,7 +27,10 @@ public class ConverterConfiguration {
 	private final Map<String, Class<?>> typeToClassMapping = new HashMap<>();
 	private final Map<Class<?>, Type> typeAnnotations = new HashMap<>();
 	private final Map<Class<?>, Field> idMap = new HashMap<>();
+	private final Map<Class<?>, Field> localIdMap = new HashMap<>();
 	private final Map<Class<?>, ResourceIdHandler> idHandlerMap = new HashMap<>();
+	private final Map<Class<?>, ResourceIdHandler> localIdHandlerMap = new HashMap<>();
+
 	private final Map<Class<?>, List<Field>> relationshipMap = new HashMap<>();
 	private final Map<Class<?>, Map<String, Class<?>>> relationshipTypeMap = new HashMap<>();
 	private final Map<Class<?>, Map<String, Field>> relationshipFieldMap = new HashMap<>();
@@ -84,26 +88,26 @@ public class ConverterConfiguration {
 			}
 
 			relationshipMap.put(clazz, relationshipFields);
-			
+
 			// collecting RelationshipMeta fields
 			List<Field> relMetaFields = ReflectionUtils.getAnnotatedFields(clazz, RelationshipMeta.class, true);
-			
+
 			for (Field relMetaField : relMetaFields) {
 				relMetaField.setAccessible(true);
-				
+
 				RelationshipMeta relationshipMeta = relMetaField.getAnnotation(RelationshipMeta.class);
 				Class<?> targetType = ReflectionUtils.getFieldType(relMetaField);
 				relationshipMetaTypeMap.get(clazz).put(relationshipMeta.value(), targetType);
 				fieldRelationshipMetaMap.put(relMetaField, relationshipMeta);
 				relationshipMetaFieldMap.get(clazz).put(relationshipMeta.value(), relMetaField);
 			}
-			
+
 			// Collecting RelationshipLink fields
 			List<Field> relLinkFields = ReflectionUtils.getAnnotatedFields(clazz, RelationshipLinks.class, true);
-			
+
 			for (Field relLinkField : relLinkFields) {
 				relLinkField.setAccessible(true);
-				
+
 				RelationshipLinks links = relLinkField.getAnnotation(RelationshipLinks.class);
 				relationshipLinksFieldMap.get(clazz).put(links.value(), relLinkField);
 			}
@@ -127,7 +131,22 @@ public class ConverterConfiguration {
 				} else {
 					throw new IllegalArgumentException("Only single @Id annotation is allowed per defined type!");
 				}
+			}
 
+			// Collecting local id fields
+			List<Field> localIdFields = ReflectionUtils.getAnnotatedFields(clazz, LocalId.class, true);
+
+			if (localIdFields.size() == 1) {
+				Field localIdField = localIdFields.get(0);
+				localIdField.setAccessible(true);
+				localIdMap.put(clazz, localIdField);
+				try {
+					localIdHandlerMap.put(clazz, localIdField.getAnnotation(LocalId.class).value().newInstance());
+				} catch (InstantiationException | IllegalAccessException e) {
+					throw new IllegalArgumentException("Unable to construct handler instance by using no-arg constructor", e);
+				}
+			} else if (localIdFields.size() > 1) {
+				throw new IllegalArgumentException("Only single @LocalId annotation is allowed per defined type!");
 			}
 
 			// Collecting Meta fields
@@ -215,7 +234,16 @@ public class ConverterConfiguration {
 	public Field getIdField(Class<?> clazz) {
 		return idMap.get(clazz);
 	}
-	
+
+	/**
+	 * Returns the id field for given type.
+	 * @param clazz {@link Class} type to resolve id field for
+	 * @return {@link Field} id field
+	 */
+	public Field getLocalIdField(Class<?> clazz) {
+		return localIdMap.get(clazz);
+	}
+
 	/**
 	 * Returns handler registered for given type's id field.
 	 *
@@ -224,6 +252,16 @@ public class ConverterConfiguration {
 	 */
 	public ResourceIdHandler getIdHandler(Class<?> clazz) {
 		return idHandlerMap.get(clazz);
+	}
+
+	/**
+	 * Returns handler registered for given type's local id field.
+	 *
+	 * @param clazz {@link Class} type to resolve local id handler for
+	 * @return handler
+	 */
+	public ResourceIdHandler getLocalIdHandler(Class<?> clazz) {
+		return localIdHandlerMap.get(clazz);
 	}
 
 	/**
@@ -290,7 +328,7 @@ public class ConverterConfiguration {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Resolves and returns the type given to provided class.
 	 * @param clazz {@link Class} to resolve type name for
@@ -324,7 +362,7 @@ public class ConverterConfiguration {
 		return type.isAnnotationPresent(Type.class) &&
 				!ReflectionUtils.getAnnotatedFields(type, Id.class, true).isEmpty();
 	}
-	
+
 	/**
 	 * Returns relationship meta field.
 	 * @param clazz {@link Class} class holding relationship
@@ -334,7 +372,7 @@ public class ConverterConfiguration {
 	public Field getRelationshipMetaField(Class<?> clazz, String relationshipName) {
 		return relationshipMetaFieldMap.get(clazz).get(relationshipName);
 	}
-	
+
 	/**
 	 * Returns a type of a relationship meta field.
 	 * @param clazz {@link Class} owning the field with relationship meta annotation
@@ -344,7 +382,7 @@ public class ConverterConfiguration {
 	public Class<?> getRelationshipMetaType(Class<?> clazz, String relationshipName) {
 		return relationshipMetaTypeMap.get(clazz).get(relationshipName);
 	}
-	
+
 	/**
 	 * Returns relationship links field.
 	 * @param clazz {@link Class} class holding relationship
