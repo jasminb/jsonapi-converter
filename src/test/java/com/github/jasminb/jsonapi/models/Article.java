@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.github.jasminb.jsonapi.Links;
 import com.github.jasminb.jsonapi.RelType;
+import com.github.jasminb.jsonapi.annotations.LocalId;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Id;
 import com.github.jasminb.jsonapi.annotations.RelationshipLinks;
@@ -18,6 +19,9 @@ import java.util.List;
 public class Article {
 	@Id
 	private String id;
+
+	@LocalId
+	private String localId;
 
 	private String title;
 
@@ -83,5 +87,13 @@ public class Article {
 
 	public void setUserRelationshipLinks(Links userRelationshipLinks) {
 		this.userRelationshipLinks = userRelationshipLinks;
+	}
+
+	public String getLocalId() {
+		return localId;
+	}
+
+	public void setLocalId(String localId) {
+		this.localId = localId;
 	}
 }

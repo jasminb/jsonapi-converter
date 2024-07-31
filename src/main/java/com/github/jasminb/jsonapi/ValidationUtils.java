@@ -112,7 +112,7 @@ public class ValidationUtils {
 	 */
 	public static boolean isResourceIdentifierObject(JsonNode dataNode) {
 		return dataNode != null && dataNode.isObject() &&
-				hasValueNode(dataNode, JSONAPISpecConstants.ID) &&
+				(hasValueNode(dataNode, JSONAPISpecConstants.ID) || hasValueNode(dataNode, JSONAPISpecConstants.LOCAL_ID)) &&
 				hasValueNode(dataNode, JSONAPISpecConstants.TYPE) &&
 				hasContainerOrNull(dataNode, JSONAPISpecConstants.META);
 	}

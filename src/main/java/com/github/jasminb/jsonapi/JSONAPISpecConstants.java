@@ -10,6 +10,7 @@ public interface JSONAPISpecConstants {
 	String ATTRIBUTES = "attributes";
 	String TYPE = "type";
 	String ID = "id";
+	String LOCAL_ID = "lid";
 	String RELATIONSHIPS = "relationships";
 	String INCLUDED = "included";
 	String LINKS = "links";

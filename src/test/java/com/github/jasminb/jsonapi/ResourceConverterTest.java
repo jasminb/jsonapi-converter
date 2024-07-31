@@ -37,6 +37,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -875,6 +876,62 @@ public class ResourceConverterTest {
 
 		JSONAPIDocument<Status> statusDocument = converter.readDocument(apiResponse, Status.class);
 		assertNotNull(statusDocument.getResponseJSONNode());
+	}
+
+	@Test
+	public void testLocalIdentifierSerialization() throws DocumentSerializationException {
+		Author author = new Author();
+		author.setFirstName("John");
+		author.setLocalId("author_lid");
+
+		List<Article> articles = new ArrayList<>();
+
+		Article article = new Article();
+		article.setLocalId("article_1_lid");
+		article.setTitle("First Title");
+		articles.add(article);
+
+		Article secondArticle = new Article();
+		secondArticle.setLocalId("article_2_lid");
+		secondArticle.setTitle("Second Title");
+		articles.add(secondArticle);
+
+		author.setArticles(articles);
+
+		JSONAPIDocument<Author> document = new JSONAPIDocument<>(author);
+
+
+		SerializationSettings settings = new SerializationSettings.Builder()
+						.includeRelationship("articles")
+						.serializeLocalId(true)
+						.build();
+
+		byte[] data = converter.writeDocument(document, settings);
+
+		converter.disableDeserializationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
+		converter.enableDeserializationOption(DeserializationFeature.REQUIRE_LOCAL_RESOURCE_ID);
+
+		JSONAPIDocument<Author> deserialized = converter.readDocument(data, Author.class);
+		Author deserAuthor = deserialized.get();
+		assertEquals(author.getFirstName(), deserAuthor.getFirstName());
+		assertEquals(author.getLocalId(), deserAuthor.getLocalId());
+		assertEquals(2, deserAuthor.getArticles().size());
+
+		Collection<Article> deserArticles = deserAuthor.getArticles();
+		Article deserArticle = null;
+		Article deserSecondArticle = null;
+		for (Article art : deserArticles) {
+			if (art.getLocalId().equals(article.getLocalId())) {
+				deserArticle = art;
+			} else {
+				deserSecondArticle = art;
+			}
+		}
+		assertNotNull(deserArticle);
+		assertNotNull(deserSecondArticle);
+
+		assertEquals(article.getTitle(), deserArticle.getTitle());
+		assertEquals(secondArticle.getTitle(), deserSecondArticle.getTitle());
 	}
 
 
