@@ -18,19 +18,19 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.13</version>
+  <version>0.14</version>
 </dependency>
 ```
 
 Gradle:
 ```groovy
-implementation 'com.github.jasminb:jsonapi-converter:0.13'
+implementation 'com.github.jasminb:jsonapi-converter:0.14'
 ```
 
 SBT:
 
 ```groovy
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.13"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.14"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -54,9 +54,15 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.14-SNAPSHOT</version>
+  <version>0.15-SNAPSHOT</version>
 </dependency>
 ```
+
+#### Important retrofit note
+
+Retrofit is used as scoped dependency (`provided`) which means that if one needs retrofit capabilities, retrofit needs
+to be included as a separate explicit dependency (it won't be pulled transitively).
+
 
 #### Writing your model classes
 
