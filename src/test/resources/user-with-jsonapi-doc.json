@@ -1,0 +1,19 @@
+{
+  "data": {
+    "type": "users",
+    "id": "userId",
+    "attributes": {
+      "name": "liz"
+    }
+  },
+  "jsonapi": {
+    "version": "1.0",
+    "ext": [
+      "https://jsonapi.org/ext/atomic"
+    ],
+    "profile": [
+      "http://example.com/profiles/flexible-pagination",
+      "http://example.com/profiles/resource-versioning"
+    ]
+  }
+}

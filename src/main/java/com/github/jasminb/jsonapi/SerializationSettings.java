@@ -16,6 +16,7 @@ public class SerializationSettings {
 	private Boolean serializeMeta;
 	private Boolean serializeLinks;
 	private Boolean serializeId;
+	private Boolean serializeJSONAPIObject;
 
 	private SerializationSettings() {
 		// Hide CTOR
@@ -23,6 +24,7 @@ public class SerializationSettings {
 
 	/**
 	 * Checks if relationship with provided name has been explicitly marked for inclusion in serialized object.
+	 *
 	 * @param relationshipName {@link String} relationship name
 	 * @return {@link Boolean}
 	 */
@@ -32,6 +34,7 @@ public class SerializationSettings {
 
 	/**
 	 * Checks if relationship with provided name has been explicitly marked for exclusion in serialized object.
+	 *
 	 * @param relationshipName {@link String} relationship name
 	 * @return {@link Boolean}
 	 */
@@ -53,6 +56,7 @@ public class SerializationSettings {
 
 	/**
 	 * Returns meta serialization flag.
+	 *
 	 * @return {@link Boolean}
 	 */
 	public Boolean serializeMeta() {
@@ -61,6 +65,7 @@ public class SerializationSettings {
 
 	/**
 	 * Returns links serialization flag.
+	 *
 	 * @return {@link Boolean}
 	 */
 	public Boolean serializeLinks() {
@@ -77,6 +82,15 @@ public class SerializationSettings {
 	}
 
 	/**
+	 * Returns JSON API object serialization flag.
+	 *
+	 * @return {@link Boolean}
+	 */
+	public Boolean serializeJSONAPIObject() {
+		return serializeJSONAPIObject;
+	}
+
+	/**
 	 * Serialisation settings builder.
 	 */
 	public static class Builder {
@@ -85,9 +99,11 @@ public class SerializationSettings {
 		private Boolean serializeMeta;
 		private Boolean serializeLinks;
 		private Boolean serializeId;
+		private Boolean serializeJSONAPIObject;
 
 		/**
 		 * Explicitly enable relationship serialisation.
+		 *
 		 * @param relationshipName {@link String} relationship name
 		 * @return {@link Builder}
 		 */
@@ -98,6 +114,7 @@ public class SerializationSettings {
 
 		/**
 		 * Explicitly disable relationship serialisation.
+		 *
 		 * @param relationshipName {@link String} relationship name
 		 * @return {@link Builder}
 		 */
@@ -108,6 +125,7 @@ public class SerializationSettings {
 
 		/**
 		 * Enable or disable meta serialization.
+		 *
 		 * @param flag {@link Boolean} serialization flag
 		 * @return {@link Builder}
 		 */
@@ -118,6 +136,7 @@ public class SerializationSettings {
 
 		/**
 		 * Enable or disable links serialization.
+		 *
 		 * @param flag {@link Boolean} serialization flag
 		 * @return {@link Builder}
 		 */
@@ -128,6 +147,7 @@ public class SerializationSettings {
 
 		/**
 		 * Enable or disable id serialization.
+		 *
 		 * @param flag {@link Boolean} serialization flag
 		 * @return {@link Builder}
 		 */
@@ -137,7 +157,19 @@ public class SerializationSettings {
 		}
 
 		/**
+		 * Enable or disable JSON API object serialization.
+		 *
+		 * @param flag {@link Boolean} serialization flag
+		 * @return {@link Builder}
+		 */
+		public Builder serializeJSONAPIObject(Boolean flag) {
+			serializeJSONAPIObject = flag;
+			return this;
+		}
+
+		/**
 		 * Create new SerialisationSettings instance.
+		 *
 		 * @return {@link SerializationSettings}
 		 */
 		public SerializationSettings build() {
@@ -147,10 +179,8 @@ public class SerializationSettings {
 			result.serializeLinks = serializeLinks;
 			result.serializeMeta = serializeMeta;
 			result.serializeId = serializeId;
+			result.serializeJSONAPIObject = serializeJSONAPIObject;
 			return result;
 		}
 	}
-
-
-
 }

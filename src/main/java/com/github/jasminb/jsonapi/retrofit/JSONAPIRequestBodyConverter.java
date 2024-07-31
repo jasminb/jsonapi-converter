@@ -19,6 +19,7 @@ public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody>
 
 	/**
 	 * Creates new JSONAPIRequestBodyConverter.
+	 *
 	 * @param converter {@link ResourceConverter} converter instance
 	 */
 	public JSONAPIRequestBodyConverter(ResourceConverter converter) {
@@ -43,8 +44,10 @@ public class JSONAPIRequestBodyConverter<T> implements Converter<T, RequestBody>
 			}
 
 			if (isCollection) {
-				return RequestBody.create(mediaType,
-						converter.writeDocumentCollection((JSONAPIDocument<? extends Iterable<?>>) document));
+				return RequestBody.create(
+								mediaType,
+								converter.writeDocumentCollection((JSONAPIDocument<? extends Iterable<?>>) document)
+				);
 			} else {
 				return RequestBody.create(mediaType, converter.writeDocument(document));
 			}

@@ -229,6 +229,11 @@ public class ResourceConverter {
 				result.setLinks(new Links(mapLinks(rootNode.get(LINKS))));
 			}
 
+      // Handle server version/meta (JSON API DOC)
+      if (rootNode.has(JSON_API)) {
+        result.setJsonApi(objectMapper.treeToValue(rootNode.get(JSON_API), JsonApi.class));
+      }
+
 			return result;
 		} catch (RuntimeException e) {
 			throw e;
@@ -297,6 +302,11 @@ public class ResourceConverter {
 			// Handle top-level links
 			if (rootNode.has(LINKS)) {
 				result.setLinks(new Links(mapLinks(rootNode.get(LINKS))));
+			}
+
+			// Handle server version/meta (JSON API DOC)
+			if (rootNode.has(JSON_API)) {
+				result.setJsonApi(objectMapper.treeToValue(rootNode.get(JSON_API), JsonApi.class));
 			}
 
 			return result;
@@ -724,6 +734,10 @@ public class ResourceConverter {
 			// Serialize global links and meta
 			serializeMeta(document, result, settings);
 			serializeLinks(document, result, settings);
+
+			// Serialize JSON API object if present
+			serializeJSONAPIObject(document, result, settings);
+
 			return objectMapper.writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
@@ -740,20 +754,27 @@ public class ResourceConverter {
 	}
 
 	private void serializeLinks(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
-		if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() &&
-				shouldSerializeLinks(settings)) {
+		if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() && shouldSerializeLinks(settings)) {
 			resultNode.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
+		}
+	}
+
+	private void serializeJSONAPIObject(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
+		if (document.getJsonApi() != null && shouldSerializeJSONAPIObject(settings)) {
+			resultNode.set(JSON_API, objectMapper.valueToTree(document.getJsonApi()));
 		}
 	}
 
 	/**
 	 * Serializes provided {@link JSONAPIDocument} into JSON API Spec compatible byte representation.
+   *
 	 * @param documentCollection {@link JSONAPIDocument} document collection to serialize
 	 * @return serialized content in bytes
 	 * @throws DocumentSerializationException thrown in case serialization fails
 	 */
-	public byte [] writeDocumentCollection(JSONAPIDocument<? extends Iterable<?>> documentCollection)
-			throws DocumentSerializationException {
+	public byte [] writeDocumentCollection(
+    JSONAPIDocument<? extends Iterable<?>> documentCollection
+  ) throws DocumentSerializationException {
 		return writeDocumentCollection(documentCollection, null);
 	}
 
@@ -783,6 +804,7 @@ public class ResourceConverter {
 			// Handle global links and meta
 			serializeMeta(documentCollection, result, serializationSettings);
 			serializeLinks(documentCollection, result, serializationSettings);
+			serializeJSONAPIObject(documentCollection, result, serializationSettings);
 
 			result = addIncludedSection(result, includedDataMap, serializationSettings);
 
@@ -1280,6 +1302,14 @@ public class ResourceConverter {
 			return settings.serializeId();
 		}
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_ID);
+	}
+
+	private boolean shouldSerializeJSONAPIObject(SerializationSettings settings) {
+		if (settings != null && settings.serializeJSONAPIObject() != null) {
+			return settings.serializeJSONAPIObject();
+		}
+
+		return serializationFeatures.contains(SerializationFeature.INCLUDE_JSONAPI_OBJECT);
 	}
 
 	private JsonNode removeField(ObjectNode node, Field field) {
