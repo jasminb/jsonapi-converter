@@ -6,7 +6,7 @@
 
 	<groupId>com.github.jasminb</groupId>
 	<artifactId>jsonapi-converter</artifactId>
-	<version>0.13</version>
+	<version>0.14</version>
 
 	<name>JSONAPI Converter</name>
 	<description>
@@ -18,7 +18,8 @@
 		<dependency>
 			<groupId>com.squareup.retrofit2</groupId>
 			<artifactId>retrofit</artifactId>
-			<version>2.5.0</version>
+			<version>2.11.0</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>

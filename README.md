@@ -18,19 +18,19 @@ Maven:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.12</version>
+  <version>0.13</version>
 </dependency>
 ```
 
 Gradle:
 ```groovy
-implementation 'com.github.jasminb:jsonapi-converter:0.12'
+implementation 'com.github.jasminb:jsonapi-converter:0.13'
 ```
 
 SBT:
 
 ```groovy
-libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.12"
+libraryDependencies += "com.github.jasminb" % "jsonapi-converter" % "0.13"
 ```
 
 In case you want to use current `SNAPSHOT` version of the project, make sure to add sonatype repository to your pom:
@@ -54,7 +54,7 @@ Than to add dependency:
 <dependency>
   <groupId>com.github.jasminb</groupId>
   <artifactId>jsonapi-converter</artifactId>
-  <version>0.13-SNAPSHOT</version>
+  <version>0.14-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -87,9 +87,10 @@ Note that `@Type` annotation is not inherited from supperclasses.
 
 Id annotation is used to flag an attribute of a class as an `id` attribute. Each resource class must have an id field.
 
-In case field annotated by the `@Id` annotation is not a `String` field, `@Id` annotation needs to be configured with proper `ResourceIdHandler`. Lirary provides handlers for `Long` and `Integer` types, in case types other than those mentioned are used, user must implement and provide proper id handler.
+In case field annotated by the `@Id` annotation is not a `String` field, `@Id` annotation needs to be configured with proper `ResourceIdHandler`. 
+Library provides handlers for `Long` and `Integer` types, in case types other than those mentioned are used, user must implement and provide proper id handler.
 
-Id is a special attribute that is, together with type, used to uniquely identify an resource.
+Id is a special attribute that is, together with type, used to uniquely identify a resource.
 
 Id annotation is inheritable, one can define a base model class that contains a field with `@Id` annotation and then extend it to create a new type.
 
@@ -131,6 +132,63 @@ public class Book {
 }
 
 
+```
+
+#### LocalId annotation
+
+This annotation is used to mark a class attribute as a holder of the `local identifier`.
+Local identifiers may be used in cases where requests are originating on the client side. This annotation is optional
+and behaves in a similar way to the `@Id` annotation. It must be represented as a string in serialized form
+which means that for non-string class attributes, handler must be registered to convert from and to string type on
+serialization/deserialization.
+
+Example:
+
+```java
+@Type("book")
+public class Book {
+  
+  @Id
+  private String isbn;
+  @LocalId
+  private String localId;
+}
+```
+
+By default, library will not serialize local id attribute, its serialization needs to be enabled explicitly:
+
+```java
+SerializationSettings settings = new SerializationSettings.Builder()
+				.serializeLocalId(true)
+				.build();
+
+// Using the settings on serialization call
+converter.writeDocument(document, settings);
+
+```
+
+It can also be enabled globally using the `SerializationFeature` options:
+
+```java
+converter.enableSerializationOption(SerializationFeature.INCLUDE_LOCAL_ID);
+```
+
+For deserialization, `lid` attribute is optional by default, it can be made required by `DeserializationFeature`
+mechanism:
+
+```java
+converter.enableDeserializationOption(DeserializationFeature.REQUIRE_LOCAL_RESOURCE_ID);
+```
+
+Setting the option above means that deserialization will throw in case resource does not contain non-empty `lid` attribute.
+
+###### Important note
+
+By default `REQUIRE_RESOURCE_ID` deserialization feature is enabled, which means that for server-side usage,
+where users want to use the `lid` mechanism, this option should be disabled:
+
+```java
+converter.disableDeserializationOption(DeserializationFeature.REQUIRE_RESOURCE_ID);
 ```
 
 #### Relationship annotation

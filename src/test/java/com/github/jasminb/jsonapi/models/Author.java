@@ -4,6 +4,7 @@ package com.github.jasminb.jsonapi.models;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.github.jasminb.jsonapi.annotations.Id;
+import com.github.jasminb.jsonapi.annotations.LocalId;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 
@@ -14,6 +15,10 @@ import java.util.Collection;
 public class Author {
 	@Id
 	private String id;
+
+	@LocalId
+	private String localId;
+
 	private String firstName;
 	private String lastName;
 	private String twitter;
@@ -59,5 +64,13 @@ public class Author {
 
 	public void setArticles(Collection<Article> articles) {
 		this.articles = articles;
+	}
+
+	public String getLocalId() {
+		return localId;
+	}
+
+	public void setLocalId(String localId) {
+		this.localId = localId;
 	}
 }
