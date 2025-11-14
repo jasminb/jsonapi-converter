@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
+import com.github.jasminb.jsonapi.models.Document;
 import com.github.jasminb.jsonapi.models.SimpleMeta;
 import com.github.jasminb.jsonapi.models.Status;
 import com.github.jasminb.jsonapi.models.User;
@@ -14,9 +15,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Testing functionality of JSON API converter's serialization methods..
@@ -28,7 +32,7 @@ public class SerializationTest {
 
 	@Before
 	public void setup() {
-		converter = new ResourceConverter(Status.class, User.class, Article.class, Author.class);
+		converter = new ResourceConverter(Status.class, User.class, Article.class, Author.class, Document.class);
 		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
 	}
 
@@ -301,6 +305,29 @@ public class SerializationTest {
 						new SerializationSettings.Builder().serializeJSONAPIObject(false).build());
 
 		Assert.assertFalse(new String(serialized).contains("\"jsonapi\":{\"version\":\"1.1\"}"));
+	}
+
+	@Test
+	public void testDoubleInclusion() throws DocumentSerializationException {
+		// A compound document MUST NOT include more than one resource object for each type and id pair.
+		Document documentA = new Document(UUID.randomUUID(), "Document A", null);
+		Document documentB = new Document(UUID.randomUUID(), "Document B", documentA);
+
+		JSONAPIDocument<List<Document>> jsonapiDocument = new JSONAPIDocument<>(Arrays.asList(documentA, documentB));
+		byte[] serialized = converter.writeDocumentCollection(jsonapiDocument);
+
+		Assert.assertTrue(new String(serialized).contains("\"included\":[]"));
+
+		JSONAPIDocument<List<Document>> deserialized = converter.readDocumentCollection(serialized, Document.class);
+
+		Assert.assertEquals(2, deserialized.get().size());
+
+		Document first = deserialized.get().get(0);
+		Document second = deserialized.get().get(1);
+
+		// Make sure the second document is the same reference as the first
+		Assert.assertTrue(first == second.getRelatedDocument());
+
 	}
 
 	private JSONAPIDocument<User> createDocument(User user) {
