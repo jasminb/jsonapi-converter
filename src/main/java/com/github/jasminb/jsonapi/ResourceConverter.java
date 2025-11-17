@@ -849,6 +849,13 @@ public class ResourceConverter {
 				results.add(getDataNode(object, includedDataMap, serializationSettings));
 			}
 
+			// It is possible that relationships point back to top-level resource, in this case remove it from
+			// included section since it is already present (as a top level resource)
+			for (Object object : documentCollection.get()) {
+				String identifier = String.valueOf(getIdValue(object)).concat(configuration.getTypeName(object.getClass()));
+				includedDataMap.remove(identifier);
+			}
+
 			ObjectNode result = objectMapper.createObjectNode();
 			result.set(DATA, results);
 
