@@ -1,24 +1,18 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
-import com.fasterxml.jackson.databind.type.MapType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
+import com.github.jasminb.jsonapi.abstraction.FieldNamingStrategy;
+import com.github.jasminb.jsonapi.abstraction.JsonProcessor;
+import com.github.jasminb.jsonapi.abstraction.JsonElement;
+import com.github.jasminb.jsonapi.abstraction.JsonObject;
+import com.github.jasminb.jsonapi.abstraction.JsonArray;
+import com.github.jasminb.jsonapi.discovery.JsonProcessorFactory;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
 import com.github.jasminb.jsonapi.models.errors.Error;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -43,8 +37,8 @@ import static com.github.jasminb.jsonapi.JSONAPISpecConstants.*;
  */
 public class ResourceConverter {
 	private final ConverterConfiguration configuration;
-	private final ObjectMapper objectMapper;
-	private final PropertyNamingStrategy namingStrategy;
+	private final JsonProcessor jsonProcessor;
+	private final FieldNamingStrategy namingStrategy;
 	private final Map<Class<?>, RelationshipResolver> typedResolvers = new HashMap<>();
 	private final ResourceCache resourceCache;
 	private final Set<DeserializationFeature> deserializationFeatures = DeserializationFeature.getDefaultFeatures();
@@ -55,6 +49,55 @@ public class ResourceConverter {
 	private String baseURL;
 
 	/**
+	 * Helper method to convert JsonElement to object using JsonProcessor abstraction.
+	 */
+	private <T> T convertJsonElementToValue(JsonElement element, Class<T> clazz) {
+		return jsonProcessor.treeToValue(element, clazz);
+	}
+
+	/**
+	 * Helper method to create JsonObject using JsonProcessor abstraction.
+	 */
+	private JsonObject createJsonObject() {
+		return jsonProcessor.createObjectNode();
+	}
+
+	/**
+	 * Helper method to create JsonArray using JsonProcessor abstraction.
+	 */
+	private JsonArray createJsonArray() {
+		return jsonProcessor.createArrayNode();
+	}
+
+	/**
+	 * Helper method to serialize object to bytes using JsonProcessor abstraction.
+	 */
+	private byte[] writeValueAsBytes(Object value) {
+		return jsonProcessor.writeValueAsBytes(value);
+	}
+
+	/**
+	 * Helper method to convert object to JsonElement using JsonProcessor abstraction.
+	 */
+	private JsonElement valueToTree(Object value) {
+		return jsonProcessor.valueToTree(value);
+	}
+
+	/**
+	 * Helper method to create a text node.
+	 */
+	private JsonElement createTextNode(String value) {
+		return jsonProcessor.createTextNode(value);
+	}
+
+	/**
+	 * Helper method to convert JsonElement to Map (for meta objects).
+	 */
+	private Map<String, Object> treeToMap(JsonElement element) {
+		return jsonProcessor.treeToMap(element);
+	}
+
+	/**
 	 * Creates new ResourceConverter.
 	 * <p>
 	 *     All classes that should be handled by instance of {@link ResourceConverter} must be registered
@@ -63,7 +106,7 @@ public class ResourceConverter {
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
 	public ResourceConverter(Class<?>... classes) {
-		this(null, null, classes);
+		this((JsonProcessor) null, null, classes);
 	}
 
 	/**
@@ -76,39 +119,63 @@ public class ResourceConverter {
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
 	public ResourceConverter(String baseURL, Class<?>... classes) {
-		this(null, baseURL, classes);
-	}
-
-	public ResourceConverter(ObjectMapper mapper, Class<?>... classes) {
-		this(mapper, null, classes);
+		this((JsonProcessor) null, baseURL, classes);
 	}
 
 	/**
-	 * Creates new ResourceConverter.
-	 * @param mapper {@link ObjectMapper} custom mapper to be used for resource parsing
+	 * Creates new ResourceConverter with JsonProcessor.
+	 * @param jsonProcessor {@link JsonProcessor} processor to use for JSON operations
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 */
+	public ResourceConverter(JsonProcessor jsonProcessor, Class<?>... classes) {
+		this(jsonProcessor, null, classes);
+	}
+
+	/**
+	 * Creates new ResourceConverter with JsonProcessor and base URL.
+	 * @param jsonProcessor {@link JsonProcessor} processor to use for JSON operations
 	 * @param baseURL {@link String} base URL, eg. https://api.mysite.com
 	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
 	 */
-	public ResourceConverter(ObjectMapper mapper, String baseURL, Class<?>... classes) {
+	public ResourceConverter(JsonProcessor jsonProcessor, String baseURL, Class<?>... classes) {
 		this.configuration = new ConverterConfiguration(classes);
 		this.baseURL = baseURL != null ? baseURL : "";
 
-		// Set custom mapper if provided
-		if (mapper != null) {
-			objectMapper = mapper;
+		// Set up JsonProcessor
+		if (jsonProcessor != null) {
+			this.jsonProcessor = jsonProcessor;
 		} else {
-			objectMapper = new ObjectMapper();
-			objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+			// Use auto-discovery to create JsonProcessor
+			this.jsonProcessor = JsonProcessorFactory.createDefault();
 		}
 
-		// Object mapper's naming strategy is used if it is set
-		if (objectMapper.getPropertyNamingStrategy() != null) {
-			namingStrategy = objectMapper.getPropertyNamingStrategy();
-		} else {
-			namingStrategy = new PropertyNamingStrategy();
-		}
+		// Use processor's naming strategy
+		this.namingStrategy = this.jsonProcessor.getFieldNamingStrategy();
 
 		resourceCache = new ResourceCache();
+	}
+
+	/**
+	 * Creates new ResourceConverter with Jackson ObjectMapper.
+	 * @param objectMapper {@link com.fasterxml.jackson.databind.ObjectMapper} Jackson mapper
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 * @deprecated Use {@link #ResourceConverter(JsonProcessor, Class...)} with JacksonJsonProcessor instead
+	 */
+	@Deprecated
+	public ResourceConverter(com.fasterxml.jackson.databind.ObjectMapper objectMapper, Class<?>... classes) {
+		this(new com.github.jasminb.jsonapi.jackson.JacksonJsonProcessor(objectMapper), null, classes);
+	}
+
+	/**
+	 * Creates new ResourceConverter with Jackson ObjectMapper and base URL.
+	 * @param objectMapper {@link com.fasterxml.jackson.databind.ObjectMapper} Jackson mapper
+	 * @param baseURL {@link String} base URL
+	 * @param classes {@link Class} array of classes to be handled by this resource converter instance
+	 * @deprecated Use {@link #ResourceConverter(JsonProcessor, String, Class...)} with JacksonJsonProcessor instead
+	 */
+	@Deprecated
+	public ResourceConverter(com.fasterxml.jackson.databind.ObjectMapper objectMapper, String baseURL, Class<?>... classes) {
+		this(new com.github.jasminb.jsonapi.jackson.JacksonJsonProcessor(objectMapper), baseURL, classes);
 	}
 
 	/**
@@ -184,13 +251,16 @@ public class ResourceConverter {
 	public <T> JSONAPIDocument<T> readDocument(InputStream dataStream, Class<T> clazz) {
 		try {
 			resourceCache.init();
+			// Set error context for validation
+			ErrorUtils.ErrorParseContext.setProcessor(jsonProcessor);
 
-			JsonNode rootNode = objectMapper.readTree(dataStream);
+			// Parse JSON tree using the processor abstraction
+			JsonElement rootNode = jsonProcessor.parseTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureValidDocument(objectMapper, rootNode);
+			ValidationUtils.ensureValidDocument(rootNode);
 
-			JsonNode dataNode = rootNode.get(DATA);
+			JsonElement dataNode = rootNode.get(DATA);
 
 			ValidationUtils.ensurePrimaryDataValidObjectOrNull(dataNode);
 
@@ -217,7 +287,7 @@ public class ResourceConverter {
 				handleRelationships(dataNode, resourceObject);
 			}
 
-			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, rootNode, objectMapper);
+			JSONAPIDocument<T> result = new JSONAPIDocument<>(resourceObject, rootNode, jsonProcessor);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -231,7 +301,7 @@ public class ResourceConverter {
 
       // Handle server version/meta (JSON API DOC)
       if (rootNode.has(JSON_API)) {
-        result.setJsonApi(objectMapper.treeToValue(rootNode.get(JSON_API), JsonApi.class));
+        result.setJsonApi(convertJsonElementToValue(rootNode.get(JSON_API), JsonApi.class));
       }
 
 			return result;
@@ -241,6 +311,7 @@ public class ResourceConverter {
 			throw new RuntimeException(e);
 		} finally {
 			resourceCache.clear();
+			ErrorUtils.ErrorParseContext.clear();
 		}
 	}
 
@@ -264,20 +335,23 @@ public class ResourceConverter {
 	public <T> JSONAPIDocument<List<T>> readDocumentCollection(InputStream dataStream, Class<T> clazz) {
 		try {
 			resourceCache.init();
+			// Set error context for validation
+			ErrorUtils.ErrorParseContext.setProcessor(jsonProcessor);
 
-			JsonNode rootNode = objectMapper.readTree(dataStream);
+			// Parse JSON tree using the processor abstraction
+			JsonElement rootNode = jsonProcessor.parseTree(dataStream);
 
 			// Validate
-			ValidationUtils.ensureValidDocument(objectMapper, rootNode);
+			ValidationUtils.ensureValidDocument(rootNode);
 
-			JsonNode dataNode = rootNode.get(DATA);
+			JsonElement dataNode = rootNode.get(DATA);
 
 			ValidationUtils.ensurePrimaryDataValidArray(dataNode);
 
 			// Parse data node without handling relationships
 			List<T> resourceList = new ArrayList<>();
 
-			for (JsonNode element : dataNode) {
+			for (JsonElement element : dataNode) {
 				T pojo = readObject(element, clazz, false);
 				resourceList.add(pojo);
 			}
@@ -287,12 +361,12 @@ public class ResourceConverter {
 
 			// Connect data node's relationships now that all resources have been parsed
 			for (int i = 0; i < resourceList.size(); i++) {
-				JsonNode source = dataNode.get(i);
+				JsonElement source = dataNode.get(i);
 				T resourceObject = resourceList.get(i);
 				handleRelationships(source, resourceObject);
 			}
 
-			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, rootNode, objectMapper);
+			JSONAPIDocument<List<T>> result = new JSONAPIDocument<>(resourceList, rootNode, jsonProcessor);
 
 			// Handle top-level meta
 			if (rootNode.has(META)) {
@@ -306,7 +380,7 @@ public class ResourceConverter {
 
 			// Handle server version/meta (JSON API DOC)
 			if (rootNode.has(JSON_API)) {
-				result.setJsonApi(objectMapper.treeToValue(rootNode.get(JSON_API), JsonApi.class));
+				result.setJsonApi(convertJsonElementToValue(rootNode.get(JSON_API), JsonApi.class));
 			}
 
 			return result;
@@ -316,6 +390,7 @@ public class ResourceConverter {
 			throw new RuntimeException(e);
 		} finally {
 			resourceCache.clear();
+			ErrorUtils.ErrorParseContext.clear();
 		}
 	}
 
@@ -325,11 +400,11 @@ public class ResourceConverter {
 	 * @param clazz target type
 	 * @param <T> type
 	 * @return converted target object
-	 * @throws IOException
+	 * @throws RuntimeException
 	 * @throws IllegalAccessException
 	 */
-	private <T> T readObject(JsonNode source, Class<T> clazz, boolean handleRelationships)
-			throws IOException, IllegalAccessException, InstantiationException {
+	private <T> T readObject(JsonElement source, Class<T> clazz, boolean handleRelationships)
+			throws RuntimeException, IllegalAccessException, InstantiationException {
 		String identifier = createIdentifier(source);
 
 		T result = (T) resourceCache.get(identifier);
@@ -337,12 +412,12 @@ public class ResourceConverter {
 			Class<?> type = getActualType(source, clazz);
 
 			if (source.has(ATTRIBUTES)) {
-				result = (T) objectMapper.treeToValue(source.get(ATTRIBUTES), type);
+				result = (T) convertJsonElementToValue(source.get(ATTRIBUTES), type);
 			} else {
 				if (type.isInterface()) {
 					result = null;
 				} else {
-					result = (T) objectMapper.treeToValue(objectMapper.createObjectNode(), type);
+					result = (T) convertJsonElementToValue(createJsonObject(), type);
 				}
 			}
 
@@ -351,7 +426,7 @@ public class ResourceConverter {
 				Field field = configuration.getMetaField(type);
 				if (field != null) {
 					Class<?> metaType = configuration.getMetaType(type);
-					Object metaObject = objectMapper.treeToValue(source.get(META), metaType);
+					Object metaObject = convertJsonElementToValue(source.get(META), metaType);
 					field.set(result, metaObject);
 				}
 			}
@@ -389,11 +464,11 @@ public class ResourceConverter {
 	 * Converts included data and returns it as pairs of its unique identifiers and converted types.
 	 * @param parent data source
 	 * @return identifier/object pairs
-	 * @throws IOException
+	 * @throws RuntimeException
 	 * @throws IllegalAccessException
 	 */
-	private Map<String, Object> parseIncluded(JsonNode parent)
-			throws IOException, IllegalAccessException, InstantiationException {
+	private Map<String, Object> parseIncluded(JsonElement parent)
+			throws RuntimeException, IllegalAccessException, InstantiationException {
 		Map<String, Object> result = new HashMap<>();
 
 		if (parent.has(INCLUDED)) {
@@ -406,10 +481,10 @@ public class ResourceConverter {
 					result.put(identifier, includedResources.get(identifier));
 				}
 
-				ArrayNode includedArray = (ArrayNode) parent.get(INCLUDED);
+				JsonArray includedArray = (JsonArray) parent.get(INCLUDED);
 				for (int i = 0; i < includedArray.size(); i++) {
 					// Handle relationships
-					JsonNode node = includedArray.get(i);
+					JsonElement node = includedArray.get(i);
 					Object resourceObject = includedResources.get(createIdentifier(node));
 						if (resourceObject != null){
 							handleRelationships(node, resourceObject);
@@ -425,17 +500,17 @@ public class ResourceConverter {
 	 * Parses out included resources excluding relationships.
 	 * @param parent root node
 	 * @return map of identifier/resource pairs
-	 * @throws IOException
+	 * @throws RuntimeException
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	private Map<String, Object> getIncludedResources(JsonNode parent) throws IOException, IllegalAccessException, InstantiationException {
+	private Map<String, Object> getIncludedResources(JsonElement parent) throws RuntimeException, IllegalAccessException, InstantiationException {
 		Map<String, Object> result = new HashMap<>();
 
-		JsonNode included = parent.get(INCLUDED);
+		JsonElement included = parent.get(INCLUDED);
 		ValidationUtils.ensureValidResourceObjectArray(included);
 
-		for (JsonNode jsonNode : included) {
+		for (JsonElement jsonNode : included) {
 			String type = jsonNode.get(TYPE).asText();
 			Class<?> clazz = configuration.getTypeClass(type);
 			if (clazz != null) {
@@ -451,9 +526,9 @@ public class ResourceConverter {
 		return result;
 	}
 
-	private void handleRelationships(JsonNode source, Object object)
-			throws IllegalAccessException, IOException, InstantiationException {
-		JsonNode relationships = source.get(RELATIONSHIPS);
+	private void handleRelationships(JsonElement source, Object object)
+			throws IllegalAccessException, RuntimeException, InstantiationException {
+		JsonElement relationships = source.get(RELATIONSHIPS);
 
 		if (relationships != null) {
 			Iterator<String> fields = relationships.fieldNames();
@@ -461,7 +536,7 @@ public class ResourceConverter {
 			while (fields.hasNext()) {
 				String field = fields.next();
 
-				JsonNode relationship = relationships.get(field);
+				JsonElement relationship = relationships.get(field);
 				Field relationshipField = configuration.getRelationshipField(object.getClass(), field);
 
 				if (relationshipField != null) {
@@ -478,7 +553,7 @@ public class ResourceConverter {
 						Field relationshipMetaField = configuration.getRelationshipMetaField(object.getClass(), field);
 
 						if (relationshipMetaField != null) {
-							relationshipMetaField.set(object, objectMapper.treeToValue(relationship.get(META),
+							relationshipMetaField.set(object, convertJsonElementToValue(relationship.get(META),
 									configuration.getRelationshipMetaType(object.getClass(), field)));
 						}
 					}
@@ -499,7 +574,7 @@ public class ResourceConverter {
 					// Use resolver if possible
 					if (resolveRelationship && resolver != null && relationship.has(LINKS)) {
 						String relType = configuration.getFieldRelationship(relationshipField).relType().getRelName();
-						JsonNode linkNode = relationship.get(LINKS).get(relType);
+						JsonElement linkNode = relationship.get(LINKS).get(relType);
 
 						String link;
 
@@ -516,7 +591,7 @@ public class ResourceConverter {
 							@SuppressWarnings("rawtypes")
 							Collection elements = createCollectionInstance(relationshipField.getType());
 
-							for (JsonNode element : relationship.get(DATA)) {
+							for (JsonElement element : relationship.get(DATA)) {
 								try {
 									Object relationshipObject = parseRelationship(element, type);
 									if (relationshipObject != null) {
@@ -552,17 +627,17 @@ public class ResourceConverter {
 	}
 
 	/**
-	 * Accepts a JsonNode which encapsulates a link.  The link may be represented as a simple string or as
+	 * Accepts a JsonElement which encapsulates a link.  The link may be represented as a simple string or as
 	 * <a href="http://jsonapi.org/format/#document-links">link</a> object.  This method introspects on the
 	 * {@code linkNode}, returning the value of the {@code href} member, if it exists, or returns the string form
 	 * of the {@code linkNode} if it doesn't.
 	 * <p>
 	 * <em>Package-private for unit testing.</em>
 	 * </p>
-	 * @param linkNode a JsonNode representing a link, may return {@code null}
+	 * @param linkNode a JsonElement representing a link, may return {@code null}
 	 * @return the link URL
 	 */
-	String getLink(JsonNode linkNode) {
+	String getLink(JsonElement linkNode) {
 		// Handle both representations of a link: as a string or as an object
 		// http://jsonapi.org/format/#document-links (v1.0)
 		if (linkNode.has(HREF)) {
@@ -573,16 +648,24 @@ public class ResourceConverter {
 	}
 
 	/**
+	 * @deprecated Use {@link #getLink(JsonElement)} instead
+	 */
+	@Deprecated
+	String getLink(com.fasterxml.jackson.databind.JsonNode linkNode) {
+		return getLink(com.github.jasminb.jsonapi.jackson.JacksonJsonProcessor.wrapNode(linkNode));
+	}
+
+	/**
 	 * Creates relationship object by consuming provided resource linkage 'DATA' node.
 	 * @param relationshipDataNode relationship data node
 	 * @param type object type
 	 * @return created object or <code>null</code> in case data node is not valid
-	 * @throws IOException
+	 * @throws RuntimeException
 	 * @throws IllegalAccessException
 	 * @throws InstantiationException
 	 */
-	private Object parseRelationship(JsonNode relationshipDataNode, Class<?> type)
-			throws IOException, IllegalAccessException, InstantiationException {
+	private Object parseRelationship(JsonElement relationshipDataNode, Class<?> type)
+			throws RuntimeException, IllegalAccessException, InstantiationException {
 		if (ValidationUtils.isResourceIdentifierObject(relationshipDataNode)) {
 			String identifier = createIdentifier(relationshipDataNode);
 
@@ -608,9 +691,9 @@ public class ResourceConverter {
 	 * @param object data object
 	 * @return concatenated id and type values
 	 */
-	private String createIdentifier(JsonNode object) throws IllegalArgumentException {
-		JsonNode idNode = object.get(ID);
-		JsonNode lidNode = object.get(LOCAL_ID);
+	private String createIdentifier(JsonElement object) throws IllegalArgumentException {
+		JsonElement idNode = object.get(ID);
+		JsonElement lidNode = object.get(LOCAL_ID);
 
 		String id = idNode != null ? idNode.asText().trim() : "";
 		String lid = lidNode != null ? lidNode.asText().trim() : "";
@@ -627,7 +710,7 @@ public class ResourceConverter {
 			throw new IllegalArgumentException(String.format("Resource must not have both 'id' and 'lid' attributes! %s", object));
 		}
 
-		JsonNode typeNode = object.get(TYPE);
+		JsonElement typeNode = object.get(TYPE);
 
 		String type = typeNode != null ? typeNode.asText().trim() : "";
 
@@ -648,7 +731,7 @@ public class ResourceConverter {
 	 * @param idValue id node
 	 * @throws IllegalAccessException thrown in case target field is not accessible
 	 */
-	private void setIdValue(Object target, JsonNode idValue) throws IllegalAccessException {
+	private void setIdValue(Object target, JsonElement idValue) throws IllegalAccessException {
 		Field idField = configuration.getIdField(target.getClass());
 		ResourceIdHandler idHandler = configuration.getIdHandler(target.getClass());
 
@@ -663,7 +746,7 @@ public class ResourceConverter {
 	 * @param localIdNode local id node
 	 * @throws IllegalAccessException thrown in case target field is not accessible
 	 */
-	private void setLocalIdValue(Object target, JsonNode localIdNode) throws IllegalAccessException {
+	private void setLocalIdValue(Object target, JsonElement localIdNode) throws IllegalAccessException {
 		Field idField = configuration.getLocalIdField(target.getClass());
 		ResourceIdHandler idHandler = configuration.getLocalIdHandler(target.getClass());
 
@@ -710,8 +793,8 @@ public class ResourceConverter {
 	 * @param source data node
 	 * @return <code>true</code> if data node is an array else <code>false</code>
 	 */
-	private boolean isCollection(JsonNode source) {
-		JsonNode data = source.get(DATA);
+	private boolean isCollection(JsonElement source) {
+		JsonElement data = source.get(DATA);
 		return data != null && data.isArray();
 	}
 
@@ -720,11 +803,11 @@ public class ResourceConverter {
 	 * Converts input object to byte array.
 	 * @param object input object
 	 * @return raw bytes
-	 * @throws JsonProcessingException
+	 * @throws RuntimeException
 	 * @throws IllegalAccessException
 	 */
 	@Deprecated
-	public byte [] writeObject(Object object) throws JsonProcessingException, IllegalAccessException {
+	public byte [] writeObject(Object object) throws RuntimeException, IllegalAccessException {
 		try {
 			return writeDocument(new JSONAPIDocument<>(object));
 		} catch (DocumentSerializationException e) {
@@ -755,13 +838,13 @@ public class ResourceConverter {
 		try {
 			resourceCache.init();
 
-			Map<String, ObjectNode> includedDataMap = new HashMap<>();
+			Map<String, JsonObject> includedDataMap = new HashMap<>();
 
-			ObjectNode result = objectMapper.createObjectNode();
+			JsonObject result = createJsonObject();
 
 			// Serialize data if present
 			if (document.get() != null) {
-				ObjectNode dataNode = getDataNode(document.get(), includedDataMap, settings);
+				JsonObject dataNode = getDataNode(document.get(), includedDataMap, settings);
 				result.set(DATA, dataNode);
 
 				// It is possible that relationships point back to top-level resource, in this case remove it from
@@ -774,9 +857,9 @@ public class ResourceConverter {
 
 			// Serialize errors if present
 			if (document.getErrors() != null) {
-				ArrayNode errorsNode = objectMapper.createArrayNode();
+				JsonArray errorsNode = createJsonArray();
 				for (Error error : document.getErrors()) {
-					errorsNode.add(objectMapper.valueToTree(error));
+					errorsNode.add(valueToTree(error));
 				}
 
 				result.set(ERRORS, errorsNode);
@@ -789,7 +872,7 @@ public class ResourceConverter {
 			// Serialize JSON API object if present
 			serializeJSONAPIObject(document, result, settings);
 
-			return objectMapper.writeValueAsBytes(result);
+			return writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
 		} finally {
@@ -797,22 +880,22 @@ public class ResourceConverter {
 		}
 	}
 
-	private void serializeMeta(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
+	private void serializeMeta(JSONAPIDocument<?> document, JsonObject resultNode, SerializationSettings settings) {
 		// Handle global links and meta
 		if (document.getMeta() != null && !document.getMeta().isEmpty() && shouldSerializeMeta(settings)) {
-			resultNode.set(META, objectMapper.valueToTree(document.getMeta()));
+			resultNode.set(META, valueToTree(document.getMeta()));
 		}
 	}
 
-	private void serializeLinks(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
+	private void serializeLinks(JSONAPIDocument<?> document, JsonObject resultNode, SerializationSettings settings) {
 		if (document.getLinks() != null && !document.getLinks().getLinks().isEmpty() && shouldSerializeLinks(settings)) {
-			resultNode.set(LINKS, objectMapper.valueToTree(document.getLinks()).get(LINKS));
+			resultNode.set(LINKS, valueToTree(document.getLinks()).get(LINKS));
 		}
 	}
 
-	private void serializeJSONAPIObject(JSONAPIDocument<?> document, ObjectNode resultNode, SerializationSettings settings) {
+	private void serializeJSONAPIObject(JSONAPIDocument<?> document, JsonObject resultNode, SerializationSettings settings) {
 		if (document.getJsonApi() != null && shouldSerializeJSONAPIObject(settings)) {
-			resultNode.set(JSON_API, objectMapper.valueToTree(document.getJsonApi()));
+			resultNode.set(JSON_API, valueToTree(document.getJsonApi()));
 		}
 	}
 
@@ -842,8 +925,8 @@ public class ResourceConverter {
 
 		try {
 			resourceCache.init();
-			ArrayNode results = objectMapper.createArrayNode();
-			Map<String, ObjectNode> includedDataMap = new LinkedHashMap<>();
+			JsonArray results = createJsonArray();
+			Map<String, JsonObject> includedDataMap = new LinkedHashMap<>();
 
 			for (Object object : documentCollection.get()) {
 				results.add(getDataNode(object, includedDataMap, serializationSettings));
@@ -856,7 +939,7 @@ public class ResourceConverter {
 				includedDataMap.remove(identifier);
 			}
 
-			ObjectNode result = objectMapper.createObjectNode();
+			JsonObject result = createJsonObject();
 			result.set(DATA, results);
 
 			// Handle global links and meta
@@ -866,7 +949,7 @@ public class ResourceConverter {
 
 			result = addIncludedSection(result, includedDataMap, serializationSettings);
 
-			return objectMapper.writeValueAsBytes(result);
+			return writeValueAsBytes(result);
 		} catch (Exception e) {
 			throw new DocumentSerializationException(e);
 		} finally {
@@ -875,15 +958,15 @@ public class ResourceConverter {
 	}
 
 
-	private ObjectNode getDataNode(
+	private JsonObject getDataNode(
 			Object object,
-			Map<String, ObjectNode> includedContainer,
+			Map<String, JsonObject> includedContainer,
 			SerializationSettings settings
 	) throws IllegalAccessException {
-		ObjectNode dataNode = objectMapper.createObjectNode();
+		JsonObject dataNode = createJsonObject();
 
 		// Perform initial conversion
-		ObjectNode attributesNode = objectMapper.valueToTree(object);
+		JsonObject attributesNode = (JsonObject) valueToTree(object);
 
 		// Handle id, meta and relationship fields
 		String resourceId = getIdValue(object);
@@ -897,19 +980,19 @@ public class ResourceConverter {
 
 		// Handle meta
 		Field metaField = configuration.getMetaField(object.getClass());
-		JsonNode meta = null;
+		JsonElement meta = null;
 		if (metaField != null) {
 			meta = removeField(attributesNode, metaField);
 		}
 
 		// Handle links
 		String selfHref = null;
-		JsonNode jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
+		JsonElement jsonLinks = getResourceLinks(object, attributesNode, resourceId, settings);
 		if (jsonLinks != null) {
 			if (jsonLinks.has(SELF)) {
-				JsonNode selfLink = jsonLinks.get(SELF);
-				if (selfLink instanceof TextNode) {
-					selfHref = selfLink.textValue();
+				JsonElement selfLink = jsonLinks.get(SELF);
+				if (selfLink.isTextual()) {
+					selfHref = selfLink.asText();
 				} else {
 					selfHref = selfLink.get(HREF).asText();
 				}
@@ -944,7 +1027,7 @@ public class ResourceConverter {
 		List<Field> relationshipFields = configuration.getRelationshipFields(object.getClass());
 
 		if (relationshipFields != null) {
-			ObjectNode relationshipsNode = objectMapper.createObjectNode();
+			JsonObject relationshipsNode = createJsonObject();
 
 			for (Field relationshipField : relationshipFields) {
 				Object relationshipObject = relationshipField.get(object);
@@ -962,11 +1045,11 @@ public class ResourceConverter {
 
 					String relationshipName = relationship.value();
 
-					ObjectNode relationshipDataNode = objectMapper.createObjectNode();
+					JsonObject relationshipDataNode = createJsonObject();
 					relationshipsNode.set(relationshipName, relationshipDataNode);
 
 					// Serialize relationship meta
-					JsonNode relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
+					JsonElement relationshipMeta = getRelationshipMeta(object, relationshipName, settings);
 					if (relationshipMeta != null) {
 						relationshipDataNode.set(META, relationshipMeta);
 
@@ -978,7 +1061,7 @@ public class ResourceConverter {
 					}
 
 					// Serialize relationship links
-					JsonNode relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
+					JsonElement relationshipLinks = getRelationshipLinks(object, relationship, selfHref, settings);
 
 					if (relationshipLinks != null) {
 						relationshipDataNode.set(LINKS, relationshipLinks);
@@ -993,7 +1076,7 @@ public class ResourceConverter {
 					boolean shouldSerializeData = configuration.getFieldRelationship(relationshipField).serialiseData();
 					if (shouldSerializeData) {
 						if (relationshipObject instanceof Collection) {
-							ArrayNode dataArrayNode = objectMapper.createArrayNode();
+							JsonArray dataJsonArray = createJsonArray();
 
 							for (Object element : (Collection<?>) relationshipObject) {
 								String relationshipType = configuration.getTypeName(element.getClass());
@@ -1001,7 +1084,7 @@ public class ResourceConverter {
 								String idValue = getIdValue(element);
 								String localIdValue = getLocalIdValue(element);
 
-								ObjectNode identifierNode = objectMapper.createObjectNode();
+								JsonObject identifierNode = createJsonObject();
 								identifierNode.put(TYPE, relationshipType);
 
 								if (idValue != null) {
@@ -1010,7 +1093,7 @@ public class ResourceConverter {
 									identifierNode.put(LOCAL_ID, localIdValue);
 								}
 
-								dataArrayNode.add(identifierNode);
+								dataJsonArray.add(identifierNode);
 
 								// Handle included data
 								if (shouldSerializeRelationship(relationshipName, settings) && (idValue != null || localIdValue != null)) {
@@ -1020,7 +1103,7 @@ public class ResourceConverter {
 									}
 								}
 							}
-							relationshipDataNode.set(DATA, dataArrayNode);
+							relationshipDataNode.set(DATA, dataJsonArray);
 
 						} else {
 							String relationshipType = configuration.getTypeName(relationshipObject.getClass());
@@ -1028,7 +1111,7 @@ public class ResourceConverter {
 							String idValue = getIdValue(relationshipObject);
 							String localIdValue = getLocalIdValue(relationshipObject);
 
-							ObjectNode identifierNode = objectMapper.createObjectNode();
+							JsonObject identifierNode = createJsonObject();
 							identifierNode.put(TYPE, relationshipType);
 
 							if (idValue != null) {
@@ -1071,17 +1154,17 @@ public class ResourceConverter {
 	 *
 	 * @param objects List of input objects
 	 * @return raw bytes
-	 * @throws JsonProcessingException
+	 * @throws RuntimeException
 	 * @throws IllegalAccessException
 	 * @deprecated use writeDocumentCollection instead
 	 */
 	@Deprecated
-	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JsonProcessingException, IllegalAccessException {
+	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws RuntimeException, IllegalAccessException {
 		try {
 			return writeDocumentCollection(new JSONAPIDocument<>(objects));
 		} catch (DocumentSerializationException e) {
-			if (e.getCause() instanceof JsonProcessingException) {
-				throw (JsonProcessingException) e.getCause();
+			if (e.getCause() instanceof RuntimeException) {
+				throw (RuntimeException) e.getCause();
 			} else if (e.getCause() instanceof  IllegalAccessException) {
 				throw (IllegalAccessException) e.getCause();
 			}
@@ -1147,16 +1230,16 @@ public class ResourceConverter {
 	 * </pre>
 	 * </p>
 	 *
-	 * @param linksObject a {@code JsonNode} representing a links object
+	 * @param linksObject a {@code JsonElement} representing a links object
 	 * @return a {@code Map} keyed by link name
 	 */
-	private Map<String, Link> mapLinks(JsonNode linksObject) {
+	private Map<String, Link> mapLinks(JsonElement linksObject) {
 		Map<String, Link> result = new HashMap<>();
 
-		Iterator<Map.Entry<String, JsonNode>> linkItr = linksObject.fields();
+		Iterator<Map.Entry<String, JsonElement>> linkItr = linksObject.fields();
 
 		while (linkItr.hasNext()) {
-			Map.Entry<String, JsonNode> linkNode = linkItr.next();
+			Map.Entry<String, JsonElement> linkNode = linkItr.next();
 			Link linkObj = new Link();
 
 			linkObj.setHref(
@@ -1180,25 +1263,16 @@ public class ResourceConverter {
 	 * keyed by the member names.  Because {@code meta} objects contain arbitrary information, the values in the
 	 * map are of unknown type.
 	 *
-	 * @param metaNode a JsonNode representing a meta object
+	 * @param metaNode a JsonElement representing a meta object
 	 * @return a Map of the meta information, keyed by member name.
 	 */
-	private Map<String, Object> mapMeta(JsonNode metaNode) {
-		JsonParser p = objectMapper.treeAsTokens(metaNode);
-		MapType mapType = TypeFactory.defaultInstance()
-				.constructMapType(HashMap.class, String.class, Object.class);
-		try {
-			return objectMapper.readValue(p, mapType);
-		} catch (IOException e) {
-			// TODO: log? No recovery.
-		}
-
-		return null;
+	private Map<String, Object> mapMeta(JsonElement metaNode) {
+		return treeToMap(metaNode);
 	}
 
-	private ObjectNode addIncludedSection(
-			ObjectNode rootNode,
-			Map<String, ObjectNode> includedDataMap,
+	private JsonObject addIncludedSection(
+			JsonObject rootNode,
+			Map<String, JsonObject> includedDataMap,
 			SerializationSettings serializationSettings
 	) {
 		boolean inclusionsEnabled = serializationFeatures.contains(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
@@ -1208,7 +1282,7 @@ public class ResourceConverter {
 		}
 
 		if (!includedDataMap.isEmpty() || inclusionsEnabled) {
-			ArrayNode includedArray = objectMapper.createArrayNode();
+			JsonArray includedArray = createJsonArray();
 			includedArray.addAll(includedDataMap.values());
 
 			rootNode.set(INCLUDED, includedArray);
@@ -1229,7 +1303,7 @@ public class ResourceConverter {
 	 * @param userType provided user type
 	 * @return {@link Class}
 	 */
-	private Class<?> getActualType(JsonNode object, Class<?> userType) {
+	private Class<?> getActualType(JsonElement object, Class<?> userType) {
 		String type = object.get(TYPE).asText();
 
 		String definedTypeName = configuration.getTypeName(userType);
@@ -1265,20 +1339,20 @@ public class ResourceConverter {
 		throw new RuntimeException("Unable to create appropriate instance for type: " + type.getSimpleName());
 	}
 
-	private JsonNode getRelationshipMeta(Object source, String relationshipName, SerializationSettings settings)
+	private JsonElement getRelationshipMeta(Object source, String relationshipName, SerializationSettings settings)
 			throws IllegalAccessException {
 		if (shouldSerializeMeta(settings)) {
 			Field relationshipMetaField = configuration
 					.getRelationshipMetaField(source.getClass(), relationshipName);
 
 			if (relationshipMetaField != null && relationshipMetaField.get(source) != null) {
-				return objectMapper.valueToTree(relationshipMetaField.get(source));
+				return valueToTree(relationshipMetaField.get(source));
 			}
 		}
 		return null;
 	}
 
-	private JsonNode getResourceLinks(Object resource, ObjectNode serializedResource, String resourceId,
+	private JsonElement getResourceLinks(Object resource, JsonObject serializedResource, String resourceId,
 									  SerializationSettings settings) throws IllegalAccessException {
 		Type type = configuration.getType(resource.getClass());
 
@@ -1310,13 +1384,13 @@ public class ResourceConverter {
 
 			// If there is at least one link generated, serialize and return
 			if (!linkMap.isEmpty()) {
-				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+				return valueToTree(new Links(linkMap)).get(LINKS);
 			}
 		}
 		return null;
 	}
 
-	private JsonNode getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
+	private JsonElement getRelationshipLinks(Object source, Relationship relationship, String ownerLink,
 										  SerializationSettings settings) throws IllegalAccessException {
 		if (shouldSerializeLinks(settings)) {
 			Links links = null;
@@ -1343,7 +1417,7 @@ public class ResourceConverter {
 			}
 
 			if (!linkMap.isEmpty()) {
-				return objectMapper.valueToTree(new Links(linkMap)).get(LINKS);
+				return valueToTree(new Links(linkMap)).get(LINKS);
 			}
 		}
 		return null;
@@ -1413,9 +1487,9 @@ public class ResourceConverter {
 		return serializationFeatures.contains(SerializationFeature.INCLUDE_JSONAPI_OBJECT);
 	}
 
-	private JsonNode removeField(ObjectNode node, Field field) {
+	private JsonElement removeField(JsonObject node, Field field) {
 		if (field != null) {
-			return node.remove(namingStrategy.nameForField(null, null, field.getName()));
+			return node.remove(namingStrategy.translateName(field.getName()));
 		}
 		return null;
 	}

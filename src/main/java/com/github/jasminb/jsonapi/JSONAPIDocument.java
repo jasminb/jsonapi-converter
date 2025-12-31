@@ -1,7 +1,7 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.jasminb.jsonapi.abstraction.JsonElement;
+import com.github.jasminb.jsonapi.abstraction.JsonProcessor;
 import com.github.jasminb.jsonapi.models.errors.Error;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public class JSONAPIDocument<T> {
 	private T data;
-	private ObjectMapper deserializer;
+	private JsonProcessor jsonProcessor;
 
 	private Iterable<? extends Error> errors;
 
@@ -39,9 +39,9 @@ public class JSONAPIDocument<T> {
 	private JsonApi jsonApi;
 
 	/**
-	 * Raw JSON-node response
+	 * Raw JSON response element
 	 */
-	private JsonNode responseJSONNode;
+	private JsonElement responseJsonElement;
 
 
 	/**
@@ -57,24 +57,24 @@ public class JSONAPIDocument<T> {
 	 * Creates new JSONAPIDocument.
 	 *
 	 * @param data         {@link T} API resource type
-	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
+	 * @param jsonProcessor {@link JsonProcessor} processor to be used for handling meta conversion
 	 */
-	public JSONAPIDocument(T data, ObjectMapper deserializer) {
+	public JSONAPIDocument(T data, JsonProcessor jsonProcessor) {
 		this(data);
-		this.deserializer = deserializer;
+		this.jsonProcessor = jsonProcessor;
 	}
 
 	/**
 	 * Creates new JSONAPIDocument.
 	 *
 	 * @param data         {@link T} API resource type
-	 * @param jsonNode     {@link JsonNode} response JSON
-	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
+	 * @param jsonElement  {@link JsonElement} response JSON
+	 * @param jsonProcessor {@link JsonProcessor} processor to be used for handling meta conversion
 	 */
-	public JSONAPIDocument(T data, JsonNode jsonNode, ObjectMapper deserializer) {
+	public JSONAPIDocument(T data, JsonElement jsonElement, JsonProcessor jsonProcessor) {
 		this(data);
-		this.deserializer = deserializer;
-		this.responseJSONNode = jsonNode;
+		this.jsonProcessor = jsonProcessor;
+		this.responseJsonElement = jsonElement;
 	}
 
 	/**
@@ -96,11 +96,11 @@ public class JSONAPIDocument<T> {
 	 * @param data         {@link T} API resource type
 	 * @param links        @link Links} links
 	 * @param meta         {@link Map} meta
-	 * @param deserializer {@link ObjectMapper} deserializer to be used for handling meta conversion
+	 * @param jsonProcessor {@link JsonProcessor} processor to be used for handling meta conversion
 	 */
-	public JSONAPIDocument(T data, Links links, Map<String, Object> meta, ObjectMapper deserializer) {
+	public JSONAPIDocument(T data, Links links, Map<String, Object> meta, JsonProcessor jsonProcessor) {
 		this(data, links, meta);
-		this.deserializer = deserializer;
+		this.jsonProcessor = jsonProcessor;
 	}
 
 	/**
@@ -221,8 +221,8 @@ public class JSONAPIDocument<T> {
 	 */
 	@Nullable
 	public <M> M getMeta(Class<?> metaType) {
-		if (meta != null && deserializer != null) {
-			return (M) deserializer.convertValue(meta, metaType);
+		if (meta != null && jsonProcessor != null) {
+			return (M) jsonProcessor.convertValue(meta, metaType);
 		}
 
 		return null;
@@ -239,12 +239,27 @@ public class JSONAPIDocument<T> {
 	}
 
 	/**
-	 * Returns raw JSON node used to create <code>this</code> {@link JSONAPIDocument}.
+	 * Returns raw JSON element used to create <code>this</code> {@link JSONAPIDocument}.
 	 *
-	 * @return {@link JsonNode}
+	 * @return {@link JsonElement}
 	 */
-	public JsonNode getResponseJSONNode() {
-		return responseJSONNode;
+	public JsonElement getResponseJsonElement() {
+		return responseJsonElement;
+	}
+
+	/**
+	 * Returns raw JSON node used to create <code>this</code> {@link JSONAPIDocument}.
+	 * Only works when using Jackson as the JSON processor.
+	 *
+	 * @return {@link com.fasterxml.jackson.databind.JsonNode} or null if not using Jackson
+	 * @deprecated Use {@link #getResponseJsonElement()} instead
+	 */
+	@Deprecated
+	public com.fasterxml.jackson.databind.JsonNode getResponseJSONNode() {
+		if (responseJsonElement instanceof com.github.jasminb.jsonapi.jackson.JacksonJsonElement) {
+			return ((com.github.jasminb.jsonapi.jackson.JacksonJsonElement) responseJsonElement).getNode();
+		}
+		return null;
 	}
 
 	/**
