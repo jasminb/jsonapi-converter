@@ -1,0 +1,3 @@
+com.github.jasminb.jsonapi.jackson.JacksonJsonProcessorProvider
+com.github.jasminb.jsonapi.gson.GsonJsonProcessorProvider
+com.github.jasminb.jsonapi.jsonb.JsonBJsonProcessorProvider

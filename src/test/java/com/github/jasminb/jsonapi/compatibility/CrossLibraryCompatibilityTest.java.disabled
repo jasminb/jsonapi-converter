@@ -1,0 +1,419 @@
+package com.github.jasminb.jsonapi.compatibility;
+
+import com.github.jasminb.jsonapi.abstraction.JsonProcessor;
+import com.github.jasminb.jsonapi.models.Article;
+import com.github.jasminb.jsonapi.models.Author;
+import com.github.jasminb.jsonapi.models.Comment;
+import com.github.jasminb.jsonapi.ResourceConverter;
+import com.github.jasminb.jsonapi.JSONAPIDocument;
+
+import org.junit.Test;
+import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Cross-library compatibility tests to ensure all JSON processors behave identically.
+ *
+ * Golden Path Phase 2 - Test Scaffolding
+ * Epic 4: Alternative JSON Library Implementations
+ */
+@RunWith(Parameterized.class)
+public class CrossLibraryCompatibilityTest {
+
+    @Parameterized.Parameter
+    public JsonLibrary jsonLibrary;
+
+    @Parameterized.Parameter(1)
+    public JsonProcessor jsonProcessor;
+
+    private ResourceConverter converter;
+
+    // Test data
+    private byte[] simpleDocument;
+    private byte[] complexDocument;
+    private byte[] collectionDocument;
+    private byte[] errorDocument;
+
+    /**
+     * Enum representing supported JSON libraries for testing
+     */
+    public enum JsonLibrary {
+        JACKSON("jackson"),
+        GSON("gson"),
+        JSONB("json-b");
+
+        private final String name;
+
+        JsonLibrary(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    @Parameterized.Parameters(name = "{0}")
+    public static Collection<Object[]> jsonLibraries() {
+        // This will be populated in Phase 4 when implementations are available
+        return Arrays.asList(new Object[][] {
+            // { JsonLibrary.JACKSON, new JacksonJsonProcessor() },
+            // { JsonLibrary.GSON, new GsonJsonProcessor() },
+            // { JsonLibrary.JSONB, new JsonBJsonProcessor() }
+
+            // Placeholder for now - will be activated in Phase 4
+            { JsonLibrary.JACKSON, null }
+        });
+    }
+
+    @Before
+    public void setUp() {
+        // Skip tests if processor is not available yet (Phase 2 scaffolding)
+        if (jsonProcessor == null) {
+            org.junit.Assume.assumeTrue("JsonProcessor not implemented yet", false);
+            return;
+        }
+
+        converter = new ResourceConverter(jsonProcessor, Article.class, Author.class, Comment.class);
+        setupTestData();
+    }
+
+    // ===== BASIC COMPATIBILITY TESTS =====
+
+    @Test
+    public void shouldParseSimpleDocumentIdentically() {
+        // This test ensures all JSON libraries parse simple documents the same way
+
+        // When
+        JSONAPIDocument<Article> document = converter.readDocument(simpleDocument, Article.class);
+
+        // Then
+        assertNotNull("All libraries should parse document", document);
+        assertNotNull("All libraries should extract data", document.get());
+
+        Article article = document.get();
+        assertEquals("All libraries should extract id", "1", article.getId());
+        assertEquals("All libraries should extract title", "Simple Test Article", article.getTitle());
+        assertEquals("All libraries should extract content", "This is a simple test.", article.getContent());
+    }
+
+    @Test
+    public void shouldSerializeSimpleDocumentIdentically() {
+        // This test ensures all JSON libraries produce equivalent JSON output
+
+        // Given
+        Article article = new Article();
+        article.setId("test-id");
+        article.setTitle("Cross-Library Test");
+        article.setContent("Testing serialization across JSON libraries");
+
+        JSONAPIDocument<Article> document = new JSONAPIDocument<>(article);
+
+        // When
+        byte[] serialized = converter.writeDocument(document);
+
+        // Then
+        assertNotNull("All libraries should serialize document", serialized);
+        assertTrue("Serialized content should not be empty", serialized.length > 0);
+
+        String json = new String(serialized);
+        assertTrue("Should contain JSON API structure", json.contains("\"data\""));
+        assertTrue("Should contain type", json.contains("\"type\":\"articles\""));
+        assertTrue("Should contain id", json.contains("\"id\":\"test-id\""));
+        assertTrue("Should contain attributes", json.contains("\"attributes\""));
+    }
+
+    @Test
+    public void shouldHandleComplexDocumentConsistently() {
+        // Test complex documents with relationships and included resources
+
+        // When
+        JSONAPIDocument<Article> document = converter.readDocument(complexDocument, Article.class);
+
+        // Then
+        assertNotNull("Should parse complex document", document);
+
+        Article article = document.get();
+        assertNotNull("Should extract main article", article);
+        assertEquals("Should extract article title", "Complex Article", article.getTitle());
+
+        // Check relationships
+        assertNotNull("Should have author relationship", article.getAuthor());
+        assertEquals("Should extract author name", "Test Author", article.getAuthor().getName());
+
+        assertNotNull("Should have comments relationship", article.getComments());
+        assertEquals("Should have 2 comments", 2, article.getComments().size());
+
+        Comment firstComment = article.getComments().get(0);
+        assertEquals("Should extract comment content", "Great article!", firstComment.getContent());
+    }
+
+    @Test
+    public void shouldHandleCollectionDocumentConsistently() {
+        // Test collection documents
+
+        // When
+        JSONAPIDocument<List<Article>> document = converter.readDocumentCollection(collectionDocument, Article.class);
+
+        // Then
+        assertNotNull("Should parse collection document", document);
+        assertNotNull("Should extract data list", document.get());
+
+        List<Article> articles = document.get();
+        assertEquals("Should have 3 articles", 3, articles.size());
+
+        for (int i = 0; i < articles.size(); i++) {
+            Article article = articles.get(i);
+            assertNotNull("Article " + i + " should not be null", article);
+            assertNotNull("Article " + i + " should have id", article.getId());
+            assertNotNull("Article " + i + " should have title", article.getTitle());
+        }
+    }
+
+    // ===== ROUND-TRIP COMPATIBILITY TESTS =====
+
+    @Test
+    public void shouldMaintainDataIntegrityInRoundTrip() {
+        // Test that serialize -> deserialize preserves all data
+
+        // Given
+        Article original = createTestArticle();
+        JSONAPIDocument<Article> originalDoc = new JSONAPIDocument<>(original);
+
+        // When
+        byte[] serialized = converter.writeDocument(originalDoc);
+        JSONAPIDocument<Article> roundTrip = converter.readDocument(serialized, Article.class);
+
+        // Then
+        assertNotNull("Round-trip should not be null", roundTrip);
+        Article roundTripArticle = roundTrip.get();
+
+        assertEquals("ID should survive round-trip", original.getId(), roundTripArticle.getId());
+        assertEquals("Title should survive round-trip", original.getTitle(), roundTripArticle.getTitle());
+        assertEquals("Content should survive round-trip", original.getContent(), roundTripArticle.getContent());
+    }
+
+    @Test
+    public void shouldHandleMetaAndLinksConsistently() {
+        // Test meta and links handling across libraries
+
+        // When
+        JSONAPIDocument<Article> document = converter.readDocument(complexDocument, Article.class);
+
+        // Then
+        assertNotNull("Document should have meta", document.getMeta());
+        assertNotNull("Document should have links", document.getLinks());
+
+        Map<String, ?> meta = document.getMeta();
+        assertTrue("Meta should contain total", meta.containsKey("total"));
+        assertEquals("Meta total should be correct", 1, ((Number) meta.get("total")).intValue());
+    }
+
+    // ===== ERROR HANDLING COMPATIBILITY TESTS =====
+
+    @Test
+    public void shouldHandleErrorDocumentConsistently() {
+        // Test error document parsing
+
+        // When/Then
+        try {
+            converter.readDocument(errorDocument, Article.class);
+            fail("Should throw exception for error document");
+        } catch (RuntimeException e) {
+            // All libraries should throw an exception
+            // The specific exception type may vary, but behavior should be consistent
+            assertNotNull("Should have error information", e.getMessage());
+        }
+    }
+
+    @Test
+    public void shouldHandleInvalidJsonConsistently() {
+        // Test invalid JSON handling
+
+        byte[] invalidJson = "{invalid json structure".getBytes();
+
+        // When/Then
+        try {
+            converter.readDocument(invalidJson, Article.class);
+            fail("Should throw exception for invalid JSON");
+        } catch (RuntimeException e) {
+            // All libraries should fail with some form of parsing exception
+            assertNotNull("Should provide error information", e);
+        }
+    }
+
+    // ===== PERFORMANCE CONSISTENCY TESTS =====
+
+    @Test
+    public void shouldHaveReasonablePerformanceConsistency() {
+        // Ensure no library is dramatically slower than others
+
+        final int iterations = 100;
+        long startTime = System.currentTimeMillis();
+
+        for (int i = 0; i < iterations; i++) {
+            converter.readDocument(simpleDocument, Article.class);
+        }
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        // Performance threshold - no library should be more than 5x slower than Jackson baseline
+        assertTrue("Performance should be reasonable for " + jsonLibrary.getName() +
+                  " (" + duration + "ms for " + iterations + " iterations)",
+                  duration < 5000); // 5 seconds for 100 iterations
+    }
+
+    // ===== TYPE HANDLING CONSISTENCY TESTS =====
+
+    @Test
+    public void shouldHandleNumericTypesConsistently() {
+        // Test consistent handling of different numeric types
+
+        String jsonWithNumbers = "{"
+            + "\"data\": {"
+                + "\"type\": \"articles\","
+                + "\"id\": \"1\","
+                + "\"attributes\": {"
+                    + "\"intValue\": 42,"
+                    + "\"longValue\": 9223372036854775807,"
+                    + "\"doubleValue\": 3.14159,"
+                    + "\"booleanValue\": true"
+                + "}"
+            + "}"
+        + "}";
+
+        // When
+        JSONAPIDocument<Article> document = converter.readDocument(jsonWithNumbers.getBytes(), Article.class);
+
+        // Then
+        assertNotNull("Should parse numeric types", document);
+        // Note: Specific numeric handling will depend on Article class implementation
+    }
+
+    @Test
+    public void shouldHandleDateTypesConsistently() {
+        // Test date/time handling consistency
+
+        String jsonWithDates = "{"
+            + "\"data\": {"
+                + "\"type\": \"articles\","
+                + "\"id\": \"1\","
+                + "\"attributes\": {"
+                    + "\"title\": \"Date Test\","
+                    + "\"publishedAt\": \"2023-01-15T10:30:00Z\","
+                    + "\"updatedAt\": \"2023-01-15T11:45:00.123Z\""
+                + "}"
+            + "}"
+        + "}";
+
+        // When
+        JSONAPIDocument<Article> document = converter.readDocument(jsonWithDates.getBytes(), Article.class);
+
+        // Then
+        assertNotNull("Should parse date types", document);
+        Article article = document.get();
+        assertEquals("Should extract title", "Date Test", article.getTitle());
+        // Note: Date handling specifics will depend on Article class implementation
+    }
+
+    // ===== HELPER METHODS =====
+
+    private void setupTestData() {
+        // Simple JSON API document
+        simpleDocument = ("{"
+            + "\"data\": {"
+                + "\"type\": \"articles\","
+                + "\"id\": \"1\","
+                + "\"attributes\": {"
+                    + "\"title\": \"Simple Test Article\","
+                    + "\"content\": \"This is a simple test.\""
+                + "}"
+            + "}"
+        + "}").getBytes();
+
+        // Complex document with relationships
+        complexDocument = ("{"
+            + "\"data\": {"
+                + "\"type\": \"articles\","
+                + "\"id\": \"1\","
+                + "\"attributes\": {"
+                    + "\"title\": \"Complex Article\","
+                    + "\"content\": \"Complex content with relationships.\""
+                + "},"
+                + "\"relationships\": {"
+                    + "\"author\": {\"data\": {\"type\": \"authors\", \"id\": \"1\"}},"
+                    + "\"comments\": {\"data\": ["
+                        + "{\"type\": \"comments\", \"id\": \"1\"},"
+                        + "{\"type\": \"comments\", \"id\": \"2\"}"
+                    + "]}"
+                + "}"
+            + "},"
+            + "\"included\": ["
+                + "{"
+                    + "\"type\": \"authors\","
+                    + "\"id\": \"1\","
+                    + "\"attributes\": {\"name\": \"Test Author\"}"
+                + "},"
+                + "{"
+                    + "\"type\": \"comments\","
+                    + "\"id\": \"1\","
+                    + "\"attributes\": {\"content\": \"Great article!\"}"
+                + "},"
+                + "{"
+                    + "\"type\": \"comments\","
+                    + "\"id\": \"2\","
+                    + "\"attributes\": {\"content\": \"Very informative.\"}"
+                + "}"
+            + "],"
+            + "\"meta\": {\"total\": 1},"
+            + "\"links\": {\"self\": \"/articles/1\"}"
+        + "}").getBytes();
+
+        // Collection document
+        collectionDocument = ("{"
+            + "\"data\": ["
+                + "{"
+                    + "\"type\": \"articles\","
+                    + "\"id\": \"1\","
+                    + "\"attributes\": {\"title\": \"First Article\"}"
+                + "},"
+                + "{"
+                    + "\"type\": \"articles\","
+                    + "\"id\": \"2\","
+                    + "\"attributes\": {\"title\": \"Second Article\"}"
+                + "},"
+                + "{"
+                    + "\"type\": \"articles\","
+                    + "\"id\": \"3\","
+                    + "\"attributes\": {\"title\": \"Third Article\"}"
+                + "}"
+            + "]"
+        + "}").getBytes();
+
+        // Error document
+        errorDocument = ("{"
+            + "\"errors\": ["
+                + "{"
+                    + "\"status\": \"404\","
+                    + "\"title\": \"Not Found\","
+                    + "\"detail\": \"The requested resource was not found.\""
+                + "}"
+            + "]"
+        + "}").getBytes();
+    }
+
+    private Article createTestArticle() {
+        Article article = new Article();
+        article.setId("test-123");
+        article.setTitle("Test Article");
+        article.setContent("This is test content for cross-library testing.");
+        return article;
+    }
+}

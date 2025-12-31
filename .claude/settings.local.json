@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(mvn test:*)",
+      "Bash(JAVA_HOME=/Library/Java/JavaVirtualMachines/applejdk-11.0.14.9.2.jdk/Contents/Home mvn test:*)",
+      "Bash(JAVA_HOME=/Library/Java/JavaVirtualMachines/applejdk-11.0.14.9.2.jdk/Contents/Home mvn compile:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

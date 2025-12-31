@@ -2,6 +2,8 @@ package com.github.jasminb.jsonapi.retrofit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.ResourceConverter;
+import com.github.jasminb.jsonapi.abstraction.JsonProcessor;
+import com.github.jasminb.jsonapi.jackson.JacksonJsonProcessor;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
@@ -45,9 +47,21 @@ public class JSONAPIConverterFactory extends Converter.Factory {
 	 * Creates new JSONAPIConverterFactory.
 	 * @param mapper {@link ObjectMapper} raw data mapper
 	 * @param classes classes to be handled by this factory instance
+	 * @deprecated Use {@link #JSONAPIConverterFactory(JsonProcessor, Class...)} instead
 	 */
+	@Deprecated
 	public JSONAPIConverterFactory(ObjectMapper mapper, Class<?>... classes) {
-		this.deserializer = new ResourceConverter(mapper, classes);
+		this.deserializer = new ResourceConverter(new JacksonJsonProcessor(mapper), classes);
+		this.serializer = this.deserializer;
+	}
+
+	/**
+	 * Creates new JSONAPIConverterFactory.
+	 * @param processor {@link JsonProcessor} JSON processor
+	 * @param classes classes to be handled by this factory instance
+	 */
+	public JSONAPIConverterFactory(JsonProcessor processor, Class<?>... classes) {
+		this.deserializer = new ResourceConverter(processor, classes);
 		this.serializer = this.deserializer;
 	}
 
