@@ -8,7 +8,7 @@ import com.github.jasminb.jsonapi.annotations.Type;
  *
  * @author jbegic
  */
-@Type("engineer")
+@Type({"engineer", "engineers"})
 public class Engineer extends Person {
 
 	@Relationship("field")

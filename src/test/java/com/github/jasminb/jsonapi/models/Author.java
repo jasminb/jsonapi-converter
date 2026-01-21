@@ -23,7 +23,7 @@ public class Author {
 	private String lastName;
 	private String twitter;
 
-	@Relationship("articles")
+	@Relationship({"articles", "article"})
 	private Collection<Article> articles;
 
 	public String getId() {

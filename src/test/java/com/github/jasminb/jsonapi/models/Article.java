@@ -14,7 +14,7 @@ import com.github.jasminb.jsonapi.annotations.Type;
 import java.util.Collections;
 import java.util.List;
 
-@Type("articles")
+@Type({"article", "articles"})
 @JsonIdentityInfo(generator = ObjectIdGenerators.StringIdGenerator.class, property = "id")
 public class Article {
 	@Id
