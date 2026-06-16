@@ -1,14 +1,14 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.models.errors.Errors;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 import okhttp3.ResponseBody;
+import tools.jackson.core.JacksonException;
 
 /**
  * Utility class providing methods needed for parsing JSON API Spec errors.
@@ -39,9 +39,9 @@ public class ErrorUtils {
      * @param mapper        Jackson Object mapper instance
      * @param errorResponse error response body
      * @return T collection
-     * @throws JsonProcessingException thrown in case JsonNode cannot be parsed
+     * @throws JacksonException thrown in case JsonNode cannot be parsed
      */
-    public static <T extends Errors> T parseError(ObjectMapper mapper, JsonNode errorResponse, Class<T> cls) throws JsonProcessingException {
+    public static <T extends Errors> T parseError(ObjectMapper mapper, JsonNode errorResponse, Class<T> cls) throws JacksonException {
         return mapper.treeToValue(errorResponse, cls);
     }
 
