@@ -1,7 +1,7 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.models.Article;
 import com.github.jasminb.jsonapi.models.Author;
@@ -13,6 +13,7 @@ import com.github.jasminb.jsonapi.models.errors.Error;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import tools.jackson.databind.PropertyNamingStrategies;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -194,8 +195,9 @@ public class SerializationTest {
 
 	@Test
 	public void testSnakeCaseRelationshipMetaAndLinks() throws DocumentSerializationException {
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+		ObjectMapper mapper = JsonMapper.builder()
+				.propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+				.build();
 		converter = new ResourceConverter(mapper, Status.class, User.class, Article.class, Author.class);
 		converter.enableSerializationOption(SerializationFeature.INCLUDE_RELATIONSHIP_ATTRIBUTES);
 

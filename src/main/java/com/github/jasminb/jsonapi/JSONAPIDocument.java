@@ -1,7 +1,7 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.models.errors.Error;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
