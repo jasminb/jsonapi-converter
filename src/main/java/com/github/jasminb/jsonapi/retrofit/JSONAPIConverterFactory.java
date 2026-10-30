@@ -1,6 +1,6 @@
 package com.github.jasminb.jsonapi.retrofit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.github.jasminb.jsonapi.ResourceConverter;
 
 import java.lang.annotation.Annotation;

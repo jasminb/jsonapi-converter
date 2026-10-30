@@ -1,6 +1,6 @@
 package com.github.jasminb.jsonapi.models.errors;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 /**
  * JSON API Error model.

@@ -1,11 +1,10 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.ser.std.StdSerializer;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -95,11 +94,12 @@ public class Link implements Serializable {
 		}
 
 		@Override
-		public void serialize(Link link, JsonGenerator json, SerializerProvider provider) throws IOException {
+		public void serialize(Link link, JsonGenerator json, SerializationContext provider) {
 			if (link.getMeta() != null) {
 				json.writeStartObject();
-				json.writeStringField(JSONAPISpecConstants.HREF, link.getHref());
-				json.writeObjectField(JSONAPISpecConstants.META, link.getMeta());
+				json.writeStringProperty(JSONAPISpecConstants.HREF, link.getHref());
+				json.writeName(JSONAPISpecConstants.META);
+				provider.writeValue(json, link.getMeta());
 				json.writeEndObject();
 			} else {
 				json.writeString(link.getHref());
