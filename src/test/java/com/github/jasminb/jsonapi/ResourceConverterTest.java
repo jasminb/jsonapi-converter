@@ -1,8 +1,9 @@
 package com.github.jasminb.jsonapi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.json.JsonMapper;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
 import com.github.jasminb.jsonapi.exceptions.InvalidJsonApiResourceException;
 import com.github.jasminb.jsonapi.exceptions.UnregisteredTypeException;
@@ -296,8 +297,7 @@ public class ResourceConverterTest {
 	public void testIncludedFullRelationships() throws IOException {
 		InputStream apiResponse = IOUtils.getResource("articles.json");
 
-		ObjectMapper articlesMapper = new ObjectMapper();
-		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+		ObjectMapper articlesMapper = JsonMapper.builder().propertyNamingStrategy(PropertyNamingStrategies.KEBAB_CASE).build();
 
 		ResourceConverter articlesConverter = new ResourceConverter(articlesMapper, Article.class, Author.class,
 				Comment.class);
@@ -400,10 +400,9 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testLinkObjectsAndRelType() throws Exception {
-		ObjectMapper articlesMapper = new ObjectMapper();
+		ObjectMapper articlesMapper = JsonMapper.builder().propertyNamingStrategy(PropertyNamingStrategies.KEBAB_CASE).build();
 
 		InputStream apiResponse = IOUtils.getResource("articles-with-link-objects.json");
-		articlesMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
 
 		// Configure the ProbeResolver
 		Map<String, String> responseMap = new HashMap<>();
@@ -434,8 +433,7 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testRelationshipResolutionRecursionLoop() throws Exception {
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+		ObjectMapper mapper = JsonMapper.builder().propertyNamingStrategy(PropertyNamingStrategies.KEBAB_CASE).build();
 
 		String loopUrl = "http://example.com/node/1";
 		String loopJson = IOUtils.getResourceAsString("recursion.json");
@@ -668,8 +666,7 @@ public class ResourceConverterTest {
 
 	@Test
 	public void testWriteWithKebabCaseRelationships() throws DocumentSerializationException, IOException {
-		final ObjectMapper kebabMapper = new ObjectMapper();
-		kebabMapper.setPropertyNamingStrategy(PropertyNamingStrategy.KEBAB_CASE);
+		final ObjectMapper kebabMapper = JsonMapper.builder().propertyNamingStrategy(PropertyNamingStrategies.KEBAB_CASE).build();
 		ResourceConverter kebabConverter = new ResourceConverter(kebabMapper, "https://api.example.com", Status.class, User.class, Author.class,
 				Article.class, Comment.class, Engineer.class, EngineeringField.class, City.class,
 				IntegerIdResource.class, LongIdResource.class,

@@ -1,16 +1,16 @@
 package com.github.jasminb.jsonapi;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
-import com.fasterxml.jackson.databind.type.MapType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.PropertyNamingStrategy;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.type.MapType;
 import com.github.jasminb.jsonapi.annotations.Relationship;
 import com.github.jasminb.jsonapi.annotations.Type;
 import com.github.jasminb.jsonapi.exceptions.DocumentSerializationException;
@@ -97,13 +97,14 @@ public class ResourceConverter {
 		if (mapper != null) {
 			objectMapper = mapper;
 		} else {
-			objectMapper = new ObjectMapper();
-			objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+			objectMapper = JsonMapper.builder()
+					.changeDefaultPropertyInclusion(value -> value.withValueInclusion(JsonInclude.Include.NON_NULL))
+					.build();
 		}
 
 		// Object mapper's naming strategy is used if it is set
-		if (objectMapper.getPropertyNamingStrategy() != null) {
-			namingStrategy = objectMapper.getPropertyNamingStrategy();
+		if (objectMapper.serializationConfig().getPropertyNamingStrategy() != null) {
+			namingStrategy = objectMapper.serializationConfig().getPropertyNamingStrategy();
 		} else {
 			namingStrategy = new PropertyNamingStrategy();
 		}
@@ -336,14 +337,19 @@ public class ResourceConverter {
 		if (result == null) {
 			Class<?> type = getActualType(source, clazz);
 
-			if (source.has(ATTRIBUTES)) {
-				result = (T) objectMapper.treeToValue(source.get(ATTRIBUTES), type);
-			} else {
-				if (type.isInterface()) {
-					result = null;
-				} else {
-					result = (T) objectMapper.treeToValue(objectMapper.createObjectNode(), type);
+			if (source.has(ATTRIBUTES) || !type.isInterface()) {
+				JsonNode attributes = source.has(ATTRIBUTES)
+						? source.get(ATTRIBUTES) : objectMapper.createObjectNode();
+				JsonIdentityInfo identityInfo = type.getAnnotation(JsonIdentityInfo.class);
+				if (identityInfo != null && source.has(ID) && attributes.isObject()
+						&& !attributes.has(identityInfo.property())) {
+					ObjectNode attributesWithId = ((ObjectNode) attributes).deepCopy();
+					attributesWithId.set(identityInfo.property(), source.get(ID));
+					attributes = attributesWithId;
 				}
+				result = (T) objectMapper.treeToValue(attributes, type);
+			} else {
+				result = null;
 			}
 
 			// Handle meta
@@ -456,7 +462,7 @@ public class ResourceConverter {
 		JsonNode relationships = source.get(RELATIONSHIPS);
 
 		if (relationships != null) {
-			Iterator<String> fields = relationships.fieldNames();
+			Iterator<String> fields = relationships.propertyNames().iterator();
 
 			while (fields.hasNext()) {
 				String field = fields.next();
@@ -720,11 +726,11 @@ public class ResourceConverter {
 	 * Converts input object to byte array.
 	 * @param object input object
 	 * @return raw bytes
-	 * @throws JsonProcessingException
+	 * @throws JacksonException
 	 * @throws IllegalAccessException
 	 */
 	@Deprecated
-	public byte [] writeObject(Object object) throws JsonProcessingException, IllegalAccessException {
+	public byte [] writeObject(Object object) throws JacksonException, IllegalAccessException {
 		try {
 			return writeDocument(new JSONAPIDocument<>(object));
 		} catch (DocumentSerializationException e) {
@@ -908,7 +914,7 @@ public class ResourceConverter {
 		if (jsonLinks != null) {
 			if (jsonLinks.has(SELF)) {
 				JsonNode selfLink = jsonLinks.get(SELF);
-				if (selfLink instanceof TextNode) {
+				if (selfLink.isTextual()) {
 					selfHref = selfLink.textValue();
 				} else {
 					selfHref = selfLink.get(HREF).asText();
@@ -1071,17 +1077,17 @@ public class ResourceConverter {
 	 *
 	 * @param objects List of input objects
 	 * @return raw bytes
-	 * @throws JsonProcessingException
+	 * @throws JacksonException
 	 * @throws IllegalAccessException
 	 * @deprecated use writeDocumentCollection instead
 	 */
 	@Deprecated
-	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JsonProcessingException, IllegalAccessException {
+	public <T> byte[] writeObjectCollection(Iterable<T> objects) throws JacksonException, IllegalAccessException {
 		try {
 			return writeDocumentCollection(new JSONAPIDocument<>(objects));
 		} catch (DocumentSerializationException e) {
-			if (e.getCause() instanceof JsonProcessingException) {
-				throw (JsonProcessingException) e.getCause();
+			if (e.getCause() instanceof JacksonException) {
+				throw (JacksonException) e.getCause();
 			} else if (e.getCause() instanceof  IllegalAccessException) {
 				throw (IllegalAccessException) e.getCause();
 			}
@@ -1153,7 +1159,7 @@ public class ResourceConverter {
 	private Map<String, Link> mapLinks(JsonNode linksObject) {
 		Map<String, Link> result = new HashMap<>();
 
-		Iterator<Map.Entry<String, JsonNode>> linkItr = linksObject.fields();
+		Iterator<Map.Entry<String, JsonNode>> linkItr = linksObject.properties().iterator();
 
 		while (linkItr.hasNext()) {
 			Map.Entry<String, JsonNode> linkNode = linkItr.next();
@@ -1185,11 +1191,11 @@ public class ResourceConverter {
 	 */
 	private Map<String, Object> mapMeta(JsonNode metaNode) {
 		JsonParser p = objectMapper.treeAsTokens(metaNode);
-		MapType mapType = TypeFactory.defaultInstance()
+		MapType mapType = objectMapper.getTypeFactory()
 				.constructMapType(HashMap.class, String.class, Object.class);
 		try {
 			return objectMapper.readValue(p, mapType);
-		} catch (IOException e) {
+		} catch (JacksonException e) {
 			// TODO: log? No recovery.
 		}
 
